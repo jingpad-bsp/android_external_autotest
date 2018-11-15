@@ -192,24 +192,6 @@ class Backchannel(object):
         return True
 
 
-def is_network_iface_running(name):
-    """
-    Checks to see if the interface is running.
-
-    @param name: Name of the interface to check.
-
-    @returns True if the interface is running.
-
-    """
-    try:
-        out = utils.system_output('ip link show dev %s' % name)
-    except error.CmdError, e:
-        logging.info(e)
-        return False
-
-    return out.find('state UP') >= 0
-
-
 def _is_ethernet_port(port):
     # Some versions of ethtool may report the full name.
     ETHTOOL_PORT_TWISTED_PAIR = 'TP'
