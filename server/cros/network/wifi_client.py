@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants
+from autotest_lib.client.cros.networking import shill_proxy
 from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import wpa_cli_proxy
@@ -920,6 +921,19 @@ class WiFiClient(site_linux_system.LinuxSystem):
                 self._shill_proxy,
                 self.wifi_if,
                 self.MAC_ADDRESS_RANDOMIZATION_ENABLED,
+                enabled)
+
+
+    def set_global_ft_enabled(self, enabled):
+        """Sets the WiFi.GlobalFTEnabled property to the value provided.
+
+        @param enabled: bool
+        @return a context manager for the setting
+
+        """
+        return TemporaryManagerDBusProperty(
+                self._shill_proxy,
+                shill_proxy.ShillProxy.MANAGER_PROPERTY_WIFI_GLOBAL_FT_ENABLED,
                 enabled)
 
 

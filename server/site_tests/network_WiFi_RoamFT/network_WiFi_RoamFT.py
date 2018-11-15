@@ -72,7 +72,7 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
         """
         self._security_config = additional_params
 
-    def run_once(self,host):
+    def test_body(self):
         """Test body."""
 
         if self._security_config.ft_mode == \
@@ -187,6 +187,12 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
             if not self.context.client.wait_for_roam(
                    roam_to_bssid, timeout_seconds=self.TIMEOUT_SECONDS):
                 raise error.TestFail('Failed to roam.')
+
+    def run_once(self,host):
+        """Set global FT switch and call test_body"""
+
+        with self.context.client.set_global_ft_enabled(True):
+            self.test_body()
 
     def cleanup(self):
         """Cleanup function."""
