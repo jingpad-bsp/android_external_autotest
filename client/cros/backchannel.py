@@ -203,16 +203,3 @@ def _is_ethernet_port(port):
                     ETHTOOL_PORT_TWISTED_PAIR_FULL,
                     ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE,
                     ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE_FULL]
-
-
-def is_backchannel_using_ethernet():
-    """
-    Checks to see if the backchannel is using an ethernet device.
-
-    @returns True if the backchannel is using an ethernet device.
-
-    """
-    ethtool_output = utils.system_output(
-            'ethtool %s' % BACKCHANNEL_IFACE_NAME, ignore_status=True)
-    match = re.search('Port: (.+)', ethtool_output)
-    return match and _is_ethernet_port(match.group(1))
