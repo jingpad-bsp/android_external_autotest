@@ -366,6 +366,7 @@ class Cr50Test(FirmwareTest):
         # reset.
         self.cr50.send_command('ccd testlab open')
         self.cr50.send_command('ccd reset')
+        self.cr50.send_command('wp follow_batt_pres atboot')
 
         # reboot to normal mode if the device is in dev mode.
         self.enter_mode_after_checking_tpm_state('normal')
