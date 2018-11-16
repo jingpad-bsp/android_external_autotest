@@ -147,12 +147,41 @@ class Backchannel(object):
         @returns True if the backchannel is using an ethernet device.
 
         """
-        result = self._run(
-                'ethtool %s' % BACKCHANNEL_IFACE_NAME, ignore_status=True)
-        if result.exit_status:
-            return False
-        match = re.search('Port: (.+)', result.stdout)
-        return match and _is_ethernet_port(match.group(1))
+        # Check the port type reported by ethtool.
+        result = self._run('ethtool %s' % BACKCHANNEL_IFACE_NAME,
+                           ignore_status=True)
+        if (result.exit_status == 0 and
+            re.search('Port: (TP|Twisted Pair|MII|Media Independent Interface)',
+                      result.stdout)):
+            return True
+
+        # ethtool doesn't report the port type for some Ethernet adapters.
+        # Fall back to check against a list of known Ethernet adapters:
+        #
+        #   13b1:0041 - Linksys USB3GIG USB 3.0 Gigabit Ethernet Adapter
+        properties = self._get_udev_properties(BACKCHANNEL_IFACE_NAME)
+        # Depending on the udev version, ID_VENDOR_ID/ID_MODEL_ID may or may
+        # not have the 0x prefix, so we convert them to an integer value first.
+        bus = properties.get('ID_BUS', 'unknown').lower()
+        vendor_id = int(properties.get('ID_VENDOR_ID', '0000'), 16)
+        model_id = int(properties.get('ID_MODEL_ID', '0000'), 16)
+        device_id = '%s:%04x:%04x' % (bus, vendor_id, model_id)
+        if device_id in ['usb:13b1:0041']:
+            return True
+
+        return False
+
+
+    def _get_udev_properties(self, iface):
+        properties = {}
+        result = self._run('udevadm info -q property /sys/class/net/%s' % iface,
+                           ignore_status=True)
+        if result.exit_status == 0:
+            for line in result.stdout.splitlines():
+                key, value = line.split('=', 1)
+                properties[key] = value
+
+        return properties
 
 
     def _reset_usb_ethernet_device(self):
@@ -190,16 +219,3 @@ class Backchannel(object):
             return False
         logging.info('Route to %s is ready.', dest)
         return True
-
-
-def _is_ethernet_port(port):
-    # Some versions of ethtool may report the full name.
-    ETHTOOL_PORT_TWISTED_PAIR = 'TP'
-    ETHTOOL_PORT_TWISTED_PAIR_FULL = 'Twisted Pair'
-    ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE = 'MII'
-    ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE_FULL = \
-            'Media Independent Interface'
-    return port in [ETHTOOL_PORT_TWISTED_PAIR,
-                    ETHTOOL_PORT_TWISTED_PAIR_FULL,
-                    ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE,
-                    ETHTOOL_PORT_MEDIA_INDEPENDENT_INTERFACE_FULL]
