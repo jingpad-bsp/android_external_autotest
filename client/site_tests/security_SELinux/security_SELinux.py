@@ -117,7 +117,7 @@ def _get_drm_render_sys_devices():
         trees.append(real_device_tree)
     return trees
 
-CHROME_UNCATEGORIZED_CONTEXT = 'u:r:chromeos:s0'
+CHROME_SSH_CONTEXT = 'u:r:cros_ssh_session:s0'
 
 class security_SELinux(test.test):
     """Tests that various SELinux context and labels are correct. Note that
@@ -138,8 +138,8 @@ class security_SELinux(test.test):
         _assert_eq('Enforcing', r.stdout.strip())
 
     def _check_test_context(self):
-        """Test that this test is running under the chromeos context."""
-        _assert_eq(CHROME_UNCATEGORIZED_CONTEXT,
+        """Test that this test is running under the cros_ssh_session context."""
+        _assert_eq(CHROME_SSH_CONTEXT,
                    _get_process_context(),
                    'context for current process')
 
