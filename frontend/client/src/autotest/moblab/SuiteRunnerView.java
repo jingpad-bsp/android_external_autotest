@@ -71,7 +71,9 @@ public class SuiteRunnerView extends TabView {
     "power_loadtest_fast",
     "power_measurement_wrapper",
     "power_sanity",
-    "usb-camera"
+    "usb-camera",
+    "wifi_matfunc",
+    "wifi_perf"
   );
 
   private static String TEST_LIST_PLACEHOLDER = "arm.CtsAnimationTestCases, x86.CtsDeqpTestCases";
@@ -286,7 +288,9 @@ public class SuiteRunnerView extends TabView {
       fourthOptionalLine.setVisible(true);
       fifthOptionalLine.setVisible(true);
       sixthOptionalLine.setVisible(false);
-    } else if(listIndex == suiteNames.indexOf("power_measurement_wrapper")) {
+    } else if(listIndex == suiteNames.indexOf("power_measurement_wrapper") ||
+        listIndex == suiteNames.indexOf("wifi_matfunc") ||
+        listIndex == suiteNames.indexOf("wifi_perf")) {
       thirdOptionalLine.setVisible(false);
       fourthOptionalLine.setVisible(false);
       fifthOptionalLine.setVisible(false);
