@@ -20,6 +20,7 @@ class security_ProcessManagementPolicy(test.test):
     _WHITELIST_DICT = {
         "cros-disks": set(("avfs", "fuse-drivefs", "fuse-exfat",
                                     "fuse-sshfs", "nobody", "ntfs-3g")),
+        "shill": set(("dhcp", "ipsec", "openvpn", "syslog", "nobody", "root")),
     }
 
     def __init__(self, *args, **kwargs):
@@ -91,6 +92,8 @@ class security_ProcessManagementPolicy(test.test):
         self._test_setuid("cros-disks", "root", True, False)
         # Make sure 'cros-disks' can't setuid() to 'chronos'
         self._test_setuid("cros-disks", "chronos", True, False)
+        # Make sure 'shill' can't setuid() to 'chronos'
+        self._test_setuid("shill", "chronos", True, False)
 
         # Make the test fail if any unexpected behaviour got detected. Note
         # that the error log output that will be included in the failure
