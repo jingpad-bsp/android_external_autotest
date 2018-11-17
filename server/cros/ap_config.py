@@ -11,14 +11,10 @@ from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 from autotest_lib.server.cros.ap_configurators import ap_spec
 
+# chaos_shadow_ap_list.conf is used for testing against local APs.
 AP_CONFIG_FILES = { ap_constants.AP_TEST_TYPE_CHAOS:
-                    ('chaos_dynamic_ap_list.conf', 'chaos_shadow_ap_list.conf'),
-                    ap_constants.AP_TEST_TYPE_CLIQUE:
-                    ('clique_ap_list.conf',),
-                    ap_constants.AP_TEST_TYPE_CASEY5:
-                    ('casey_chromeos5_ap_list.conf',),
-                    ap_constants.AP_TEST_TYPE_CASEY7:
-                    ('casey_chromeos7_ap_list.conf',),}
+                    ('chaos_ap_list.conf',
+                     'chaos_shadow_ap_list.conf'),}
 
 TIMEOUT = 100
 
