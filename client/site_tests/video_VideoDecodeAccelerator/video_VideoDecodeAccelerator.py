@@ -21,7 +21,8 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
     @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
-    def run_once(self, videos, capability, use_cr_source_dir=True):
+    def run_once(self, videos, capability, import_mode=False,
+                 use_cr_source_dir=True):
         """
         Runs video_decode_accelerator_unittest on the videos.
 
@@ -50,6 +51,10 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
                 '--thumbnail_output_dir="%s"' % self.resultsdir)
             cmd_line_list.append(helper_logger.chrome_vmodule_flag())
             cmd_line_list.append('--ozone-platform=gbm')
+
+            if import_mode:
+                cmd_line_list.append('--test_import')
+                cmd_line_list.append('--frame_validator=check')
 
             cmd_line = ' '.join(cmd_line_list)
             try:
