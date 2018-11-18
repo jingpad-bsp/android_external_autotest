@@ -187,14 +187,12 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
     @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
-    def run_once(self, in_cloud, streams, profile, capability,
-                 gtest_filter=None):
+    def run_once(self, in_cloud, streams, profile, capability):
         """Runs video_encode_accelerator_unittest on the streams.
 
         @param in_cloud: Input file needs to be downloaded first.
         @param streams: The test streams for video_encode_accelerator_unittest.
         @param profile: The profile to encode into.
-        @param gtest_filter: test case filter.
 
         @raises error.TestFail for video_encode_accelerator_unittest failures.
         """
@@ -239,14 +237,8 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
             # Command line |gtest_filter| can override get_filter_option().
             predefined_filter = self.get_filter_option(profile, (width, height))
-            if gtest_filter and predefined_filter:
-                logging.warning('predefined gtest filter is suppressed: %s',
-                    predefined_filter)
-                applied_filter = gtest_filter
-            else:
-                applied_filter = predefined_filter
-            if applied_filter:
-                cmd_line_list.append('--gtest_filter="%s"' % applied_filter)
+            if predefined_filter:
+                cmd_line_list.append('--gtest_filter="%s"' % predefined_filter)
 
             cmd_line = ' '.join(cmd_line_list)
             logging.debug('Executing with argument: %s', cmd_line)
