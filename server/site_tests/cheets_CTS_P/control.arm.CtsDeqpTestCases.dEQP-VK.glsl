@@ -5,15 +5,15 @@
 # This file has been automatically generated. Do not edit!
 
 AUTHOR = 'ARC++ Team'
-NAME = 'cheets_CTS_P.x86.CtsDeqpTestCases.EGL'
+NAME = 'cheets_CTS_P.arm.CtsDeqpTestCases.dEQP-VK.glsl'
 ATTRIBUTES = 'suite:cts_P'
-DEPENDENCIES = 'arc, cts_abi_x86'
+DEPENDENCIES = 'arc'
 JOB_RETRIES = 1
 TEST_TYPE = 'server'
-TIME = 'LONG'
+TIME = 'MEDIUM'
 MAX_RESULT_SIZE_KB = 512000
 PRIORITY = 50
-DOC = 'Run module CtsDeqpTestCases.EGL of the Android Compatibility Test Suite (CTS) using x86 ABI in the ARC++ container.'
+DOC = 'Run module CtsDeqpTestCases.dEQP-VK.glsl of the Android Compatibility Test Suite (CTS) using arm ABI in the ARC++ container.'
 
 def run_CTS(machine):
     host_list = [hosts.create_host(machine)]
@@ -23,15 +23,15 @@ def run_CTS(machine):
         iterations=1,
         max_retry=3,
         needs_push_media=False,
-        tag='x86.CtsDeqpTestCases.EGL',
-        test_name='cheets_CTS_P.x86.CtsDeqpTestCases.EGL',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-EGL.*', '--logcat-on-failure'],
-        retry_template=['run', 'commandAndExit', 'retry', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-EGL.*', '--retry', '{session_id}'],
+        tag='arm.CtsDeqpTestCases.dEQP-VK.glsl',
+        test_name='cheets_CTS_P.arm.CtsDeqpTestCases.dEQP-VK.glsl',
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-VK.glsl.*', '--logcat-on-failure'],
+        retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsDeqpTestCases',
         target_plan=None,
-        bundle='x86',
+        bundle='arm',
         warn_on_test_retry=False,
         retry_manual_tests=True,
-        timeout=7200)
+        timeout=3600)
 
 parallel_simple(run_CTS, machines)

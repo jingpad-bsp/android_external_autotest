@@ -1023,9 +1023,10 @@ def run_suite(board, build, suite, model=None, ro_firmware=None,
 
     if test_args:
         try:
-            for line in test_args.split('\n'):
-                key, value = line.strip().split('=')
-                processed_test_args[key] = value
+          processed_test_args['args'] = [test_args]
+          for line in test_args.split('\n'):
+              key, value = line.strip().split('=')
+              processed_test_args[key] = value
         except:
             raise error.RPCException('Could not parse test args.')
 

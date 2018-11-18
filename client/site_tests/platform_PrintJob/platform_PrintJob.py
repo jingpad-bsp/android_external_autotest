@@ -136,6 +136,11 @@ class platform_PrintJob(test.test):
 
     def run_once(self, host, args):
         """Run the test."""
+
+        # Make chameleon host known to the DUT host crbug.com/862646
+        chameleon_args = 'chameleon_host=' + host.hostname + '-chameleon'
+        args.append(chameleon_args)
+
         chameleon_board = chameleon.create_chameleon_board(host.hostname, args)
         chameleon_board.setup_and_reset(self.outputdir)
         usb_printer = chameleon_board.get_usb_printer()

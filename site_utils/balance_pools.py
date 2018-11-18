@@ -31,6 +31,8 @@ optional arguments:
   -s POOL, --spare POOL
                         Pool from which to draw replacement spares (default:
                         pool:suites)
+  -p PHASE, --phase PHASE
+                        Phase to restrict the balance pool operation to
   --sku SKU             The specific SKU we intend to swap with
   -n, --dry-run         Report actions to take in the form of shell commands
 
@@ -582,6 +584,10 @@ def _parse_command(argv):
     parser.add_argument('models', nargs='*', metavar='MODEL',
                         help='Names of models to balance.')
 
+    parser.add_argument('-p', '--phase', metavar='PHASE',
+                        help='Optional phase label to restrict balance '
+                        'operation to.')
+
     parser.add_argument('--sku', type=str,
                         help='Optional name of sku to restrict to.')
 
@@ -626,6 +632,8 @@ def infer_balancer_targets(afe, arguments, pools):
                 for model in inventory.get_pool_models(pool):
                     labels = labellib.LabelsMapping()
                     labels['model'] = model
+                    if arguments.phase:
+                        labels['phase'] = arguments.phase
                     balancer_targets.append((pool, labels.getlabels()))
             metrics.Boolean(
                 'chromeos/autotest/balance_pools/unchanged_pools').set(
@@ -637,6 +645,8 @@ def infer_balancer_targets(afe, arguments, pools):
                 labels['model'] = model
                 if arguments.sku:
                     labels['sku'] = arguments.sku
+                if arguments.phase:
+                    labels['phase'] = arguments.phase
                 balancer_targets.append((pool, labels.getlabels()))
     return balancer_targets
 

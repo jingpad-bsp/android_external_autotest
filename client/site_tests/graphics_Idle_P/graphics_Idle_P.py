@@ -7,6 +7,7 @@ import glob, logging, os, re, struct, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils as common_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cros_logging
 from autotest_lib.client.cros.graphics import graphics_utils
@@ -343,32 +344,57 @@ class graphics_Idle_P(graphics_utils.GraphicsTest):
         idle before doing so, and retry every second for 20 seconds."""
         logging.info('Running verify_graphics_psr')
 
-        board = utils.get_board()
-        if board != 'samus' and board != 'eve':
+        if utils.get_cpu_soc_family() != 'x86_64':
             return ''
         tries = 0
         found = False
         param_path = self.get_valid_path(PSR_PATHS)
         if not param_path:
-            return 'PSR_PATHS not found.'
+            logging.warning("PSR_PATHS not found.")
+            return ''
+        kernel_version = utils.get_kernel_version()[0:4].rstrip(".")
+        logging.info('Kernel version: %s', kernel_version)
+        # First check if PSR is enabled on the device so
+        # we can watch for the active values
+        with open(param_path, 'r') as psr_info_file:
+            match = None
+            for line in psr_info_file:
+                match = re.search(r'Enabled: yes', line)
+                if match:
+                    logging.info('PSR enabled')
+                    break
+            if not match:
+                logging.warning('PSR not enabled')
+                return ''
         while not found and tries < 20:
             time.sleep(1)
             with open(param_path, 'r') as psr_info_file:
                 for line in psr_info_file:
+                    # Kernels 4.4 and up
+                    if common_utils.compare_versions(kernel_version, '4.4') != -1:
+                        match = re.search(r'PSR status: .* \[SRDENT', line)
+                        if match:
+                            found = True
+                            logging.info('Found active with kernel >= 4.4')
+                            break
+                    # 3.18 kernel
+                    elif kernel_version == '3.18':
+                        match = re.search(r'Performance_Counter: 0', line)
+                        if match:
+                            found = True
+                            logging.info('Found active with 3.18 kernel')
+                            break
                     # Older kernels (up to 3.14)
-                    match = re.search(r'Performance_Counter: (.*)', line)
-                    if match and int(match.group(1)) > 0:
-                        found = True
-                        break
-                    # Newer kernels (3.18 and up)
-                    match = re.search(r'Active bit: yes', line)
-                    if match:
-                        found = True
-                        break
+                    else:
+                        match = re.search(r'Performance_Counter: ([\d])+', line)
+                        if match and int(match.group(1)) > 0:
+                            found = True
+                            logging.info('Found active with kernel <= 3.14')
+                            break
 
             tries += 1
         if not found:
-            return self.handle_error('Did not see PSR enabled. ', param_path)
+            return self.handle_error('Did not see PSR activity. ', param_path)
         return ''
 
     def verify_graphics_gem_idle(self):
