@@ -44,9 +44,6 @@ class AuthPolicy(object):
     # Default timeout in seconds for D-Bus calls.
     _DEFAULT_TIMEOUT = 120
 
-    # Chronos user ID.
-    _CHRONOS_UID = 1000
-
     def __init__(self, bus_loop, proto_binding_location):
         """
         Constructor
@@ -71,17 +68,9 @@ class AuthPolicy(object):
         """
         logging.info('restarting authpolicyd')
         upstart.restart_job('authpolicyd')
-        try:
-            # Get the interface as Chronos since only they are allowed to send
-            # D-Bus messages to authpolicyd.
-            os.setresuid(self._CHRONOS_UID, self._CHRONOS_UID, 0)
-            bus = dbus.SystemBus(self._bus_loop)
-            proxy = bus.get_object(self._DBUS_SERVICE_NAME,
-                                   self._DBUS_SERVICE_PATH)
-            self._authpolicyd = dbus.Interface(proxy,
-                                               self._DBUS_INTERFACE_NAME)
-        finally:
-            os.setresuid(0, 0, 0)
+        bus = dbus.SystemBus(self._bus_loop)
+        proxy = bus.get_object(self._DBUS_SERVICE_NAME, self._DBUS_SERVICE_PATH)
+        self._authpolicyd = dbus.Interface(proxy, self._DBUS_INTERFACE_NAME)
 
     def stop(self):
         """
@@ -206,6 +195,16 @@ class AuthPolicy(object):
         """
 
         return self._authpolicyd.RefreshDevicePolicy(
+                timeout=self._DEFAULT_TIMEOUT, byte_arrays=True)
+
+    def change_machine_password(self):
+        """
+        Changes machine password.
+
+        @return ErrorType from the D-Bus call.
+
+        """
+        return self._authpolicyd.ChangeMachinePasswordForTesting(
                 timeout=self._DEFAULT_TIMEOUT, byte_arrays=True)
 
     def set_default_log_level(self, level):
