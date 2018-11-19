@@ -9,6 +9,7 @@ NAME = "enterprise_CFM_MeetingRoomScenario.idle_on_landing_page"
 PURPOSE = "Tests what happens when CfM stays idle on landing page."
 CRITERIA = "No unexpected resource leakes."
 ATTRIBUTES = "suite:hotrod"
+DEPENDENCIES = "meet_app"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "server"
@@ -21,7 +22,7 @@ cfm_test = CfmTest(
     scenario=Scenario(
         RebootDut(restart_chrome_for_cfm=True),
         WaitForMeetingsLandingPage(),
-        Sleep(60),
+        Sleep(15 * 60),
     ),
 )
 
