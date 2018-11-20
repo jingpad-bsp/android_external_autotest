@@ -442,25 +442,24 @@ class _PoolSetInventory(object):
                 yield h
 
 
+def _is_migrated_to_skylab(afehost):
+    """Return True if the provided frontend.Host has been migrated to skylab."""
+    return afehost.hostname.endswith('-migrated-do-not-use')
+
+
 def _eligible_host(afehost):
     """Return whether this host is eligible for monitoring.
 
-    A host is eligible if it has a (unique) 'model' label, it's in
-    exactly one pool, and it has no labels from the
-    `_EXCLUDED_LABELS` set.
-
     @param afehost  The host to be tested for eligibility.
     """
-    # DUTs without an existing, unique 'model' or 'pool' label
-    # aren't meant to exist in the managed inventory; their presence
-    # generally indicates an error in the database.  Unfortunately
-    # such errors have been seen to occur from time to time.
-    #
-    # The _LabInventory constructor requires hosts to conform to the
-    # label restrictions, and may fail if they don't.  Failing an
-    # inventory run for a single bad entry is the wrong thing, so we
-    # ignore the problem children here, to keep them out of the
-    # inventory.
+    if _is_migrated_to_skylab(afehost):
+        return False
+
+    # DUTs without an existing, unique 'model' or 'pool' label aren't meant to
+    # exist in the managed inventory; their presence generally indicates an
+    # error in the database. The _LabInventory constructor requires hosts to
+    # conform to the label restrictions. Failing an inventory run for a single
+    # bad entry is wrong, so we ignore these hosts.
     models = [l for l in afehost.labels
                  if l.startswith(constants.Labels.MODEL_PREFIX)]
     pools = [l for l in afehost.labels
