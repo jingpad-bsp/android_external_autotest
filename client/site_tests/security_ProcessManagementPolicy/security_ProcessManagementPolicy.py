@@ -24,8 +24,9 @@ class security_ProcessManagementPolicy(test.test):
     }
 
     def __init__(self, *args, **kwargs):
-        if utils.get_kernel_version() == "3.8.11":
-            raise error.TestNAError('Test is n/a for kernel 3.8.11')
+        version = utils.get_kernel_version()
+        if version == "3.8.11" or version == "3.10.18":
+            raise error.TestNAError('Test is n/a for kernels older than 3.14')
         super(security_ProcessManagementPolicy,
             self).__init__(*args, **kwargs)
         self._failure = False
