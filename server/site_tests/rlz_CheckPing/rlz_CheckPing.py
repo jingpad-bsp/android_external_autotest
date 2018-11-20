@@ -21,17 +21,34 @@ class rlz_CheckPing(test.test):
         """Checks that we have an rlz brand code."""
         try:
             self._host.run('mosys -k platform brand | grep brand')
-        except error.AutoservRunError:
-            raise error.TestFail('DUT is missing brand_code.')
+        except error.AutoservRunError as err:
+            raise error.TestFail('DUT is missing brand_code: %s.', err)
 
 
-    def _set_vpd_values(self):
-        """Sets the required vpd values for the test."""
-        try:
-            self._host.run('vpd -i RW_VPD -s should_send_rlz_ping=1')
-            self._host.run('dump_vpd_log --force')
-        except error.AutoservRunError:
-            raise error.TestFail('Failed to set rlz VPD values on the DUT.')
+    def _set_vpd_values(self, retries=3):
+        """
+        Sets the required vpd values for the test.
+
+        @param retries: number of times to retry to write to vpd.
+
+        """
+        for i in range(retries):
+            try:
+                self._host.run('vpd -i RW_VPD -s should_send_rlz_ping=1')
+                break
+            except error.AutoservRunError as err:
+                logging.exception('Failed to write should_send_rlz_ping to vpd')
+                if i == retries-1:
+                    raise error.TestFail('Failed to set should_send_rlz_ping '
+                                         'VPD value on the DUT: %s', err)
+        for i in range(retries):
+            try:
+                self._host.run('dump_vpd_log --force')
+                break
+            except error.AutoservRunError as err:
+                logging.exception('Failed to dump vpd log')
+                if i == retries - 1:
+                    raise error.TestFail('Failed to dump vpd log: %s', err)
 
 
     def _make_rootfs_writable(self):
@@ -69,6 +86,9 @@ class rlz_CheckPing(test.test):
 
     def run_once(self, host, ping_timeout=30, logged_in=True):
         self._host = host
+        if 'veyron_rialto' in self._host.get_board():
+            raise error.TestNAError('Skipping test on rialto device.')
+
         self._check_rlz_brand_code()
 
         # Clear TPM owner so we have no users on DUT.
