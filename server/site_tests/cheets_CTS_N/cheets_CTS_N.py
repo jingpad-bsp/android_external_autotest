@@ -38,7 +38,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
     _CHANNEL_RETRY = {'dev': 9, 'beta': 9, 'stable': 9}
     _SHARD_CMD = '--shards'
     # TODO(pwang): b/110966363, remove it once scarlet is fixed.
-    _NEED_DEVICE_INFO_BOARDS = ['scarlet']
+    _NEED_DEVICE_INFO_BOARDS = ['scarlet', 'veyron_tiger']
 
     def _tradefed_retry_command(self, template, session_id):
         """Build tradefed 'retry' command from template."""
