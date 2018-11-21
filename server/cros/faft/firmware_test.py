@@ -403,7 +403,7 @@ class FirmwareTest(FAFTBase):
                 raise error.TestError('USB stick in servo contains a %s '
                     'image, but DUT is a %s' % (usb_board, dut_board))
         finally:
-            for cmd in ('umount -l %s' % rootfs, 'sync', 'rm -rf %s' % tmpd):
+            for cmd in ('umount -l %s' % tmpd, 'sync', 'rm -rf %s' % tmpd):
                 self.servo.system(cmd)
 
         self.mark_setup_done('usb_check')
