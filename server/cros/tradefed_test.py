@@ -63,6 +63,7 @@ class TradefedTest(test.test):
     _release_channel = None
     _android_version = None
     _num_media_bundles = 0
+    _perf_results = []
 
     def _log_java_version(self):
         """Quick sanity and spew of java version installed on the server."""
@@ -160,6 +161,16 @@ class TradefedTest(test.test):
             shutil.rmtree(self._tradefed_install)
         except IOError:
             pass
+
+        # Create perf data for Chromeperf.
+        for perf in self._perf_results:
+            data = dict(
+                units='count',
+                higher_is_better=False,
+                replace_existing_values=True,
+            )
+            data.update(perf)
+            self.output_perf_value(**data)
 
     def _verify_hosts(self):
         """Verify all hosts' ChromeOS consistency."""
@@ -991,7 +1002,8 @@ class TradefedTest(test.test):
                                    bundle=None,
                                    cts_uri=None,
                                    login_precondition_commands=[],
-                                   precondition_commands=[]):
+                                   precondition_commands=[],
+                                   perf_description=None):
         """Run CTS/GTS with retry logic.
 
         We first kick off the specified module. Then rerun just the failures
@@ -1094,19 +1106,33 @@ class TradefedTest(test.test):
 
                 # Check if all the tests passed.
                 if failed <= waived and all_done:
-                    if not all(accurate):
-                        raise error.TestFail(
-                            'Failed: Not all tests were executed. After %d '
-                            'retries passing %d tests, waived=%d. %s' % (
-                                steps, passed, waived, self.summary))
-                    # TODO(ihf): Make this error.TestPass('...') once
-                    # available.
-                    if steps > 0 and self._warn_on_test_retry:
-                        raise error.TestWarn(
-                            'Passed: after %d retries passing %d tests, '
-                            'waived=%d. %s' % (steps, passed, waived,
-                                               self.summary))
-                    return
+                    break
+
+        # Tradefed finished normally. Record the failures to perf.
+        if target_module:
+            # Only record the failure by module, which exclude 'all', 'collects-tests-only', etc.
+            self._perf_results.append(dict(
+                description=perf_description if perf_description else target_module,
+                value=failed,
+                graph=bundle
+            ))
+
+        if failed <= waived and all_done:
+            if not all(accurate):
+                # Tests count inaccurate, remove perf to avoid false alarm.
+                self._perf_results.pop()
+                raise error.TestFail(
+                    'Failed: Not all tests were executed. After %d '
+                    'retries passing %d tests, waived=%d. %s' % (
+                        steps, passed, waived, self.summary))
+            # TODO(ihf): Make this error.TestPass('...') once
+            # available.
+            if steps > 0 and self._warn_on_test_retry:
+                raise error.TestWarn(
+                    'Passed: after %d retries passing %d tests, '
+                    'waived=%d. %s' % (steps, passed, waived,
+                                       self.summary))
+            return
 
         if session_id == None:
             raise error.TestFail('Error: Could not find any tests in module.')
