@@ -12,30 +12,42 @@ class firmware_Cr50TpmMode(Cr50Test):
     """Verify TPM disabling and getting back enabled after reset."""
     version = 1
 
-    def get_tpm_mode(self):
-        """Query the current TPM mode."""
-        return cr50_utils.GSCTool(self.host, ['-a', '-m']).stdout.strip()
+    def get_tpm_mode(self, long_opt):
+        """Query the current TPM mode.
 
-    def set_tpm_mode(self, disable_tpm):
+        Args:
+            long_opt: Boolean to decide whether to use long opt
+                      for gsctool command.
+        """
+        opt_text = '--tpm_mode' if long_opt else '-m'
+        return cr50_utils.GSCTool(self.host, ['-a', opt_text]).stdout.strip()
+
+    def set_tpm_mode(self, disable_tpm, long_opt):
         """Disable or Enable TPM mode.
 
         Args:
             disable_tpm: Disable TPM if True.
                          Enable (or Confirm Enabling) otherwise.
+            long_opt: Boolean to decide whether to use long opt
+                      for gsctool command.
+
         """
         mode_param = 'disable' if disable_tpm else 'enable'
+        opt_text = '--tpm_mode' if long_opt else '-m'
         return cr50_utils.GSCTool(self.host,
-                 ['-a', '-m', mode_param]).stdout.strip()
+                 ['-a', opt_text, mode_param]).stdout.strip()
 
     def tpm_ping(self):
         """Check TPM responsiveness by running tpm_version."""
         return self.host.run('tpm_version').stdout.strip()
 
-    def run_test_tpm_mode(self, disable_tpm):
+    def run_test_tpm_mode(self, disable_tpm, long_opt):
         """Run a test for the case of either disabling TPM or enabling.
 
         Args:
             disable_tpm: Disable TPM if True. Enable TPM otherwise.
+            long_opt: Boolean to decide whether to use long opt
+                      for gsctool command.
         """
         # Reset the device.
         logging.info('Reset')
@@ -44,7 +56,7 @@ class firmware_Cr50TpmMode(Cr50Test):
 
         # Query TPM mode, which should be 'enabled (0)'.
         logging.info('Get TPM Mode')
-        output_log = self.get_tpm_mode()
+        output_log = self.get_tpm_mode(long_opt)
         logging.info(output_log)
         if output_log != 'TPM Mode: enabled (0)':
             raise error.TestFail('Failure in reading TPM mode after reset')
@@ -55,7 +67,7 @@ class firmware_Cr50TpmMode(Cr50Test):
 
         # Change TPM Mode
         logging.info('Set TPM Mode')
-        output_log = self.set_tpm_mode(disable_tpm)
+        output_log = self.set_tpm_mode(disable_tpm, long_opt)
         logging.info(output_log)
 
         # Check the result of TPM Mode.
@@ -81,7 +93,7 @@ class firmware_Cr50TpmMode(Cr50Test):
 
             # Subsequent set-TPM-mode vendor command should fail.
             try:
-                output_log = self.set_tpm_mode(not disable_tpm)
+                output_log = self.set_tpm_mode(not disable_tpm, long_opt)
             except error.AutoservRunError:
                 logging.info('Expected failure in disabling TPM mode');
             else:
@@ -90,10 +102,15 @@ class firmware_Cr50TpmMode(Cr50Test):
 
     def run_once(self):
         """Test Disabling TPM and Enabling TPM"""
-        # Test 1. Disabling TPM
-        logging.info('Disabling TPM')
-        self.run_test_tpm_mode(True)
+        long_opts = [True, False]
 
-        # Test 2. Enabling TPM
-        logging.info('Enabling TPM')
-        self.run_test_tpm_mode(False)
+        # One iteration runs with the short opt '-m',
+        # and the other runs with the long opt '--tpm_mode'
+        for long_opt in long_opts:
+            # Test 1. Disabling TPM
+            logging.info('Disabling TPM')
+            self.run_test_tpm_mode(True, long_opt)
+
+            # Test 2. Enabling TPM
+            logging.info('Enabling TPM')
+            self.run_test_tpm_mode(False, long_opt)
