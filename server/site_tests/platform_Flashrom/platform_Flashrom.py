@@ -79,8 +79,7 @@ class platform_Flashrom(FirmwareTest):
         self.run_cmd('flashrom -E -i RW_SECTION_B', 'SUCCESS')
 
         # 3) Reinstall RW B (Test flashrom)
-        self.run_cmd('chromeos-firmwareupdate --mode=factory',
-                     '(factory_install) completed.')
+        self.run_cmd('chromeos-firmwareupdate --mode=factory', 'SUCCESS')
 
         # 4) Check that device can be rebooted.
         self.switcher.mode_aware_reboot()
