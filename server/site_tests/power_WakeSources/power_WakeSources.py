@@ -110,14 +110,15 @@ class power_WakeSources(test.test):
         """Check if |wake_source| is valid for DUT.
 
         @param wake_source: wake source to verify.
-        @return: True if |wake_source| is a valid wake source for this specific
-            DUT
+        @return: False if |wake_source| is not valid for DUT, True otherwise
         """
         if wake_source.startswith('BASE'):
             if self._host.run('which hammerd', ignore_status=True).\
                 exit_status == 0:
                 # Smoke test to see if EC has support to reset base.
                 return self._force_base_state(BASE_STATE.RESET)
+            else:
+                return False
         if wake_source == 'LID_OPEN':
             return self._dr_utils.host_has_lid()
         if wake_source == 'INTERNAL_KB':
@@ -207,6 +208,7 @@ class power_WakeSources(test.test):
             self._host.servo.ctrl_key()
 
     def cleanup(self):
+        """cleanup."""
         self._dr_utils.stop_resuspend_on_dark_resume(False)
         self._dr_utils.teardown()
 
