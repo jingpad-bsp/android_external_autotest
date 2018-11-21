@@ -9,10 +9,9 @@ import dbus
 import dbus.mainloop.glib
 import dbus.service
 import gobject
+import json
 import logging
 import logging.handlers
-import pickle
-import xmlrpclib
 
 import common
 from autotest_lib.client.bin import utils
@@ -21,26 +20,6 @@ from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import xmlrpc_server
 from autotest_lib.client.cros.bluetooth import advertisement
 from autotest_lib.client.cros.bluetooth import output_recorder
-
-
-def pickle_dump_binary(obj):
-    """Serialize obj with pickle highest protocol and handle binary data.
-
-    The obj may be a new-style third-party class object. Hence,
-    the HIGHEST_PROTOCOL should be used for serailization.
-
-    The serialized object may contain non-xml type characters and hence
-    xmlrpclib.Binary is applied to handle it.
-
-    Why the pickle module is used:
-    - The yaml module is not used as it is not a standard library.
-    - The json module cannot handle arbitary binary values in dbus.ByteArray.
-    - The json module cannot handle numeric key values in a dictionary.
-    - The pickle module is used because it is a standard library, and
-      can handle arbitary binary values in dbus.ByteArray. However, we need
-      to use xmlrpclib.Binary to handle non-XML characters.
-    """
-    return xmlrpclib.Binary(pickle.dumps(obj, pickle.HIGHEST_PROTOCOL))
 
 
 def _dbus_byte_array_to_b64_string(dbus_byte_array):
@@ -562,7 +541,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def _get_adapter_properties(self):
         """Read the adapter properties from the Bluetooth Daemon.
 
-        @return the properties as a PICKLE-encoded dictionary on success,
+        @return the properties as a JSON-encoded dictionary on success,
             the value False otherwise.
 
         """
@@ -577,7 +556,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
 
     def get_adapter_properties(self):
-        return pickle_dump_binary(self._get_adapter_properties())
+        return json.dumps(self._get_adapter_properties())
 
 
     def _is_powered_on(self):
@@ -587,42 +566,42 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def read_version(self):
         """Read the version of the management interface from the Kernel.
 
-        @return the information as a PICKLE-encoded tuple of:
+        @return the information as a JSON-encoded tuple of:
           ( version, revision )
 
         """
-        return pickle_dump_binary(self._control.read_version())
+        return json.dumps(self._control.read_version())
 
 
     def read_supported_commands(self):
         """Read the set of supported commands from the Kernel.
 
-        @return the information as a PICKLE-encoded tuple of:
+        @return the information as a JSON-encoded tuple of:
           ( commands, events )
 
         """
-        return pickle_dump_binary(self._control.read_supported_commands())
+        return json.dumps(self._control.read_supported_commands())
 
 
     def read_index_list(self):
         """Read the list of currently known controllers from the Kernel.
 
-        @return the information as a PICKLE-encoded array of controller indexes.
+        @return the information as a JSON-encoded array of controller indexes.
 
         """
-        return pickle_dump_binary(self._control.read_index_list())
+        return json.dumps(self._control.read_index_list())
 
 
     def read_info(self):
         """Read the adapter information from the Kernel.
 
-        @return the information as a PICKLE-encoded tuple of:
+        @return the information as a JSON-encoded tuple of:
           ( address, bluetooth_version, manufacturer_id,
             supported_settings, current_settings, class_of_device,
             name, short_name )
 
         """
-        return pickle_dump_binary(self._control.read_info(0))
+        return json.dumps(self._control.read_info(0))
 
 
     def add_device(self, address, address_type, action):
@@ -632,12 +611,12 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @param address_type: Type of device in @address.
         @param action: Action to take.
 
-        @return on success, a PICKLE-encoded tuple of:
+        @return on success, a JSON-encoded typle of:
           ( address, address_type ), None on failure.
 
         """
-        return pickle_dump_binary(
-                self._control.add_device(0, address, address_type, action))
+        return json.dumps(self._control.add_device(
+                0, address, address_type, action))
 
 
     def remove_device(self, address, address_type):
@@ -646,19 +625,19 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @param address: Address of the device to remove.
         @param address_type: Type of device in @address.
 
-        @return on success, a PICKLE-encoded tuple of:
+        @return on success, a JSON-encoded typle of:
           ( address, address_type ), None on failure.
 
         """
-        return pickle_dump_binary(
-                self._control.remove_device(0, address, address_type))
+        return json.dumps(self._control.remove_device(
+                0, address, address_type))
 
 
     @xmlrpc_server.dbus_safe(False)
-    def _get_devices(self):
+    def get_devices(self):
         """Read information about remote devices known to the adapter.
 
-        @return the properties of each device as a PICKLE-encoded array of
+        @return the properties of each device as a JSON-encoded array of
             dictionaries on success, the value False otherwise.
 
         """
@@ -668,17 +647,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         for path, ifaces in objects.iteritems():
             if self.BLUEZ_DEVICE_IFACE in ifaces:
                 devices.append(objects[path][self.BLUEZ_DEVICE_IFACE])
-        return devices
-
-
-    def get_devices(self):
-        """Read information about remote devices known to the adapter.
-
-        @return a PICKLE-encoded list of devices on success;
-            an empty list otherwise.
-
-        """
-        return pickle_dump_binary(self._get_devices())
+        return json.dumps(devices)
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -687,7 +656,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         @param address: Address of the device to get.
 
-        @return the properties of the device as a PICKLE-encoded dictionary
+        @return the properties of the device as a JSON-encoded dictionary
             on success, the value False otherwise.
 
         """
@@ -698,13 +667,13 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             if self.BLUEZ_DEVICE_IFACE in ifaces:
                 device = objects[path][self.BLUEZ_DEVICE_IFACE]
                 if device.get('Address') == address:
-                    return pickle_dump_binary(device)
+                    return json.dumps(device)
 
-        devices = self._get_devices()
+        devices = json.loads(self.get_devices())
         for device in devices:
             if device.get['Address'] == address:
-                return pickle_dump_binary(device)
-        return pickle_dump_binary(dict())
+                return json.dumps(device)
+        return json.dumps(dict())
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -739,7 +708,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     def get_dev_info(self):
         """Read raw HCI device information.
 
-        @return PICKLE-encoded tuple of:
+        @return JSON-encoded tuple of:
                 (index, name, address, flags, device_type, bus_type,
                        features, pkt_type, link_policy, link_mode,
                        acl_mtu, acl_pkts, sco_mtu, sco_pkts,
@@ -748,7 +717,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 None on failure.
 
         """
-        return pickle_dump_binary(self._raw.get_dev_info(0))
+        return json.dumps(self._raw.get_dev_info(0))
 
 
     @xmlrpc_server.dbus_safe(False)
