@@ -48,6 +48,7 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
 
     version = 1
     TIMEOUT_SECONDS = 15
+    GLOBAL_FT_PROPERTY = "WiFi.GlobalFTEnabled"
 
     def dut_sees_bss(self, bssid):
         """
@@ -191,12 +192,14 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
     def run_once(self,host):
         """Set global FT switch and call test_body"""
 
-        with self.context.client.set_global_ft_enabled(True):
+        with self.context.client.set_manager_property(self.GLOBAL_FT_PROPERTY,
+                                                      True):
             self.test_body()
         if self._security_config.ft_mode == \
             xmlrpc_security_types.WPAConfig.FT_MODE_MIXED:
             logging.info("Disable FT on client and try again.")
-            with self.context.client.set_global_ft_enabled(False):
+            with self.context.client.set_manager_property(
+                    self.GLOBAL_FT_PROPERTY, False):
                 self.test_body()
 
     def cleanup(self):

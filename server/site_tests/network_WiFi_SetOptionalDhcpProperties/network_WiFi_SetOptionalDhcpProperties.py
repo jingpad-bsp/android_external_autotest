@@ -61,10 +61,10 @@ class network_WiFi_SetOptionalDhcpProperties(
 
         # set hostname and vendorclass for this test
         client = self.context.client
-        with client.set_dhcp_property(self.HOSTNAME_PROPERTY,
-                                      self.HOSTNAME_VALUE):
-            with client.set_dhcp_property(self.VENDORCLASS_PROPERTY,
-                                          self.VENDORCLASS_VALUE):
+        with client.set_manager_property(self.HOSTNAME_PROPERTY,
+                                         self.HOSTNAME_VALUE):
+            with client.set_manager_property(self.VENDORCLASS_PROPERTY,
+                                             self.VENDORCLASS_VALUE):
                 self.context.capture_host.start_capture(
                         configuration.frequency,
                         ht_type=configuration.ht_packet_capture_mode)
