@@ -14,14 +14,13 @@ with IMPORT mode fails. Running video_decode_accelerator_unittest is skipped on
 machines that are known not to support video decode.
 """
 ATTRIBUTES = "suite:bvt-perbuild"
-DEPENDENCIES= "arc"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 JOB_RETRIES = 2
 # Reboot in the lab after the test ends.
-DEPENDENCIES = "cleanup-reboot"
+DEPENDENCIES = "arc, cleanup-reboot"
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
     'cc': ['chromeos-video-test-failures@google.com'],
