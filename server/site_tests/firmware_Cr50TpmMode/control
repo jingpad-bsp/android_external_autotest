@@ -23,7 +23,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
-    iterations = int(args_dict.get("iterations", 2))
+    iterations = int(args_dict.get("iterations", 1))
 
     job.run_test("firmware_Cr50TpmMode", host=host, cmdline_args=args,
                  full_args=args_dict, iterations=iterations)

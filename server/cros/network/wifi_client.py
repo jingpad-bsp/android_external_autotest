@@ -927,7 +927,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
     def set_global_ft_enabled(self, enabled):
         """Sets the WiFi.GlobalFTEnabled property to the value provided.
 
-        @param enabled: bool
+        @param enabled: boolean whether or not to enable FT
         @return a context manager for the setting
 
         """

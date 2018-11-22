@@ -43,6 +43,11 @@ class desktopui_CheckRlzPingSent(test.test):
         timeout_minutes = 2
         timeout = time.time() + 60 * timeout_minutes
 
+        # TODO(dhaddock): Remove after experiment.
+        extra_minutes = 5
+        extra_timeout = time.time() + 60 * extra_minutes
+        test_failed = False
+
         # Setup a keyboard emulator to open new tabs and type a search.
         with input_playback.InputPlayback() as player:
             player.emulate(input_type='keyboard')
@@ -59,9 +64,16 @@ class desktopui_CheckRlzPingSent(test.test):
                     break
                 else:
                     if time.time() > timeout:
+                        test_failed = True
+                    if time.time() > extra_timeout:
                         raise error.TestFail('RLZ ping did not send in %d '
-                                             'minutes.' % timeout_minutes)
+                                             'minutes.' % extra_minutes)
                     time.sleep(10)
+
+        if test_failed:
+            raise error.TestFail('Test did not send ping within %d mins but '
+                                 'did within %d minutes.' % (timeout_minutes,
+                                                             extra_timeout))
 
 
     def run_once(self, logged_in=True):

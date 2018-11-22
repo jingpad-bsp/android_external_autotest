@@ -3,19 +3,10 @@
 # found in the LICENSE file.
 
 import base64
-import pickle
+import json
 
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
-
-
-def pickle_load_binary(obj):
-    """Deserialize the object.
-
-    Please refer to bluetooth_device_xmlrpc_server.py about
-    why pickle is used and why data is wrapped in Binary().
-    """
-    return pickle.loads(obj.data)
 
 
 class BluetoothDevice(object):
@@ -262,7 +253,7 @@ class BluetoothDevice(object):
             the value False otherwise.
 
         """
-        return pickle_load_binary(self._proxy.get_adapter_properties())
+        return json.loads(self._proxy.get_adapter_properties())
 
 
     def read_version(self):
@@ -272,7 +263,7 @@ class BluetoothDevice(object):
           ( version, revision )
 
         """
-        return pickle_load_binary(self._proxy.read_version())
+        return json.loads(self._proxy.read_version())
 
 
     def read_supported_commands(self):
@@ -282,7 +273,7 @@ class BluetoothDevice(object):
           ( commands, events )
 
         """
-        return pickle_load_binary(self._proxy.read_supported_commands())
+        return json.loads(self._proxy.read_supported_commands())
 
 
     def read_index_list(self):
@@ -291,7 +282,7 @@ class BluetoothDevice(object):
         @return array of controller indexes.
 
         """
-        return pickle_load_binary(self._proxy.read_index_list())
+        return json.loads(self._proxy.read_index_list())
 
 
     def read_info(self):
@@ -306,7 +297,7 @@ class BluetoothDevice(object):
             name, short_name )
 
         """
-        return pickle_load_binary(self._proxy.read_info())
+        return json.loads(self._proxy.read_info())
 
 
     def add_device(self, address, address_type, action):
@@ -320,8 +311,7 @@ class BluetoothDevice(object):
           None on failure.
 
         """
-        return pickle_load_binary(
-                self._proxy.add_device(address, address_type, action))
+        return json.loads(self._proxy.add_device(address, address_type, action))
 
 
     def remove_device(self, address, address_type):
@@ -334,8 +324,7 @@ class BluetoothDevice(object):
           None on failure.
 
         """
-        return pickle_load_binary(
-                self._proxy.remove_device(address, address_type))
+        return json.loads(self._proxy.remove_device(address, address_type))
 
 
     def get_devices(self):
@@ -359,7 +348,7 @@ class BluetoothDevice(object):
             dictionaries on success, the value False otherwise.
 
         """
-        return pickle_load_binary(self._proxy.get_devices())
+        return json.loads(self._proxy.get_devices())
 
 
     def get_device_properties(self, address):
@@ -375,7 +364,7 @@ class BluetoothDevice(object):
                   an empty dictionary otherwise.
 
         """
-        return pickle_load_binary(self._proxy.get_device_by_address(address))
+        return json.loads(self._proxy.get_device_by_address(address))
 
         for device in self.get_devices():
             if device.get['Address'] == address:
@@ -428,7 +417,7 @@ class BluetoothDevice(object):
                 None on failure.
 
         """
-        return pickle_load_binary(self._proxy.get_dev_info())
+        return json.loads(self._proxy.get_dev_info())
 
 
     def register_profile(self, path, uuid, options):

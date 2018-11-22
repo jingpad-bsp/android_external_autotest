@@ -193,6 +193,11 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
 
         with self.context.client.set_global_ft_enabled(True):
             self.test_body()
+        if self._security_config.ft_mode == \
+            xmlrpc_security_types.WPAConfig.FT_MODE_MIXED:
+            logging.info("Disable FT on client and try again.")
+            with self.context.client.set_global_ft_enabled(False):
+                self.test_body()
 
     def cleanup(self):
         """Cleanup function."""
