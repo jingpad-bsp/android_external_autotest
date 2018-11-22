@@ -17,7 +17,6 @@ from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants
-from autotest_lib.client.cros.networking import shill_proxy
 from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import wpa_cli_proxy
@@ -924,19 +923,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
                 enabled)
 
 
-    def set_global_ft_enabled(self, enabled):
-        """Sets the WiFi.GlobalFTEnabled property to the value provided.
-
-        @param enabled: boolean whether or not to enable FT
-        @return a context manager for the setting
-
-        """
-        return TemporaryManagerDBusProperty(
-                self._shill_proxy,
-                shill_proxy.ShillProxy.MANAGER_PROPERTY_WIFI_GLOBAL_FT_ENABLED,
-                enabled)
-
-
     def request_roam(self, bssid):
         """Request that we roam to the specified BSSID.
 
@@ -1358,17 +1344,17 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return True
 
 
-    def set_dhcp_property(self, dhcp_prop_name, dhcp_prop_value):
-        """Sets the given DHCP_Property to the value provided.
+    def set_manager_property(self, prop_name, prop_value):
+        """Sets the given manager property to the value provided.
 
-        @param dhcp_prop_name: the dhcp_property to be set
-        @param dhcp_prop_value: value to assign to the dhcp_prop_name
+        @param prop_name: the property to be set
+        @param prop_value: value to assign to the prop_name
         @return a context manager for the setting
 
         """
         return TemporaryManagerDBusProperty(self._shill_proxy,
-                                            dhcp_prop_name,
-                                            dhcp_prop_value)
+                                            prop_name,
+                                            prop_value)
 
 
 class TemporaryDeviceDBusProperty:
