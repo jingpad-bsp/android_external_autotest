@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
+import os
 import random
 import re
 import subprocess
@@ -10,14 +10,15 @@ import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.audio import audio_helper
 
 
 class audio_CrasOutputStress(test.test):
     """Checks if output buffer will drift to super high level."""
-    version = 1
+    version = 2
     _MAX_OUTPUT_STREAMS = 3
     _LOOP_COUNT = 300
-    _OUTPUT_BUFFER_LEVEL = '.*?SET_DEV_WAKE.*?hw_level.*?(\d+).*?'
+    _OUTPUT_BUFFER_LEVEL = '.*?FILL_AUDIO.*?hw_level.*?(\d+).*?'
     _BUFFER_DRIFT_CRITERIA = 4096
 
     def run_once(self):
@@ -31,13 +32,20 @@ class audio_CrasOutputStress(test.test):
 
         loop_count = 0
         while loop_count < self._LOOP_COUNT:
-            if len(self._output_streams) < self._MAX_OUTPUT_STREAMS:
+
+            # 1 for adding stream, 0 for removing stream
+            add = random.randint(0, 1)
+            if len(self._output_streams) == 0:
+                add = 1
+            elif len(self._output_streams) == self._MAX_OUTPUT_STREAMS:
+                add = 0
+
+            if add == 1:
                 cmd = ['cras_test_client', '--playback_file', '/dev/zero',
                        '--rate', self._rates[random.randint(0, 1)],
                        '--block_size', self._block_sizes[random.randint(0, 1)]]
                 proc = subprocess.Popen(cmd)
                 self._output_streams.append(proc)
-                time.sleep(0.01)
             else:
                 self._output_streams[0].kill()
                 self._output_streams.remove(self._output_streams[0])
@@ -46,6 +54,9 @@ class audio_CrasOutputStress(test.test):
 
         # Get the buffer level.
         buffer_level = self._get_buffer_level()
+        log_file = os.path.join(self.resultsdir, "audio_diagnostics.txt")
+        with open(log_file, 'w') as f:
+            f.write(audio_helper.get_audio_diagnostics())
 
         # Clean up all streams.
         while len(self._output_streams) > 0:
@@ -53,7 +64,8 @@ class audio_CrasOutputStress(test.test):
             self._output_streams.remove(self._output_streams[0])
 
         if buffer_level > self._BUFFER_DRIFT_CRITERIA:
-            raise error.TestFail('Buffer level %d drift too high', buffer_level)
+            raise error.TestFail('Buffer level %d drift too high' %
+                                 buffer_level)
 
     def _get_buffer_level(self):
         """Gets a rough number about current buffer level.
