@@ -67,41 +67,6 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
             self.media_metrics_collector.collect_snapshot()
         self.metrics_collector.write_metrics(self.output_perf_value)
 
-    def _get_average(self, data_type):
-        """Computes mean of a list of numbers.
-
-        @param data_type: Type of data to be retrieved from jmi data log.
-        @return Mean computed from the list of numbers.
-        """
-        data = self._get_jmi_data(data_type)
-        if not data:
-            return 0
-        return float(sum(data)) / len(data)
-
-
-    def _get_max_value(self, data_type):
-        """Computes maximum value of a list of numbers.
-
-        @param data_type: Type of data to be retrieved from jmi data log.
-        @return Maxium value from the list of numbers.
-        """
-        data = self._get_jmi_data(data_type)
-        if not data:
-            return 0
-        return max(data)
-
-
-    def _get_sum(self, data_type):
-        """Computes sum of a list of numbers.
-
-        @param data_type: Type of data to be retrieved from jmi data log.
-        @return Sum computed from the list of numbers.
-        """
-        data = self._get_jmi_data(data_type)
-        if not data:
-            return 0
-        return sum(data)
-
 
     def _get_last_value(self, data_type):
         """Gets last value of a list of numbers.
@@ -122,13 +87,7 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         @param data_type: Type of data to be retrieved from jmi data logs.
         @return Data for given data type from jmidata log.
         """
-        try:
-            timestamped_values = self.media_metrics_collector.get_metric(
-                    data_type)
-        except KeyError:
-            # Ensure we always return at least one element, or perf uploads
-            # will be sad.
-            return [0]
+        timestamped_values = self.media_metrics_collector.get_metric(data_type)
         # Strip timestamps.
         values = [x[1] for x in timestamped_values]
         # Each entry in values is a list, extract the raw values:
@@ -139,106 +98,145 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         # be sad.
         return res or [0]
 
+
     def upload_jmidata(self):
         """
         Write jmidata results to results-chart.json file for Perf Dashboard.
         """
-        # Compute and save aggregated stats from JMI.
-        self.output_perf_value(description='sum_vid_in_frames_decoded',
-                value=self._get_sum('frames_decoded'), units='frames',
-                higher_is_better=True)
+        # Video/Sender metrics
+        self.output_perf_value(
+            description='avg_encode_ms',
+            value=self._get_jmi_data(media_metrics_collector.AVG_ENCODE_MS),
+            units='ms',
+            higher_is_better=False)
 
-        self.output_perf_value(description='sum_vid_out_frames_encoded',
-                value=self._get_sum('frames_encoded'), units='frames',
-                higher_is_better=True)
+        self.output_perf_value(
+            description='vid_out_frame_height', # video_out_res
+            value=self._get_jmi_data(media_metrics_collector.
+                VIDEO_SENT_FRAME_HEIGHT),
+            units='px',
+            higher_is_better=True)
 
-        self.output_perf_value(description='vid_out_adapt_changes',
-                value=self._get_last_value('adaptation_changes'),
-                units='count', higher_is_better=False)
+        self.output_perf_value(
+            description='vid_out_frame_width',
+            value=self._get_jmi_data(media_metrics_collector.
+                VIDEO_SENT_FRAME_WIDTH),
+            units='px',
+            higher_is_better=True)
 
-        self.output_perf_value(description='video_out_encode_time',
-                value=self._get_jmi_data('average_encode_time'),
-                units='ms', higher_is_better=False)
+        self.output_perf_value(
+            description='vid_out_framerate_captured',
+            value=self._get_jmi_data(media_metrics_collector.
+                FRAMERATE_CAPTURED),
+            units='fps',
+            higher_is_better=True)
 
-        self.output_perf_value(description='max_video_out_encode_time',
-                value=self._get_max_value('average_encode_time'),
-                units='ms', higher_is_better=False)
+        self.output_perf_value(
+            description='vid_out_framerate_encoded',
+            value=self._get_jmi_data(media_metrics_collector.
+                FRAMERATE_ENCODED),
+            units='fps',
+            higher_is_better=True)
 
-        self.output_perf_value(description='vid_out_bandwidth_adapt',
-                value=self._get_average('bandwidth_adaptation'),
-                units='bool', higher_is_better=False)
+        self.output_perf_value(
+            description='vid_out_sent_packets',
+            value=self._get_last_value(media_metrics_collector.
+                VIDEO_SENT_PACKETS),
+            units='packets',
+            higher_is_better=True)
 
-        self.output_perf_value(description='vid_out_cpu_adapt',
-                value=self._get_average('cpu_adaptation'),
-                units='bool', higher_is_better=False)
+        # Video/Receiver metrics
+        self.output_perf_value(
+            description='vid_in_framerate_received',
+            value=self._get_jmi_data(media_metrics_collector.
+                FRAMERATE_NETWORK_RECEIVED),
+            units='fps',
+            higher_is_better=True)
 
-        self.output_perf_value(description='video_in_res',
-                value=self._get_jmi_data(
-                        'video_received_frame_height'),
-                units='px', higher_is_better=True)
+        self.output_perf_value(
+            description='vid_in_framerate_decoded',
+            value=self._get_jmi_data(media_metrics_collector.FRAMERATE_DECODED),
+            units='fps',
+            higher_is_better=True)
 
-        self.output_perf_value(description='video_out_res',
-                value=self._get_jmi_data('video_sent_frame_height'),
-                units='resolution', higher_is_better=True)
+        self.output_perf_value(
+            description='vid_in_framerate_to_renderer',
+            value=self._get_jmi_data(media_metrics_collector.
+                FRAMERATE_TO_RENDERER),
+            units='fps',
+            higher_is_better=True)
 
-        self.output_perf_value(description='vid_in_framerate_decoded',
-                value=self._get_jmi_data('framerate_decoded'),
-                units='fps', higher_is_better=True)
+        self.output_perf_value(
+            description='video_in_frame_heigth', # video_in_res
+            value=self._get_jmi_data(media_metrics_collector.
+                VIDEO_RECEIVED_FRAME_HEIGHT),
+            units='px',
+            higher_is_better=True)
 
-        self.output_perf_value(description='vid_out_framerate_input',
-                value=self._get_jmi_data('framerate_outgoing'),
-                units='fps', higher_is_better=True)
+        self.output_perf_value(
+            description='vid_in_frame_width',
+            value=self._get_jmi_data(media_metrics_collector.
+                VIDEO_RECEIVED_FRAME_WIDTH),
+            units='px',
+            higher_is_better=True)
 
-        self.output_perf_value(description='vid_in_framerate_to_renderer',
-                value=self._get_jmi_data('framerate_to_renderer'),
-                units='fps', higher_is_better=True)
+        # Adaptation metrics
+        self.output_perf_value(
+            description='vid_out_adapt_changes',
+            value=self._get_last_value(media_metrics_collector.
+                ADAPTATION_CHANGES),
+            units='count',
+            higher_is_better=False)
 
-        self.output_perf_value(description='vid_in_framerate_received',
-                value=self._get_jmi_data('framerate_received'),
-                units='fps', higher_is_better=True)
+        self.output_perf_value(
+            description='vid_out_adapt_reasons',
+            value=self._get_jmi_data(media_metrics_collector.ADAPTATION_REASON),
+            units='reasons',
+            higher_is_better=False)
 
-        self.output_perf_value(description='vid_out_framerate_sent',
-                value=self._get_jmi_data('framerate_sent'),
-                units='fps', higher_is_better=True)
+        # System metrics
+        self.output_perf_value(
+            description='cpu_usage_jmi',
+            value=self._get_jmi_data(media_metrics_collector.
+                CPU_PERCENT_OF_TOTAL),
+            units='percent',
+            higher_is_better=False)
 
-        self.output_perf_value(description='vid_in_frame_width',
-                value=self._get_jmi_data('video_received_frame_width'),
-                units='px', higher_is_better=True)
+        self.output_perf_value(
+            description='process_js_memory',
+            value=[(x / (1024 * 1024)) for x in self._get_jmi_data(
+                media_metrics_collector.PROCESS_JS_MEMORY_USED)],
+            units='MB',
+            higher_is_better=False)
 
-        self.output_perf_value(description='vid_out_frame_width',
-                value=self._get_jmi_data('video_sent_frame_width'),
-                units='px', higher_is_better=True)
+        self.output_perf_value(
+            description='renderer_cpu_usage',
+            value=self._get_jmi_data(
+                media_metrics_collector.RENDERER_CPU_PERCENT_OF_TOTAL),
+            units='percent',
+            higher_is_better=False)
 
-        self.output_perf_value(description='vid_out_encode_cpu_usage',
-                value=self._get_jmi_data('video_encode_cpu_usage'),
-                units='percent', higher_is_better=False)
+        self.output_perf_value(
+            description='browser_cpu_usage',
+            value=self._get_jmi_data(
+                media_metrics_collector.BROWSER_CPU_PERCENT_OF_TOTAL),
+            units='percent',
+            higher_is_better=False)
 
-        total_vid_packets_sent = self._get_sum('video_packets_sent')
-        total_vid_packets_lost = self._get_sum('video_packets_lost')
-        lost_packet_percentage = float(total_vid_packets_lost)*100/ \
-                                 float(total_vid_packets_sent) if \
-                                 total_vid_packets_sent else 0
+        self.output_perf_value(
+            description='gpu_cpu_usage',
+            value=self._get_jmi_data(
+                media_metrics_collector.GPU_PERCENT_OF_TOTAL),
+            units='percent',
+            higher_is_better=False)
 
-        self.output_perf_value(description='lost_packet_percentage',
-                value=lost_packet_percentage, units='percent',
-                higher_is_better=False)
-        self.output_perf_value(description='cpu_usage_jmi',
-                value=self._get_jmi_data('cpu_percent'),
-                units='percent', higher_is_better=False)
-        self.output_perf_value(description='renderer_cpu_usage',
-                value=self._get_jmi_data('renderer_cpu_percent'),
-                units='percent', higher_is_better=False)
-        self.output_perf_value(description='browser_cpu_usage',
-                value=self._get_jmi_data('browser_cpu_percent'),
-                units='percent', higher_is_better=False)
-
-        self.output_perf_value(description='gpu_cpu_usage',
-                value=self._get_jmi_data('gpu_cpu_percent'),
-                units='percent', higher_is_better=False)
-
-        self.output_perf_value(description='active_streams',
-                value=self._get_jmi_data('num_active_vid_in_streams'),
-                units='count', higher_is_better=True)
+        # Other
+        self.output_perf_value(
+            description='active_streams',
+            value=self._get_jmi_data(media_metrics_collector.
+                NUMBER_OF_ACTIVE_INCOMING_VIDEO_STREAMS),
+            units='count',
+            higher_is_better=True)
 
     def _download_test_video(self):
         """
@@ -307,8 +305,8 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         meeting_code = self.bond.CreateConference()
         logging.info('Started meeting "%s"', meeting_code)
         self._add_bots(_BOT_PARTICIPANTS_COUNT, meeting_code)
-
         self.cfm_facade.join_meeting_session(meeting_code)
+
         self.cfm_facade.unmute_mic()
 
         self.collect_perf_data()
