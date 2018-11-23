@@ -113,7 +113,8 @@ class camera_HAL3(test.test):
                         if utils.get_current_board() in self.tablet_board_list:
                             option += (':' if '-' in filters else '-')
                             option += '*SensorOrientationTest/*'
-                    if 'Camera3RecordingFixture' in filters.split('-')[0]:
+                    if any(name in filters.split('-')[0] for name in
+                           ('Camera3ModuleFixture', 'Camera3RecordingFixture')):
                         cmd.append(self.get_recording_params())
                 elif 'camera_facing' in option:
                     has_facing_option = True
