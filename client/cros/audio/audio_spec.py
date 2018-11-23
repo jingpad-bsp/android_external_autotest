@@ -6,6 +6,7 @@
 
 _BOARD_TYPE_CHROMEBOX = 'CHROMEBOX'
 _BOARD_TYPE_CHROMEBIT = 'CHROMEBIT'
+_BOARD_WITHOUT_SOUND_CARD = ['gale', 'veyron_rialto']
 
 def has_internal_speaker(board_type, board_name):
     """Checks if a board has internal speaker.
@@ -17,7 +18,8 @@ def has_internal_speaker(board_type, board_name):
 
     """
     if ((board_type == _BOARD_TYPE_CHROMEBOX and board_name != 'stumpy')
-            or board_type == _BOARD_TYPE_CHROMEBIT):
+            or board_type == _BOARD_TYPE_CHROMEBIT
+            or board_name in _BOARD_WITHOUT_SOUND_CARD):
         return False
     return True
 
