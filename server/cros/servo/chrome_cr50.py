@@ -321,7 +321,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     def get_board_properties(self):
         """Get information from the version command"""
         rv = self.send_command_retry_get_output('brdprop',
-                ['properties = (\S+)'])
+                ['properties = (\S+)\s'])
         return int(rv[0][1], 16)
 
 

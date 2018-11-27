@@ -27,7 +27,6 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
     #
     # This information is in ec/board/cr50/scratch_reg1.h
     RELEVANT_PROPERTIES = 0x63
-    BRDPROP_FORMAT = ['properties = (0x\d+)\s']
     COMPARE_LINES = '\n'
     COMPARE_WORDS = None
     SORTED = True
@@ -172,6 +171,8 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
         else:
             self.exclude.append('mp')
             self.include.append('prepvt')
+        logging.info('%s brdprop 0x%x: %s', self.servo.get('ec_board'),
+                     brdprop, ', '.join(self.include))
 
 
     def run_once(self, host):
