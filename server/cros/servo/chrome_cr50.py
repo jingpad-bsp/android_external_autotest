@@ -39,7 +39,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     PP_SHORT = 15
     PP_LONG = 300
     CCD_PASSWORD_RATE_LIMIT = 3
-    IDLE_COUNT = 'count: (\d+)'
+    IDLE_COUNT = 'count: (\d+)\s'
     # The version has four groups: the partition, the header version, debug
     # descriptor and then version string.
     # There are two partitions A and B. The active partition is marked with a
@@ -321,7 +321,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     def get_board_properties(self):
         """Get information from the version command"""
         rv = self.send_command_retry_get_output('brdprop',
-                ['properties = (\S+)'])
+                ['properties = (\S+)\s'])
         return int(rv[0][1], 16)
 
 
