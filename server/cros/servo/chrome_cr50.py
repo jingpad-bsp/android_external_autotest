@@ -39,7 +39,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     PP_SHORT = 15
     PP_LONG = 300
     CCD_PASSWORD_RATE_LIMIT = 3
-    IDLE_COUNT = 'count: (\d+)'
+    IDLE_COUNT = 'count: (\d+)\s'
     # The version has four groups: the partition, the header version, debug
     # descriptor and then version string.
     # There are two partitions A and B. The active partition is marked with a
