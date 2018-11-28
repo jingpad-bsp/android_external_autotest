@@ -2347,8 +2347,8 @@ class PCHPowergatingStats(object):
         # PCH IP block that is on/off for S0ix depend on features enabled.
         # Add log when these IPs state are on.
         S0IX_WARNLIST = set([
-                'HDA-PGD0', 'HDA-PGD2', 'HDA-PGD3', 'LPSS', 'AVSPGD1',
-                'AVSPGD4'])
+                'HDA-PGD0', 'HDA-PGD1', 'HDA-PGD2', 'HDA-PGD3', 'LPSS',
+                'AVSPGD1', 'AVSPGD4'])
 
         on_ip = set(ip['name'] for ip in self._stat if ip['state'])
         on_ip -= S0IX_WHITELIST
