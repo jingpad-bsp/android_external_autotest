@@ -286,6 +286,24 @@ class ClientTestDashboard(BaseDashboard):
     """Dashboard class for autotests that run on client side.
     """
 
+    def __init__(self, logger, testname, start_ts=None, resultsdir=None,
+                 uploadurl=None, note=''):
+        """Create BaseDashboard objects.
+
+        Args:
+            logger: object that store the log. This will get convert to
+                    dictionary by self._convert()
+            testname: name of current test
+            start_ts: timestamp of when test started in seconds since epoch
+            resultsdir: directory to save the power json
+            uploadurl: url to upload power data
+            note: note for current test run
+        """
+        super(ClientTestDashboard, self).__init__(logger, testname, start_ts,
+                                                  resultsdir, uploadurl)
+        self._note = note
+
+
     def _create_dut_info_dict(self, power_rails):
         """Create a dictionary that contain information of the DUT.
 
@@ -325,7 +343,7 @@ class ClientTestDashboard(BaseDashboard):
                 'version': 0,
                 'ina': power_rails,
             },
-            'note': '',
+            'note': self._note,
         }
 
         if power_utils.has_battery():
@@ -342,9 +360,11 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
     """Dashboard class for power_status.MeasurementLogger.
     """
 
-    def __init__(self, logger, testname, resultsdir=None, uploadurl=None):
+    def __init__(self, logger, testname, resultsdir=None, uploadurl=None,
+                 note=''):
         super(MeasurementLoggerDashboard, self).__init__(logger, testname, None,
-                                                         resultsdir, uploadurl)
+                                                         resultsdir, uploadurl,
+                                                         note)
         self._unit = None
         self._type = None
         self._padded_domains = None
@@ -424,11 +444,12 @@ class PowerLoggerDashboard(MeasurementLoggerDashboard):
     """Dashboard class for power_status.PowerLogger.
     """
 
-    def __init__(self, logger, testname, resultsdir=None, uploadurl=None):
+    def __init__(self, logger, testname, resultsdir=None, uploadurl=None,
+                 note=''):
         if uploadurl is None:
             uploadurl = 'http://chrome-power.appspot.com/rapl'
         super(PowerLoggerDashboard, self).__init__(logger, testname, resultsdir,
-                                                   uploadurl)
+                                                   uploadurl, note)
         self._unit = 'watt'
         self._type = 'power'
 
@@ -437,11 +458,12 @@ class TempLoggerDashboard(MeasurementLoggerDashboard):
     """Dashboard class for power_status.PowerLogger.
     """
 
-    def __init__(self, logger, testname, resultsdir=None, uploadurl=None):
+    def __init__(self, logger, testname, resultsdir=None, uploadurl=None,
+                 note=''):
         if uploadurl is None:
             uploadurl = 'http://chrome-power.appspot.com/rapl'
         super(TempLoggerDashboard, self).__init__(logger, testname, resultsdir,
-                                                  uploadurl)
+                                                  uploadurl, note)
         self._unit = 'celsius'
         self._type = 'temperature'
 
@@ -452,12 +474,12 @@ class SimplePowerLoggerDashboard(ClientTestDashboard):
     """
 
     def __init__(self, duration_secs, power_watts, testname, start_ts,
-                 resultsdir=None, uploadurl=None):
+                 resultsdir=None, uploadurl=None, note=''):
 
         if uploadurl is None:
             uploadurl = 'http://chrome-power.appspot.com/rapl'
         super(SimplePowerLoggerDashboard, self).__init__(
-            None, testname, start_ts, resultsdir, uploadurl)
+                None, testname, start_ts, resultsdir, uploadurl, note)
 
         self._unit = 'watt'
         self._type = 'power'
@@ -487,11 +509,12 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
     """Dashboard class for power_status.CPUStatsLogger.
     """
 
-    def __init__(self, logger, testname, resultsdir=None, uploadurl=None):
+    def __init__(self, logger, testname, resultsdir=None, uploadurl=None,
+                 note=''):
         if uploadurl is None:
             uploadurl = 'http://chrome-power.appspot.com/rapl'
-        super(CPUStatsLoggerDashboard, self).__init__(logger, testname,
-                                                      resultsdir, uploadurl)
+        super(CPUStatsLoggerDashboard, self).__init__(
+                logger, testname, resultsdir, uploadurl, note)
 
     @staticmethod
     def _split_domain(domain):

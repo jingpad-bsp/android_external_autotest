@@ -18,5 +18,8 @@ total standby time of test_hours.  The suspend to S0 transitions are added to
   2. Guarantee that suspend was maintained (no external/false wake)
   3. Create transitions which more closely model user's interaction.
 """
+
+args_dict = utils.args_to_dict(args)
+pdash_note = args_dict.get('pdash_note', '')
 job.run_test('power_Standby', sample_hours=1, test_hours=1,
-             tag=NAME.split('.')[1])
+             tag=NAME.split('.')[1], pdash_note=pdash_note)

@@ -20,4 +20,6 @@ Loggers included in this test are all loggers in power_test and
 power_dashboard.SimplePowerLoggerDashboard.
 """
 
-job.run_test('power_Dummy')
+args_dict = utils.args_to_dict(args)
+pdash_note = args_dict.get('pdash_note', '')
+job.run_test('power_Dummy', pdash_note=pdash_note)

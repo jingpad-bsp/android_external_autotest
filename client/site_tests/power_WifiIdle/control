@@ -13,4 +13,6 @@ This test records power related statistics while staying idle, and
 compares between wifi on and off.
 """
 
-job.run_test('power_WifiIdle')
+args_dict = utils.args_to_dict(args)
+pdash_note = args_dict.get('pdash_note', '')
+job.run_test('power_WifiIdle', pdash_note=pdash_note)
