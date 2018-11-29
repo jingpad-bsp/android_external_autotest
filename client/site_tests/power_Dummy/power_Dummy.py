@@ -17,9 +17,10 @@ class power_Dummy(power_test.power_Test):
     loop_time = 3.0
     dummy_result = 0
 
-    def initialize(self):
+    def initialize(self, pdash_note=''):
         """Measure power with a short interval."""
-        super(power_Dummy, self).initialize(seconds_period=1.)
+        super(power_Dummy, self).initialize(seconds_period=1.,
+                                            pdash_note=pdash_note)
 
     def warmup(self):
         """Warm up for a short time."""
@@ -36,6 +37,7 @@ class power_Dummy(power_test.power_Test):
 
         pdash = power_dashboard.SimplePowerLoggerDashboard(
                 self.loop * self.loop_time, self.dummy_result,
-                self.tagged_testname, start_ts, self.resultsdir)
+                self.tagged_testname, start_ts, self.resultsdir,
+                note=self._pdash_note)
         pdash.upload()
 

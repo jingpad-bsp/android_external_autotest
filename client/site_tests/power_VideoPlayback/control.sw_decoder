@@ -15,4 +15,7 @@ format.
 This version of the test forces Chrome to use software decoder.
 """
 
-job.run_test('power_VideoPlayback', use_hw_decode=False, tag=NAME.split('.')[1])
+args_dict = utils.args_to_dict(args)
+pdash_note = args_dict.get('pdash_note', '')
+job.run_test('power_VideoPlayback', use_hw_decode=False, tag=NAME.split('.')[1],
+             pdash_note=pdash_note)

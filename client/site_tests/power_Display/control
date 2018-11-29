@@ -13,4 +13,6 @@ This test records power related statistics while displaying different static
 pages.
 """
 
-job.run_test('power_Display')
+args_dict = utils.args_to_dict(args)
+pdash_note = args_dict.get('pdash_note', '')
+job.run_test('power_Display', pdash_note=pdash_note)

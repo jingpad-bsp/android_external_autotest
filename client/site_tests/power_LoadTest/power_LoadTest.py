@@ -53,7 +53,7 @@ class power_LoadTest(arc.ArcTest):
                  wifi_pw='', wifi_timeout=60, tasks='',
                  volume_level=10, mic_gain=10, low_batt_margin_p=2,
                  ac_ok=False, log_mem_bandwidth=False, gaia_login=None,
-                 force_discharge=False):
+                 force_discharge=False, pdash_note=''):
         """
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
@@ -81,6 +81,7 @@ class power_LoadTest(arc.ArcTest):
             (default) then boolean is determined from URL.
         force_discharge: boolean of whether to tell ec to discharge battery even
             when the charger is plugged in.
+        pdash_note: note of the current run to send to power dashboard.
         """
         self._backlight = None
         self._services = None
@@ -112,6 +113,7 @@ class power_LoadTest(arc.ArcTest):
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
         self._force_discharge = force_discharge
+        self._pdash_note = pdash_note
 
         if not power_utils.has_battery():
             if ac_ok and (power_utils.has_powercap_support() or
@@ -530,13 +532,16 @@ class power_LoadTest(arc.ArcTest):
             logging.info('Data is less than 1 loop, skip sending to dashboard.')
             return
         pdash = power_dashboard.PowerLoggerDashboard( \
-                self._plog, self.tagged_testname, self.resultsdir)
+                self._plog, self.tagged_testname, self.resultsdir,
+                note=self._pdash_note)
         pdash.upload()
         cdash = power_dashboard.CPUStatsLoggerDashboard( \
-                self._clog, self.tagged_testname, self.resultsdir)
+                self._clog, self.tagged_testname, self.resultsdir,
+                note=self._pdash_note)
         cdash.upload()
         tdash = power_dashboard.TempLoggerDashboard( \
-                self._tlog, self.tagged_testname, self.resultsdir)
+                self._tlog, self.tagged_testname, self.resultsdir,
+                note=self._pdash_note)
         tdash.upload()
 
 
