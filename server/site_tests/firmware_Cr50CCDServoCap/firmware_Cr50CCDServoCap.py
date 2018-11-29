@@ -126,10 +126,12 @@ class firmware_Cr50CCDServoCap(Cr50Test):
 
     def cleanup(self):
         """Reenable the EC uart"""
-        self.fake_servo('on')
-        self.rdd('detach')
-        self.rdd('attach')
-        super(firmware_Cr50CCDServoCap, self).cleanup()
+        try:
+            self.fake_servo('on')
+            self.rdd('detach')
+            self.rdd('attach')
+        finally:
+            super(firmware_Cr50CCDServoCap, self).cleanup()
 
 
     def state_matches(self, state_dict, state_name, expected_value):

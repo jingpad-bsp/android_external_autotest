@@ -14,12 +14,6 @@ class firmware_Cr50Unlock(Cr50Test):
     version = 1
     PASSWORD = 'Password'
 
-    def cleanup(self):
-        """Make sure the device is in normal mode"""
-        self.cr50.send_command('ccd testlab open')
-        self.cr50.send_command('ccd reset')
-        super(firmware_Cr50Unlock, self).cleanup()
-
 
     def run_once(self):
         """Check cr50 can see dev mode open works correctly"""

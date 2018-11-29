@@ -88,21 +88,6 @@ class firmware_Cr50Update(Cr50Test):
         self.run_update(self.DEV_NAME)
 
 
-    def cleanup(self):
-        """Update Cr50 to the image it was running at the start of the test"""
-        super(firmware_Cr50Update, self).cleanup()
-
-        logging.warning('rootfs verification is disabled')
-
-        # Make sure keepalive is disabled
-        self.cr50.ccd_enable()
-        self.cr50.send_command("ccd keepalive disable")
-
-        # Running usb_update commands stops trunksd. Reboot the device to reset
-        # it
-        self.host.run('reboot')
-
-
     def run_update(self, image_name, use_usb_update=False):
         """Copy the image to the DUT and upate to it.
 
