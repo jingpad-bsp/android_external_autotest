@@ -199,6 +199,17 @@ class Interface:
 
         return os.path.basename(module_readlink_result.stdout.strip())
 
+    @property
+    def parent_device_name(self):
+        """
+        @return Name of device at which wiphy device is present. For example,
+        for a wifi NIC present on a PCI bus, this would be the same as
+        PCI_SLOT_PATH. """
+        path_readlink_result = self._run('readlink "%s"' % self.device_path)
+        if path_readlink_result.exit_status != 0:
+            return None
+
+        return os.path.basename(path_readlink_result.stdout.strip())
 
     @property
     def device_description(self):

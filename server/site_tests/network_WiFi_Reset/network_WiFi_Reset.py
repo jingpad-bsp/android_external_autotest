@@ -25,6 +25,18 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
     _ATH10K_RESET_PATH = \
         '/sys/kernel/debug/ieee80211/%s/ath10k/simulate_fw_crash'
 
+    # Possible reset paths for Intel wireless NICs are:
+    # 1. '/sys/kernel/debug/iwlwifi/*/iwlmvm/fw_restart'
+    # Logs look like: iwlwifi 0000:00:0c.0: 0x00000038 | BAD_COMMAND
+    # This also triggers a register dump after the restart.
+    # 2. '/sys/kernel/debug/iwlwifi/\*/iwlmvm/fw_nmi'
+    # Logs look like: iwlwifi 0000:00:0c.0: 0x00000084 | NMI_INTERRUPT_UNKNOWN
+    # This triggers a "hardware restart" once the NMI is processed
+    # 3. '/sys/kernel/debug/iwlwifi/\*/iwlmvm/fw_dbg_collect'
+    # The  third one is a mechanism to collect firmware debug dumps, that
+    # effectively causes a restart, but we'll leave it aside for now.
+    _IWLWIFI_RESET_PATH = '/sys/kernel/debug/iwlwifi/%s/iwlmvm/fw_restart'
+
     _NUM_RESETS = 15
     _NUM_SUSPENDS = 5
     _SUSPEND_DELAY = 10
@@ -106,6 +118,21 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
         """
         self.context.client.host.run('echo soft > ' + self.ath10k_reset_path)
 
+    def iwlwifi_reset_path(self):
+        """Get path to iwlwifi debugfs reset file"""
+        pci_dev_name = self.context.client.parent_device_name
+        return self._IWLWIFI_RESET_PATH % pci_dev_name
+
+    def iwlwifi_reset_exists(self):
+        """@return True if iwlwifi debugfs reset file exists"""
+        return self.context.client.host.path_exists(self.iwlwifi_reset_path())
+
+    def iwlwifi_reset(self):
+        """
+        Simulate iwlwifi firmware crash.
+        """
+        self.context.client.host.run('echo 1 > ' + self.iwlwifi_reset_path())
+
     def get_reset_driver(self):
         DRIVER_LIST = [
             self.DriverReset(
@@ -117,6 +144,11 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
                 supported=self.ath10k_reset_exists,
                 do_reset=self.ath10k_reset,
                 need_reboot=lambda: not self.ath10k_reset_exists(),
+            ),
+            self.DriverReset(
+                supported=self.iwlwifi_reset_exists,
+                do_reset=self.iwlwifi_reset,
+                need_reboot=lambda: not self.iwlwifi_reset_exists(),
             ),
         ]
 
