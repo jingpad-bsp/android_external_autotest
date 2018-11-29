@@ -72,7 +72,7 @@ class PowerTelemetryLogger(object):
         self._resultsdir = resultsdir
         self._host = host
         self._tagged_testname = config['test']
-        self._note = config.get('note', 'None')
+        self._pdash_note = config.get('pdash_note', '')
 
     def start_measurement(self):
         """Start power telemetry devices."""
@@ -302,7 +302,7 @@ class PowerTelemetryLogger(object):
                     host=self._host, start_ts=self._start_ts,
                     checkpoint_logger=checkpoint_logger,
                     resultsdir=self._resultsdir,
-                    uploadurl=self.DASHBOARD_UPLOAD_URL, note=self._note)
+                    uploadurl=self.DASHBOARD_UPLOAD_URL, note=self._pdash_note)
             pdash.upload()
 
 
