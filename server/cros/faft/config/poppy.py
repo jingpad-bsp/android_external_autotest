@@ -13,6 +13,8 @@ class Values(object):
 
     confirm_screen = 1
 
+    firmware_screen = 15
+
     has_lid = True
 
     usb_image_boot_timeout = 60
