@@ -25,5 +25,8 @@ CABC_PAGES = ['white', 'black',
               'white', 'checker60',
               'white', 'checker50']
 
+args_dict = utils.args_to_dict(args)
+pdash_note = args_dict.get('pdash_note', '')
 job.run_test('power_Display', max_brightness=True, tag=NAME.split('.')[1],
-             pages=CABC_PAGES, secs_per_page=20, seconds_period=1)
+             pages=CABC_PAGES, secs_per_page=20, seconds_period=1,
+             pdash_note=pdash_note)

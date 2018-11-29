@@ -21,5 +21,8 @@ total standby time of test_hours.  The suspend to S0 transitions are added to
 The 5 minutes version is intended to use with power measurement telemetry device
 as the battery gas gauge would not be accurate enough to measure power this low.
 """
+
+args_dict = utils.args_to_dict(args)
+pdash_note = args_dict.get('pdash_note', '')
 job.run_test('power_Standby', sample_hours=0.1, test_hours=0.1,
-             tag=NAME.split('.')[1])
+             tag=NAME.split('.')[1], pdash_note=pdash_note)
