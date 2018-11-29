@@ -1,23 +1,23 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "platform_ExternalUsbPeripherals.detect.login_unplug_suspend_resume_plug"
-PURPOSE = "Servo based USB peripherals detection test"
+NAME = "platform_ExternalUsbPeripherals.detect.lid_close_open_short"
+PURPOSE = "Servo based USB boot stress test"
 CRITERIA = "This test will fail if any of the actions or checks fail."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:usb_detect"
-DEPENDENCIES = "servo, usb_detect"
-
+DEPENDENCIES = "servo, usb_detect, use_lid"
+JOB_RETRIES = 1
 DOC = """
 This test uses servo to connect/disconnect servo USB hub before and
-after events like reboot, login, suspend, resume etc.
+after events like reboot, login, closelid, openlid etc.
 
 The test fails if
 - device is pingable when suspended
@@ -31,10 +31,7 @@ Set of four USB peripherals plugged
 - USB headset
 - USB HD Webcam - should be Logitech HD Pro Webcam C920
 - USB stick with four partitions named ExFAT  Ext4  FAT  NTFS
-- USB mouse
-- USB 3G modem
-- USB SD card reader(one microSD card plugged)
-- USB connected phone(optional)
+- etc.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -45,7 +42,9 @@ def run(machine):
 
     repeat = int(args_dict.get("repeat", 1))
 
-    default_actions = str("login,unplug,suspend,resume,plug")
+    default_actions = str("plug,unplug,login,plug,"
+                          "closelid,unplug,openlid,"
+                          "closelid,plug,openlid,unplug")
 
     action_sequence = str(args_dict.get("action_sequence", default_actions))
 
@@ -74,7 +73,6 @@ def run(machine):
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_list=usb_list, usb_checks=usb_checks,
-                 tag="detect.login_unplug_suspend_resume_plug")
+                 usb_list=usb_list, usb_checks=usb_checks, tag="detect.lid_close_open_short")
 
 parallel_simple(run, machines)
