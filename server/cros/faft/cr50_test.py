@@ -67,6 +67,19 @@ class Cr50Test(FirmwareTest):
             raise error.TestNAError('Lock the console before running cr50 test')
 
         self._save_original_state()
+
+        # Verify cr50 is still running the correct version
+        cr50_qual_version = full_args.get('cr50_qual_version', '').strip()
+        if cr50_qual_version:
+            _, running_rw, running_bid = self.get_saved_cr50_original_version()
+            expected_rw, expected_bid_sym = cr50_qual_version.split('/')
+            expected_bid = cr50_utils.GetBoardIdInfoString(expected_bid_sym,
+                                                           symbolic=False)
+            logging.debug('Running %s %s Expect %s %s', running_rw, running_bid,
+                          expected_rw, expected_bid)
+            if running_rw != expected_rw or expected_bid != running_bid:
+                raise error.TestError('Not running %s' % cr50_qual_version)
+
         # We successfully saved the device state
         self._saved_state |= self.INITIAL_STATE
         try:
@@ -360,13 +373,25 @@ class Cr50Test(FirmwareTest):
 
 
     def cleanup(self):
-        """Make sure the device state is the same as the start of the test"""
+        """Attempt to cleanup the cr50 state. Then run firmware cleanup"""
+        try:
+            self._restore_cr50_state()
+        finally:
+            super(Cr50Test, self).cleanup()
+
+
+    def _restore_cr50_state(self):
+        """Restore cr50 state, so the device can be used for further testing"""
         # Reset the password as the first thing in cleanup. It is important that
         # if some other part of cleanup fails, the password has at least been
         # reset.
         self.cr50.send_command('ccd testlab open')
+        self.cr50.send_command('rddkeepalive disable')
         self.cr50.send_command('ccd reset')
         self.cr50.send_command('wp follow_batt_pres atboot')
+
+        # Reconnect CCD
+        self.cr50.ccd_enable()
 
         # reboot to normal mode if the device is in dev mode.
         self.enter_mode_after_checking_tpm_state('normal')
@@ -384,8 +409,6 @@ class Cr50Test(FirmwareTest):
         # Restore the ccd privilege level
         if hasattr(self, 'original_ccd_level'):
             self._reset_ccd_settings()
-
-        super(Cr50Test, self).cleanup()
 
 
     def find_cr50_gs_image(self, filename, image_type=None):

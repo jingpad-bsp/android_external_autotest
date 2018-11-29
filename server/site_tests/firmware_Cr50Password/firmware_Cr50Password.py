@@ -12,12 +12,6 @@ class firmware_Cr50Password(Cr50Test):
     PASSWORD = 'Password'
     NEW_PASSWORD = 'robot'
 
-    def cleanup(self):
-        """Clear the password."""
-        self.cr50.send_command('ccd testlab open')
-        self.cr50.send_command('ccd reset')
-        super(firmware_Cr50Password, self).cleanup()
-
 
     def run_once(self):
         """Check we can set the cr50 password."""

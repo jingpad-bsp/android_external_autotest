@@ -28,7 +28,7 @@ class camera_HAL3(test.test):
     cros_camera_service = 'cros-camera'
     media_profiles_path = os.path.join('vendor', 'etc', 'media_profiles.xml')
     tablet_board_list = ['scarlet', 'nocturne']
-    test_config_path = '/run/camera/test_config.json'
+    test_config_path = '/var/cache/camera/test_config.json'
 
     def setup(self):
         """
