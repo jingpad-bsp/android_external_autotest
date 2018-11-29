@@ -39,12 +39,6 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
         self.original_cr50_version = self.cr50.get_active_version_info()
 
 
-    def cleanup(self):
-        """Reenable ccd"""
-        self.cr50.ccd_enable()
-        super(firmware_Cr50DeepSleepStress, self).cleanup()
-
-
     def check_cr50_state(self, expected_count, expected_version):
         """Check the reboot count and version match the expected values"""
         count = self.cr50.get_deep_sleep_count()

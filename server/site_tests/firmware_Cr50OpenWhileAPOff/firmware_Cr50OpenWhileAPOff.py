@@ -91,9 +91,11 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
         """Make sure the device is on at the end of the test"""
         # If we got far enough to start changing the DUT power state, attempt to
         # turn the DUT back on and reenable the cr50 console.
-        if self.changed_dut_state:
-            self.restore_dut()
-        super(firmware_Cr50OpenWhileAPOff, self).cleanup()
+        try:
+            if self.changed_dut_state:
+                self.restore_dut()
+        finally:
+            super(firmware_Cr50OpenWhileAPOff, self).cleanup()
 
 
     def restore_dut(self):

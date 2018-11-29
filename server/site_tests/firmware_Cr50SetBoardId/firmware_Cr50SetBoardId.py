@@ -5,7 +5,7 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import cr50_utils, tpm_utils
+from autotest_lib.client.common_lib.cros import cr50_utils
 from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
@@ -75,12 +75,6 @@ class firmware_Cr50SetBoardId(Cr50Test):
         self.platform_brand = platform_brand
         self.erase_bid()
         cr50_utils.StopTrunksd(self.host)
-
-
-    def cleanup(self):
-        """Clear the TPM Owner"""
-        super(firmware_Cr50SetBoardId, self).cleanup()
-        tpm_utils.ClearTPMOwnerRequest(self.host)
 
 
     def erase_bid(self):
