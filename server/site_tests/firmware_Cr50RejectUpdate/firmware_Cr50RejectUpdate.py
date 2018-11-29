@@ -48,12 +48,6 @@ class firmware_Cr50RejectUpdate(Cr50Test):
         self.cr50.wait_until_update_is_allowed()
 
 
-    def cleanup(self):
-        """Reboot the device to restart trunksd"""
-        self.host.reboot()
-        super(firmware_Cr50RejectUpdate, self).cleanup()
-
-
     def try_update(self, arg, path, err=0, stdout='', wait=True):
         """Run gsctool with the given image and args. Verify the result
 
