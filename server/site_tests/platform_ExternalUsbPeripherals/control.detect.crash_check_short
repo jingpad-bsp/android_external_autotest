@@ -1,12 +1,12 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "platform_ExternalUsbPeripherals.detect.login_suspend_unplug_resume_plug"
-PURPOSE = "Servo based USB peripherals detection test"
+NAME = "platform_ExternalUsbPeripherals.detect.crash_check_short"
+PURPOSE = "Servo based USB boot stress test"
 CRITERIA = "This test will fail if any of the actions or checks fail."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -31,10 +31,7 @@ Set of four USB peripherals plugged
 - USB headset
 - USB HD Webcam - should be Logitech HD Pro Webcam C920
 - USB stick with four partitions named ExFAT  Ext4  FAT  NTFS
-- USB mouse
-- USB 3G modem
-- USB SD card reader(one microSD card plugged)
-- USB connected phone(optional)
+- etc
 """
 
 args_dict = utils.args_to_dict(args)
@@ -45,7 +42,8 @@ def run(machine):
 
     repeat = int(args_dict.get("repeat", 1))
 
-    default_actions = str("login,suspend,unplug,resume,plug")
+    default_actions = str("plug,unplug,login,plug,unplug,"
+                          "suspend,plug,resume,suspend,unplug,resume")
 
     action_sequence = str(args_dict.get("action_sequence", default_actions))
 
@@ -66,19 +64,14 @@ def run(machine):
         # USB stick four partitions volumes
         "loggedin:ls -l /media/removable/ | grep -i " :
             ["ExFAT", "Ext4", "FAT", "NTFS"],
-        # Skipping Camera checks
         # USB Web camera
         "cat /sys/class/video4linux/video*/name | grep -E " :
             ["\"TeckNet|USB 2.0 PC Camera\""],
-        #"eval /usr/local/autotest/tests/camera_V4L2/media_v4l2_test --device=/dev/video$"
-        #"(ls /dev/video* | tail -n1 | cut -b11) | grep -E " :
-        #    ["\"TestResolutions pass\""],
         }
 
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_list=usb_list, usb_checks=usb_checks,
-                 tag="detect.login_suspend_unplug_resume_plug")
+                 usb_list=usb_list, usb_checks=usb_checks, tag="detect.crash_check_short")
 
 parallel_simple(run, machines)
