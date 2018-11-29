@@ -6,7 +6,7 @@ import logging
 import os
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import cr50_utils, tpm_utils
+from autotest_lib.client.common_lib.cros import cr50_utils
 from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
@@ -358,12 +358,6 @@ class firmware_Cr50BID(Cr50Test):
         self.test_bid_str = cr50_utils.GetBoardIdInfoString(ver[2])
         logging.info('Running test with bid locked image %s', ver)
         self.image_versions[self.BID_LOCKED] = ver
-
-
-    def cleanup(self):
-        """Clear the TPM Owner"""
-        super(firmware_Cr50BID, self).cleanup()
-        tpm_utils.ClearTPMOwnerRequest(self.host)
 
 
     def is_running_version(self, rw_ver, bid_str):

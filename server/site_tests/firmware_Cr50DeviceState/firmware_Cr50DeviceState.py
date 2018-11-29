@@ -92,11 +92,6 @@ class firmware_Cr50DeviceState(Cr50Test):
     INCREASE = '+'
     DS_RESUME = 'DS'
 
-    def cleanup(self):
-        """Make sure the device is on at the end of the test."""
-        self.trigger_s0()
-        super(firmware_Cr50DeviceState, self).cleanup()
-
 
     def get_taskinfo_output(self):
         """Return a dict with the irq numbers as keys and counts as values"""

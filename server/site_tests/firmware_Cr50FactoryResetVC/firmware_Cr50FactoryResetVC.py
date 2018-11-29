@@ -38,13 +38,6 @@ class firmware_Cr50FactoryResetVC(Cr50Test):
                     'command without control of write protect')
 
 
-    def cleanup(self):
-        """Reset ccd to remove the password."""
-        self.cr50.send_command('ccd testlab open')
-        self.cr50.send_command('ccd reset')
-        super(firmware_Cr50FactoryResetVC, self).cleanup()
-
-
     def wp_enabled(self):
         """Returns True if write protect is enabled."""
         rv = self.cr50.send_command_get_output('gpioget',
