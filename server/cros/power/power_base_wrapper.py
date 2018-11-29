@@ -4,6 +4,7 @@
 
 """Base class for power measurement tests with telemetry devices."""
 
+import json
 import os
 
 from autotest_lib.client.common_lib import error
@@ -35,6 +36,8 @@ class PowerBaseWrapper(test.test):
             raise error.TestNAError(msg)
         # client_test_name is tagged test name.
         client_test_name = config['test']
+        args_list = ['='.join((k, v)) for k, v in config.iteritems()]
+        args_string = 'args = ' + json.dumps(args_list)
 
         # Find the client test in autotest file system.
         fs_getter = suite.create_fs_getter(self.autodir)
@@ -49,7 +52,7 @@ class PowerBaseWrapper(test.test):
         try:
             ptl.start_measurement()
             # If multiple tests with the same name are found, run the first one.
-            autotest_client.run(client_test[0].text)
+            autotest_client.run(args_string +'\n' + client_test[0].text)
         finally:
             client_test_dir = os.path.join(self.outputdir, client_test_name)
             # If client test name is not tagged in its own control file.
