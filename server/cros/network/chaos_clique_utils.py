@@ -10,6 +10,7 @@ import shutil
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server import hosts
@@ -286,8 +287,14 @@ def scan_for_networks(ssid, capturer, ap_spec):
     wifi_if = capturer.get_wlanif(freq, 'managed')
     capturer.host.run('%s link set %s up' % (capturer.cmd_ip, wifi_if))
     # We have some APs that need a while to come on-line
-    networks = capturer.iw_runner.wait_for_scan_result(
-            wifi_if, ssids=[ssid], timeout_seconds=300)
+    networks = utils.poll_for_condition(
+            condition=lambda: capturer.iw_runner.wait_for_scan_result(
+                    wifi_if,
+                    ssids=[ssid],
+                    wait_for_all=True),
+            timeout=300,
+            sleep_interval=35,
+            desc='Timed out getting IWBSSes')
     capturer.remove_interface(wifi_if)
     return networks
 
