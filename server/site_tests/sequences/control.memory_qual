@@ -58,9 +58,9 @@ SERVER_TESTS= [
 def run_client_test(machine):
     client = hosts.create_host(machine)
     client_at = autotest.Autotest(client)
-    if client.get_arch() in ('i386', 'i686', 'x86_64'):
-        CLIENT_TESTS += CLIENT_X86_TESTS
-    for test, argv in CLIENT_TESTS:
+    client_tests = (CLIENT_TESTS + CLIENT_X86_TESTS if client.get_arch() in
+        ('i386', 'i686', 'x86_64') else CLIENT_TESTS)
+    for test, argv in client_tests:
         client.reboot()
         client_at.run_test(test, **argv)
 
