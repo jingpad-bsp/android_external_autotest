@@ -8,7 +8,7 @@ import subprocess
 import shutil
 import tempfile
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 MOUNT_PATH=tempfile.mkdtemp()
@@ -21,6 +21,11 @@ class security_NosymfollowMountOption(test.test):
     version = 1
 
     def __init__(self, *args, **kwargs):
+        # TODO(mortonm): add a function to utils to do this kernel version
+        # check and raise NAError.
+        version = utils.get_kernel_version()
+        if version == "3.8.11" or version == "3.10.18":
+            raise error.TestNAError('Test is n/a for kernels older than 3.14')
         super(security_NosymfollowMountOption,
             self).__init__(*args, **kwargs)
         self._failure = False
