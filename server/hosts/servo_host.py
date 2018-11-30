@@ -29,7 +29,6 @@ from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils as server_utils
 from autotest_lib.server.cros import autoupdater
-from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.servo import servo
@@ -194,7 +193,8 @@ class ServoHost(ssh_host.SSHHost):
             return self.rpc_server_tracker.xmlrpc_connect(
                     None, self.servo_port,
                     ready_test_name=self.SERVO_READY_METHOD,
-                    timeout_seconds=60)
+                    timeout_seconds=60,
+                    request_timeout_seconds=600)
         else:
             remote = 'http://%s:%s' % (self.hostname, self.servo_port)
             return xmlrpclib.ServerProxy(remote)
