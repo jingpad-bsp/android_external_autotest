@@ -25,7 +25,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.CtsDeqpTestCases.dEQP-VK.info',
         test_name='cheets_CTS_P.arm.CtsDeqpTestCases.dEQP-VK.info',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-VK.info.*', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-VK.info*', '--logcat-on-failure'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsDeqpTestCases',
         target_plan=None,
