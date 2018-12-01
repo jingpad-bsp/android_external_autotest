@@ -1095,7 +1095,8 @@ class GraphicsStateChecker(object):
 
     _BROWSER_VERSION_COMMAND = '/opt/google/chrome/chrome --version'
     _HANGCHECK = ['drm:i915_hangcheck_elapsed', 'drm:i915_hangcheck_hung',
-                  'Hangcheck timer elapsed...']
+                  'Hangcheck timer elapsed...',
+                  'drm/i915: Resetting chip after gpu hang']
     _HANGCHECK_WARNING = ['render ring idle']
     _MESSAGES_FILE = '/var/log/messages'
 
