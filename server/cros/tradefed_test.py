@@ -154,7 +154,7 @@ class TradefedTest(test.test):
         for host in self._hosts:
             try:
                 self._run_adb_cmd(host, verbose=True, args=('kill-server',))
-            except (CmdError, AttributeError):
+            except (error.CmdError, AttributeError):
                 pass
         logging.info('Cleaning up %s.', self._tradefed_install)
         try:
