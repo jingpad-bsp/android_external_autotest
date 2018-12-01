@@ -59,7 +59,7 @@ class network_WiFi_MalformedProbeResp(wifi_cell_test_base.WiFiCellTestBase):
                     instance=1):
                 while time.time() - start_time < self.SCAN_LOOP_SEC:
                     bss_list = self.context.client.iw_runner.scan(
-                            self.context.client.wifi_if, [2412])
+                            self.context.client.wifi_if, [2412]) or []
                     for bss in bss_list:
                         logging.debug('found bss: %s', bss.ssid)
                         if bss.ssid == 'TestingProbes00000000':
