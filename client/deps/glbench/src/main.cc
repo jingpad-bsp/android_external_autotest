@@ -144,10 +144,8 @@ int main(int argc, char* argv[]) {
 
   glbench::TestBase* tests[] = {
       // Please add new tests at the end of this list as tests are known to
-      // bleed
-      // state. Reordering them or inserting a new test may cause a change in
-      // the
-      // output images and MD5 causing graphics_GLBench failures.
+      // bleed state. Reordering them or inserting a new test may cause a
+      // change in the output images and MD5 causing graphics_GLBench failures.
       // TODO(ihf): Fix this.
       glbench::GetSwapTest(),
       glbench::GetContextTest(),
@@ -164,6 +162,7 @@ int main(int argc, char* argv[]) {
       glbench::GetTextureUpdateTest(),
       glbench::GetTextureUploadTest(),
       glbench::GetFboFillRateTest(),
+      glbench::GetDrawSizeTest(),
   };
 
   if (FLAGS_list) {
