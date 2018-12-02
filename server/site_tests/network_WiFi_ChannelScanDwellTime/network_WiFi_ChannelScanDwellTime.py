@@ -148,10 +148,9 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
                         timeout=self.SCAN_RETRY_TIMEOUT_SECONDS,
                         sleep_interval=0.5)
             except utils.TimeoutError:
-                if self._bss_list is None:
-                    raise error.TestFail('Unable to trigger scan on client.')
-                else:
-                    raise error.TestFail('Failed to find any BSS')
+                raise error.TestFail('Unable to trigger scan on client.')
+            if not self._bss_list:
+                raise error.TestFail('Failed to find any BSS')
 
             # Remaining work is done outside the FrameSender
             # context. This is to ensure that no additional frames are
