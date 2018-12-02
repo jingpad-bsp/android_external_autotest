@@ -57,6 +57,7 @@ public class SuiteRunnerView extends TabView {
   private static List<String> suiteNames = Arrays.asList(
     "bvt-cq",
     "bvt-inline",
+    "bvt-tast-cq",
     "check_setup_cts_N",
     "check_setup_storage_qual",
     "cts_N",
