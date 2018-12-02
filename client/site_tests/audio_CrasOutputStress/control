@@ -5,9 +5,9 @@
 AUTHOR = 'The Chromium OS Authors,chromeos-audio@google.com'
 NAME = 'audio_CrasOutputStress'
 ATTRIBUTES = "suite:audio"
-PURPOSE = 'Test output buffer can stay at reasonable level'
+PURPOSE = 'Test device buffer can stay at reasonable level'
 CRITERIA = """
-Fail if output buffer drifts too high.
+Fail if device buffer drifts too high.
 """
 TIME='MEDIUM'
 TEST_CATEGORY = 'Functional'
@@ -15,7 +15,8 @@ TEST_CLASS = "audio"
 TEST_TYPE = 'client'
 
 DOC = """
-Test output buffer can stay at reasonable level
+Test device buffer can stay at reasonable level by running input and output
+streams randomly.
 """
 
 job.run_test('audio_CrasOutputStress')

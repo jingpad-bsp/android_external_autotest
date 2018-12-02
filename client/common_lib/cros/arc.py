@@ -527,7 +527,7 @@ def _is_in_installed_packages_list(package, option=None):
 
     if not ret:
         logging.info('Could not find "%s" in %s',
-                     (package_entry, str(packages)))
+                     package_entry, str(packages))
     return ret
 
 

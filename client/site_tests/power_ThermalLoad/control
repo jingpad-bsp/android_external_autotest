@@ -12,4 +12,6 @@ This test records power and temperature related statistics while open WebGL
 heavy page.
 """
 
-job.run_test('power_ThermalLoad')
+args_dict = utils.args_to_dict(args)
+pdash_note = args_dict.get('pdash_note', '')
+job.run_test('power_ThermalLoad', pdash_note=pdash_note)

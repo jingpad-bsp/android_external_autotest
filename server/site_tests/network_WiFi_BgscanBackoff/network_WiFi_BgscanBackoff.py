@@ -82,7 +82,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
 
         utils.poll_for_condition(
             condition=lambda: self._find_bss_matching_mac_addr(iw, ap_mac),
-            exception=error.TestFail('Background scans should detect new BSSes'
+            exception=error.TestFail('Background scans should detect new BSSes '
                                      'within an associated ESS.'),
             timeout=self.BGSCAN_SAMPLE_PERIOD_SECONDS,
             sleep_interval=1)

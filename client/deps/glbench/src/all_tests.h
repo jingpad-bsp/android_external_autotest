@@ -8,6 +8,7 @@ class TestBase;
 TestBase* GetAttributeFetchShaderTest();
 TestBase* GetClearTest();
 TestBase* GetContextTest();
+TestBase* GetDrawSizeTest();
 TestBase* GetFboFillRateTest();
 TestBase* GetFillRateTest();
 TestBase* GetReadPixelTest();

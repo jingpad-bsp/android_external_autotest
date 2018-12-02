@@ -20,9 +20,10 @@ class power_Standby(test.test):
     _percent_min_charge = 10
     _min_sample_hours = 0.1
 
-    def initialize(self):
+    def initialize(self, pdash_note=''):
         """Reset force discharge state."""
         self._force_discharge_enabled = False
+        self._pdash_note = pdash_note
 
     def run_once(self, test_hours=None, sample_hours=None,
                  max_milliwatts_standby=500, ac_ok=False,
@@ -135,7 +136,8 @@ class power_Standby(test.test):
         self.write_perf_keyval(results)
         pdash = power_dashboard.SimplePowerLoggerDashboard(
                 test_hours * 3600., results['w_energy_rate'],
-                self.tagged_testname, start_ts, self.resultsdir)
+                self.tagged_testname, start_ts, self.resultsdir,
+                note=self._pdash_note)
         pdash.upload()
 
         self.output_perf_value(description='hours_standby_time',
