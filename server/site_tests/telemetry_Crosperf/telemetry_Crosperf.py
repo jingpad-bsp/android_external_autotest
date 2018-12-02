@@ -68,7 +68,7 @@ def _run_in_background(host, cmd, stdout, stderr, timeout):
     @param host: A host object representing where the command runs.
     @param cmd: The command to run.
 
-    @return The result of launching this command, which conatins pid info.
+    @return The result of launching this command, which contains pid info.
     """
     background_cmd = _RUN_BACKGROUND_TEMPLATE % {'cmd': cmd}
     logging.info('BACKGROUND CMD: %s', background_cmd)
@@ -94,7 +94,10 @@ def _kill_perf(host):
 
     @param host: A host object representing the DUT.
     """
-    kill_cmd = 'killall -INT perf'
+    # Note that here -2 equals -INT. ChromeOS release image cannot recognize
+    # -INT, so we need to specify it here.
+    kill_cmd = 'killall -2 perf'
+    logging.info('Killing perf using: %s', kill_cmd)
     host.run(kill_cmd, ignore_status=True).exit_status
 
 
