@@ -357,19 +357,12 @@ class BluetoothDevice(object):
         An example of the device information of RN-42 looks like
 
         @param address: Address of the device to pair.
-        @param pin: The pin code of the device to pair.
-        @param timeout: The timeout in seconds for pairing.
 
         @returns: a dictionary of device properties of the device on success;
                   an empty dictionary otherwise.
 
         """
         return json.loads(self._proxy.get_device_by_address(address))
-
-        for device in self.get_devices():
-            if device.get['Address'] == address:
-                return device
-        return dict()
 
 
     def start_discovery(self):
