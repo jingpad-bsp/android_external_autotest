@@ -22,7 +22,7 @@ class rlz_CheckPing(test.test):
         try:
             self._host.run('mosys -k platform brand | grep brand')
         except error.AutoservRunError as err:
-            raise error.TestFail('DUT is missing brand_code: %s.', err)
+            raise error.TestFail('DUT is missing brand_code: %s.' % str(err))
 
 
     def _set_vpd_values(self, retries=3):
@@ -40,7 +40,7 @@ class rlz_CheckPing(test.test):
                 logging.exception('Failed to write should_send_rlz_ping to vpd')
                 if i == retries-1:
                     raise error.TestFail('Failed to set should_send_rlz_ping '
-                                         'VPD value on the DUT: %s', err)
+                                         'VPD value on the DUT: %s' % str(err))
         for i in range(retries):
             try:
                 self._host.run('dump_vpd_log --force')
@@ -48,7 +48,8 @@ class rlz_CheckPing(test.test):
             except error.AutoservRunError as err:
                 logging.exception('Failed to dump vpd log')
                 if i == retries - 1:
-                    raise error.TestFail('Failed to dump vpd log: %s', err)
+                    raise error.TestFail('Failed to dump vpd log: '
+                                         '%s' % str(err))
 
 
     def _make_rootfs_writable(self):
