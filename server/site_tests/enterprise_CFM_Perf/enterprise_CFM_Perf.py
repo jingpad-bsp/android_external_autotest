@@ -8,44 +8,17 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
-from autotest_lib.client.common_lib.cros import system_metrics_collector
-from autotest_lib.client.common_lib.cros.cfm.metrics import (
-        media_metrics_collector)
 from autotest_lib.server.cros.cfm import cfm_base_test
 from autotest_lib.server.cros.cfm.utils import bond_http_api
+from autotest_lib.server.cros.cfm.utils import perf_metrics_collector
 
 
 _BOT_PARTICIPANTS_COUNT = 10
-_SHORT_TIMEOUT = 5
-_SINGLE_MEASUREMENT_DURATION_SECONDS = 10
 _TOTAL_TEST_DURATION_SECONDS = 15 * 60 # 15 minutes
 
 _DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com/'
                   'chromiumos-test-assets-public/crowd/')
 _VIDEO_NAME = 'crowd720_25frames.y4m'
-
-
-class ParticipantCountMetric(system_metrics_collector.Metric):
-    """
-    Metric for getting the current participant count in a call.
-    """
-    def __init__(self, cfm_facade):
-        """
-        Initializes with a cfm_facade.
-
-        @param cfm_facade object having a get_participant_count() method.
-        """
-        super(ParticipantCountMetric, self).__init__(
-                'participant_count',
-                'participants',
-                higher_is_better=True)
-        self.cfm_facade = cfm_facade
-
-    def collect_metric(self):
-        """
-        Collects one metric value.
-        """
-        self.values.append(self.cfm_facade.get_participant_count())
 
 
 class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
@@ -54,189 +27,6 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
     mode. After enrollment is successful, it collects and logs cpu, memory and
     temperature data from the device under test."""
     version = 1
-
-    def collect_perf_data(self):
-        """
-        Collects run time data from the DUT using system_metrics_collector.
-        Writes the data to the chrome perf dashboard.
-        """
-        start_time = time.time()
-        while (time.time() - start_time) < _TOTAL_TEST_DURATION_SECONDS:
-            time.sleep(_SINGLE_MEASUREMENT_DURATION_SECONDS)
-            self.metrics_collector.collect_snapshot()
-            self.media_metrics_collector.collect_snapshot()
-        self.metrics_collector.write_metrics(self.output_perf_value)
-
-
-    def _get_last_value(self, data_type):
-        """Gets last value of a list of numbers.
-
-        @param data_type: Type of data to be retrieved from jmi data log.
-        @return The last value in the jmidata for the specified data_type. 0 if
-                there are no values in the jmidata for this data_type.
-        """
-        data = self._get_jmi_data(data_type)
-        if not data:
-            return 0
-        return data[-1]
-
-
-    def _get_jmi_data(self, data_type):
-        """Gets jmi data for the given data type.
-
-        @param data_type: Type of data to be retrieved from jmi data logs.
-        @return Data for given data type from jmidata log.
-        """
-        timestamped_values = self.media_metrics_collector.get_metric(data_type)
-        # Strip timestamps.
-        values = [x[1] for x in timestamped_values]
-        # Each entry in values is a list, extract the raw values:
-        res = []
-        for value_list in values:
-            res.extend(value_list)
-        # Ensure we always return at least one element, or perf uploads will
-        # be sad.
-        return res or [0]
-
-
-    def upload_jmidata(self):
-        """
-        Write jmidata results to results-chart.json file for Perf Dashboard.
-        """
-        # Video/Sender metrics
-        self.output_perf_value(
-            description='avg_encode_ms',
-            value=self._get_jmi_data(media_metrics_collector.AVG_ENCODE_MS),
-            units='ms',
-            higher_is_better=False)
-
-        self.output_perf_value(
-            description='vid_out_frame_height', # video_out_res
-            value=self._get_jmi_data(media_metrics_collector.
-                VIDEO_SENT_FRAME_HEIGHT),
-            units='px',
-            higher_is_better=True)
-
-        self.output_perf_value(
-            description='vid_out_frame_width',
-            value=self._get_jmi_data(media_metrics_collector.
-                VIDEO_SENT_FRAME_WIDTH),
-            units='px',
-            higher_is_better=True)
-
-        self.output_perf_value(
-            description='vid_out_framerate_captured',
-            value=self._get_jmi_data(media_metrics_collector.
-                FRAMERATE_CAPTURED),
-            units='fps',
-            higher_is_better=True)
-
-        self.output_perf_value(
-            description='vid_out_framerate_encoded',
-            value=self._get_jmi_data(media_metrics_collector.
-                FRAMERATE_ENCODED),
-            units='fps',
-            higher_is_better=True)
-
-        self.output_perf_value(
-            description='vid_out_sent_packets',
-            value=self._get_last_value(media_metrics_collector.
-                VIDEO_SENT_PACKETS),
-            units='packets',
-            higher_is_better=True)
-
-        # Video/Receiver metrics
-        self.output_perf_value(
-            description='vid_in_framerate_received',
-            value=self._get_jmi_data(media_metrics_collector.
-                FRAMERATE_NETWORK_RECEIVED),
-            units='fps',
-            higher_is_better=True)
-
-        self.output_perf_value(
-            description='vid_in_framerate_decoded',
-            value=self._get_jmi_data(media_metrics_collector.FRAMERATE_DECODED),
-            units='fps',
-            higher_is_better=True)
-
-        self.output_perf_value(
-            description='vid_in_framerate_to_renderer',
-            value=self._get_jmi_data(media_metrics_collector.
-                FRAMERATE_TO_RENDERER),
-            units='fps',
-            higher_is_better=True)
-
-        self.output_perf_value(
-            description='video_in_frame_heigth', # video_in_res
-            value=self._get_jmi_data(media_metrics_collector.
-                VIDEO_RECEIVED_FRAME_HEIGHT),
-            units='px',
-            higher_is_better=True)
-
-        self.output_perf_value(
-            description='vid_in_frame_width',
-            value=self._get_jmi_data(media_metrics_collector.
-                VIDEO_RECEIVED_FRAME_WIDTH),
-            units='px',
-            higher_is_better=True)
-
-        # Adaptation metrics
-        self.output_perf_value(
-            description='vid_out_adapt_changes',
-            value=self._get_last_value(media_metrics_collector.
-                ADAPTATION_CHANGES),
-            units='count',
-            higher_is_better=False)
-
-        self.output_perf_value(
-            description='vid_out_adapt_reasons',
-            value=self._get_jmi_data(media_metrics_collector.ADAPTATION_REASON),
-            units='reasons',
-            higher_is_better=False)
-
-        # System metrics
-        self.output_perf_value(
-            description='cpu_usage_jmi',
-            value=self._get_jmi_data(media_metrics_collector.
-                CPU_PERCENT_OF_TOTAL),
-            units='percent',
-            higher_is_better=False)
-
-        self.output_perf_value(
-            description='process_js_memory',
-            value=[(x / (1024 * 1024)) for x in self._get_jmi_data(
-                media_metrics_collector.PROCESS_JS_MEMORY_USED)],
-            units='MB',
-            higher_is_better=False)
-
-        self.output_perf_value(
-            description='renderer_cpu_usage',
-            value=self._get_jmi_data(
-                media_metrics_collector.RENDERER_CPU_PERCENT_OF_TOTAL),
-            units='percent',
-            higher_is_better=False)
-
-        self.output_perf_value(
-            description='browser_cpu_usage',
-            value=self._get_jmi_data(
-                media_metrics_collector.BROWSER_CPU_PERCENT_OF_TOTAL),
-            units='percent',
-            higher_is_better=False)
-
-        self.output_perf_value(
-            description='gpu_cpu_usage',
-            value=self._get_jmi_data(
-                media_metrics_collector.GPU_PERCENT_OF_TOTAL),
-            units='percent',
-            higher_is_better=False)
-
-        # Other
-        self.output_perf_value(
-            description='active_streams',
-            value=self._get_jmi_data(media_metrics_collector.
-                NUMBER_OF_ACTIVE_INCOMING_VIDEO_STREAMS),
-            units='count',
-            higher_is_better=True)
 
     def _download_test_video(self):
         """
@@ -270,17 +60,10 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         """
         super(enterprise_CFM_Perf, self).initialize(host, run_test_only)
         self._host = host
-        self.system_facade = self._facade_factory.create_system_facade()
-        metrics = system_metrics_collector.create_default_metric_set(
-                self.system_facade)
-        metrics.append(ParticipantCountMetric(self.cfm_facade))
-        self.metrics_collector = (system_metrics_collector.
-                                  SystemMetricsCollector(self.system_facade,
-                                                         metrics))
-        data_point_collector = media_metrics_collector.DataPointCollector(
-                self.cfm_facade)
-        self.media_metrics_collector = (media_metrics_collector
-                                        .MetricsCollector(data_point_collector))
+        system_facade = self._facade_factory.create_system_facade()
+        self._perf_metrics_collector = (
+            perf_metrics_collector.PerfMetricsCollector(
+                system_facade, self.cfm_facade, self.output_perf_value))
 
     def setup(self):
         """
@@ -309,10 +92,12 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
 
         self.cfm_facade.unmute_mic()
 
-        self.collect_perf_data()
+        self._perf_metrics_collector.start()
+        time.sleep(_TOTAL_TEST_DURATION_SECONDS)
+        self._perf_metrics_collector.stop()
 
         self.cfm_facade.end_meeting_session()
-        self.upload_jmidata()
+        self._perf_metrics_collector.upload_metrics()
 
     def _add_bots(self, bot_count, meeting_code):
         """Adds bots to a meeting and configures audio and pinning settings.
