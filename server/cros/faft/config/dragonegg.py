@@ -8,9 +8,10 @@ class Values(object):
     """FAFT config values for Dragonegg."""
     chrome_ec = True
     ec_capability = ['battery', 'charging',
-                     'keyboard', 'lid', 'x86' ]
+                     'keyboard', 'lid', 'x86', 'usb', 'smart_usb_charge']
     firmware_screen = 15
     wp_voltage = 'pp3300'
     spi_voltage = 'pp3300'
     servo_prog_state_delay = 10
     dark_resume_capable = True
+    custom_usb_enable_names = ['EN_USB_A_5V']
