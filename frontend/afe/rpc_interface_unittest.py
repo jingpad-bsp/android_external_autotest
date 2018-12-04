@@ -1273,6 +1273,21 @@ class RpcInterfaceTest(unittest.TestCase,
         self.god.check_playback()
 
 
+    def test_delete_shard(self):
+        """Ensure the RPC can delete a shard."""
+        host1 = models.Host.objects.all()[0]
+        shard1 = models.Shard.objects.create(hostname='shard1')
+        host1.shard = shard1
+        host1.save()
+
+        rpc_interface.delete_shard(hostname=shard1.hostname)
+
+        host1 = models.Host.smart_get(host1.id)
+        self.assertIsNone(host1.shard)
+        self.assertRaises(models.Shard.DoesNotExist,
+                          models.Shard.smart_get, shard1.hostname)
+
+
     def test_modify_label(self):
         label1 = models.Label.objects.all()[0]
         self.assertEqual(label1.invalid, 0)

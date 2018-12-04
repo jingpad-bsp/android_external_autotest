@@ -2247,8 +2247,8 @@ def delete_shard(hostname):
             clear_jobs = True
             assert shard.id is not None
             while clear_jobs:
-                res = cursor.execute(QUERY % shard.id).fetchone()
-                clear_jobs = bool(res)
+                cursor.execute(QUERY % shard.id)
+                clear_jobs = bool(cursor.fetchone())
     # Unit tests use sqlite backend instead of MySQL. sqlite does not support
     # UPDATE ... LIMIT, so fall back to the old behavior.
     except DatabaseError as e:
