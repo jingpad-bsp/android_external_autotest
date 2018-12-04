@@ -69,6 +69,31 @@
     "dashboard_test_name": "cheets_StartAndroid"
   },
   {
+    "autotest_name": "cheets_CTS_.*CtsDeqpTestCases$",
+    "master_name": "ChromeOS_Graphics",
+    "dashboard_test_name": "cheets_CTS"
+  },
+  {
+    "autotest_name": "cheets_CTS_.*CtsGraphicsTestCases$",
+    "master_name": "ChromeOS_Graphics",
+    "dashboard_test_name": "cheets_CTS"
+  },
+  {
+    "autotest_name": "cheets_CTS_.*CtsGraphics2TestCases$",
+    "master_name": "ChromeOS_Graphics",
+    "dashboard_test_name": "cheets_CTS"
+  },
+  {
+    "autotest_name": "cheets_CTS_.*CtsSkQPTestCases$",
+    "master_name": "ChromeOS_Graphics",
+    "dashboard_test_name": "cheets_CTS"
+  },
+  {
+    "autotest_name": "cheets_CTS_.*CtsViewTestCases$",
+    "master_name": "ChromeOS_Graphics",
+    "dashboard_test_name": "cheets_CTS"
+  },
+  {
     "autotest_name": "enterprise_CFM_Perf.meet_app",
     "master_name": "ChromeOS_Enterprise"
   },
