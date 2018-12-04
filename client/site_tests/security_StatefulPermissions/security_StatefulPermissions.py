@@ -69,6 +69,7 @@ class security_StatefulPermissions(test.test):
                      "ipsec": [],
                      "lp": [],
                      "messagebus": [],
+                     "ml-service": ["/encrypted/var/lib/ml_service"],
                      "mtp": [],
                      "news": [],
                      "nobody": [],
