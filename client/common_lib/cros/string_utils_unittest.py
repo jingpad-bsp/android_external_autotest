@@ -18,20 +18,23 @@ from autotest_lib.client.common_lib.cros import string_utils
 
 class JoinLongestWithLengthLimitTest(unittest.TestCase):
     """Unit test of join_longest_with_length_limit."""
+    def setUp(self):
+        """Setup."""
+        self.strings = ['abc', '12', 'sssss']
+
     def test_basic(self):
         """The basic test case."""
-        strings = ['abc', '12', 'sssss']
         result = list(string_utils.join_longest_with_length_limit(
-                strings, 6, separator=','))
+                self.strings, 6, separator=','))
         self.assertEqual(len(result), 2)
+        self.assertTrue(type(result[0]) is str)
 
     def test_short_strings(self):
         """Test with short strings to be joined with big limit."""
-        strings = ['abc', '12', 'sssss']
         sep = mock.MagicMock()
         result = list(string_utils.join_longest_with_length_limit(
-                strings, 100, separator=sep))
-        sep.join.assert_called()
+                self.strings, 100, separator=sep))
+        sep.join.assert_called_once()
 
     def test_string_too_long(self):
         """Test with too long string to be joined."""
@@ -41,12 +44,18 @@ class JoinLongestWithLengthLimitTest(unittest.TestCase):
 
     def test_long_sep(self):
         """Test with long seperator."""
-        strings = ['abc', '12', 'sssss']
         result = list(string_utils.join_longest_with_length_limit(
-                strings, 6, separator='|very long separator|'))
+                self.strings, 6, separator='|very long separator|'))
         # Though the string to be joined is short, we still will have 3 result
         # because each of them plus separator is longer than the limit.
         self.assertEqual(len(result), 3)
+
+    def test_do_not_join(self):
+        """Test yielding list instead of string."""
+        result = list(string_utils.join_longest_with_length_limit(
+                self.strings, 6, separator=',', do_join=False))
+        self.assertEqual(len(result), 2)
+        self.assertTrue(type(result[0]) is list)
 
 
 if __name__ == '__main__':
