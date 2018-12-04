@@ -3,8 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""A collection of classes/functions to manipulate strings.  """
-
+"""A collection of classes/functions to manipulate strings."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -16,7 +15,8 @@ class StringTooLongError(Exception):
     """Raised when string is too long to manipulate."""
 
 
-def join_longest_with_length_limit(string_list, length_limit, separator=''):
+def join_longest_with_length_limit(string_list, length_limit, separator='',
+                                   do_join=True):
     """Join strings to meet length limit and yield results.
 
     Join strings from |string_list| using |separator| and yield the results.
@@ -24,13 +24,15 @@ def join_longest_with_length_limit(string_list, length_limit, separator=''):
     |length_limit|. In other words, this function yields minimum number of
     result strings.
 
-    An error will be raised when any stirng in |string_list| is longer than
+    An error will be raised when any string in |string_list| is longer than
     |length_limit| because the result string joined must be longer than
     |length_limit| in any case.
 
     @param string_list: A list of strings to be joined.
     @param length_limit: The maximum length of the result string.
     @param separator: The separator to join strings.
+    @param do_join: join the result list to string if True, else just return the
+        result list.
 
     @yield The result string.
     @throws StringTooLongError when any string in |string_list| is longer than
@@ -51,22 +53,22 @@ def join_longest_with_length_limit(string_list, length_limit, separator=''):
     length_limit += len_sep
     # Call str.join directly when possible.
     if sum(length_list) + len_sep * len(string_list) <= length_limit:
-        yield separator.join(string_list)
+        yield separator.join(string_list) if do_join else string_list
         return
 
-    result = ''
+    result = []
     new_length_limit = length_limit
     while string_list:
         index = bisect.bisect_right(length_list,
                                     new_length_limit - len_sep) - 1
         if index < 0:  # All available strings are longer than the limit.
-            yield result[:-len_sep]
-            result = ''
+            yield separator.join(result) if do_join else result
+            result = []
             new_length_limit = length_limit
             continue
 
-        result = '%s%s%s' % (result, string_list.pop(index), separator)
+        result.append(string_list.pop(index))
         new_length_limit -= length_list.pop(index) + len_sep
 
     if result:
-        yield result[:-len_sep]
+        yield separator.join(result) if do_join else result

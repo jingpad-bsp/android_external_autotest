@@ -48,6 +48,16 @@ class ApiTest(unittest.TestCase):
                     'file')
             self.assertEqual(result, {})
 
+    def test_extract_many_files_via_http(self):
+        """Test extracting many files via http."""
+        with mock.patch('requests.get') as m:
+            m.return_value = mock.MagicMock(ok=True, content='{}')
+            result = self.api.extract(
+                    gs_cache_client._CROS_IMAGE_ARCHIVE_BUCKET, 'archive',
+                    ['the_file'] * 1000)
+            self.assertEqual(result, {})
+            self.assertTrue(m.call_count > 1)
+
     @mock.patch('time.sleep')
     @mock.patch('time.time', side_effect=itertools.cycle([0, 400]))
     def test_extract_via_ssh_has_error(self, *args):
