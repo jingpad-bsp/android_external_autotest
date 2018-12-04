@@ -29,6 +29,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.common_lib.cros import string_utils
 
 from chromite.lib import metrics
 
@@ -47,11 +48,19 @@ _USE_SSH_CONNECTION = _CONFIG.get_config_value(
 _SSH_CALL_TIMEOUT_SECONDS = 60
 
 _MESSAGE_LENGTH_MAX_CHARS = 200
+_MAX_URL_QUERY_LENGTH = 4096
 
 # Exit code of `curl` when cannot connect to host. Man curl for details.
 _CURL_RC_CANNOT_CONNECT_TO_HOST = 7
 
 METRICS_PATH = 'chromeos/autotest/gs_cache_client'
+
+
+def _truncate_long_message(message):
+    """Truncate too long message (e.g. url) to limited length."""
+    if len(message) > _MESSAGE_LENGTH_MAX_CHARS:
+        message = '%s...' % message[:_MESSAGE_LENGTH_MAX_CHARS]
+    return message
 
 
 class CommunicationError(Exception):
@@ -96,7 +105,7 @@ class _GsCacheAPI(object):
         @throws CommunicationError when the SSH command failed.
         """
         cmd = 'ssh %s \'curl "%s"\'' % (self._hostname, utils.sh_escape(url))
-        logging.debug('Gs Cache call: %s', cmd)
+        logging.debug('Gs Cache call: %s', _truncate_long_message(cmd))
         try:
             result = utils.run(cmd, timeout=_SSH_CALL_TIMEOUT_SECONDS)
         except error.CmdError as err:
@@ -140,14 +149,14 @@ class _GsCacheAPI(object):
         if _USE_SSH_CONNECTION and self._is_in_restricted_subnet:
             return self._ssh_call(url)
         else:
-            logging.debug('Gs Cache call: %s', url)
+            logging.debug('Gs Cache call: %s', _truncate_long_message(url))
             # TODO(guocb): Re-use the TCP connection.
             try:
                 rsp = requests.get(url)
-            except requests.ConnectionError:
+            except requests.ConnectionError as err:
                 raise NoGsCacheServerError(
-                        'Cannot connect to Gs Cache at %s via HTTP.'
-                        % self._netloc)
+                        'Cannot connect to Gs Cache at %s via HTTP: %s'
+                        % (self._netloc, err))
             if not rsp.ok:
                 msg = 'HTTP request: GET %s\nHTTP Response: %d: %s' % (
                         rsp.url, rsp.status_code, rsp.content)
@@ -159,19 +168,29 @@ class _GsCacheAPI(object):
 
         @param bucket: The bucket of the file on GS.
         @param archive: The path of archive on GS (bucket part not included).
-        @param files: A path, or a path list of files to be extracted.
+        @param files: A list of files to be extracted.
 
         @return A dict of extracted files, in format of
                 {filename: content, ...}.
         @throws ResponseContentError if the response is not in JSON format.
         """
-        rsp_content = self._call('extract', bucket, archive, {'file': files})
+        rsp_contents = []
+        # The files to be extract may be too many which reuslts in too long URL
+        # and http server may responses with 414 error. So we split them into
+        # multiple requests if necessary.
+        for part_of_files in string_utils.join_longest_with_length_limit(
+                files, _MAX_URL_QUERY_LENGTH, separator='&file=',
+                do_join=False):
+            rsp_contents.append(self._call('extract', bucket, archive,
+                                           {'file': part_of_files}))
+        content_dict = {}
         try:
-            content_dict = json.loads(rsp_content)
+            for content in rsp_contents:
+                content_dict.update(json.loads(content))
         except ValueError as err:
             raise ResponseContentError(
                 'Got ValueError "%s" when decoding to JSON format. The '
-                'response content is: %s' % (err, rsp_content))
+                'response content is: %s' % (err, rsp_contents))
 
         return content_dict
 
@@ -253,14 +272,9 @@ class GsCacheClient(object):
         try:
             map_file_content = content_dict[map_file_name]
         except KeyError:
-            # content_dict may have too many keys which makes the exception
-            # message less readable. So truncate it to reasonable length.
-            content_dict_str = str(content_dict)
-            if len(content_dict_str) > _MESSAGE_LENGTH_MAX_CHARS:
-                content_dict_str = (
-                        '%s...' % content_dict_str[:_MESSAGE_LENGTH_MAX_CHARS])
-            raise ResponseContentError("File '%s' isn't in response: %s" %
-                                       (map_file_name, content_dict_str))
+            raise ResponseContentError(
+                    "File '%s' isn't in response: %s" %
+                    (map_file_name, _truncate_long_message(str(content_dict))))
         try:
             suite_to_control_files = json.loads(map_file_content)
         except ValueError as err:
