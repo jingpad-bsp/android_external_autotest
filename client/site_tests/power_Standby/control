@@ -36,8 +36,8 @@ max_milliwatts_standby = 500.0
 
 args_dict = utils.args_to_dict(args)
 
-sample_hours = float(args_dict.get('sample_hours'), SAMPLE_HOURS)
-test_hours = float(args_dict.get('test_hours'), TEST_HOURS)
+sample_hours = float(args_dict.get('sample_hours', SAMPLE_HOURS))
+test_hours = float(args_dict.get('test_hours', TEST_HOURS))
 pdash_note = args_dict.get('pdash_note', '')
 
 job.run_test('power_Standby', sample_hours=sample_hours, test_hours=test_hours,
