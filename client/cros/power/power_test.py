@@ -140,7 +140,9 @@ class power_Test(test.test):
         keyvals.update(self._psr.get_keyvals())
 
         self.keyvals.update(keyvals)
-        self.write_perf_keyval(self.keyvals)
+
+        core_keyvals = power_utils.get_core_keyvals(self.keyvals)
+        self.write_perf_keyval(core_keyvals)
 
     def _publish_dashboard(self):
         """Report results to chromeperf & power dashboard."""
