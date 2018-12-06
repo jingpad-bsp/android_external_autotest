@@ -194,7 +194,7 @@ class ServoHost(ssh_host.SSHHost):
                     None, self.servo_port,
                     ready_test_name=self.SERVO_READY_METHOD,
                     timeout_seconds=60,
-                    request_timeout_seconds=600)
+                    request_timeout_seconds=3600)
         else:
             remote = 'http://%s:%s' % (self.hostname, self.servo_port)
             return xmlrpclib.ServerProxy(remote)
