@@ -4,15 +4,10 @@
 
 """Server side test that controls charging the DUT with Servo v4."""
 
-import logging
-import time
-
-from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server import test
+from autotest_lib.server.cros.power import servo_v4_charge_utils
 
-# Wait time for Servo role change and PD negotiation.
-_SLEEP = 5
 # Max number of hours the DUT can charge for.
 _MAX_HOURS = 3
 
@@ -35,24 +30,9 @@ class power_BatteryChargeControl(test.test):
         @param percent_target_charge: percentage of the charge capacity target
                 charge. The target charge will be capped at the charge capacity.
         """
-        self.servo = host.servo
-        servo_type = self.servo.get_servo_version()
-        if 'servo_v4' in servo_type:
-            servo_v4_version = self.servo.get('servo_v4_version')
-            logging.info('Servo v4 version: %s', servo_v4_version)
-        else:
-            raise error.TestNAError('This test needs to be run with Servo v4. '
-                                    'Test skipped.')
-
-        self.servo.set('servo_v4_role', 'snk')
-        time.sleep(_SLEEP)
-        if host.is_ac_connected():
-            raise error.TestError('Test failed to set Servo v4 as power snk.')
-
-        self.servo.set('servo_v4_role', 'src')
-        time.sleep(_SLEEP)
-        if not host.is_ac_connected():
-            raise error.TestError('Test failed to set Servo v4 as power src.')
+        servo = host.servo
+        charge_manager = servo_v4_charge_utils.ServoV4ChargeManager(host, servo)
+        charge_manager.start_charging()
 
         time_limit = _MAX_HOURS * 60 * 60
         autotest_client = autotest.Autotest(host)
@@ -62,7 +42,4 @@ class power_BatteryChargeControl(test.test):
                                  percent_target_charge=percent_target_charge,
                                  use_design_charge_capacity=False)
 
-        self.servo.set('servo_v4_role', 'snk')
-        time.sleep(_SLEEP)
-        if host.is_ac_connected():
-            raise error.TestError('Test failed to set Servo v4 as power snk.')
+        charge_manager.restore_original_setting()
