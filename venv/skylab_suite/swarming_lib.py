@@ -71,11 +71,12 @@ SORTED_SKYLAB_HWTEST_PRIORITY = sorted(
 
 # TODO (xixuan): Use proto library or some future APIs instead of hardcoding.
 SWARMING_DUT_POOL_MAP = {
-        'cq': 'DUT_POOL_CQ',
-        'bvt': 'DUT_POOL_BVT',
-        'suites': 'DUT_POOL_SUITES',
-        'cts': 'DUT_POOL_CTS',
         'arc-presubmit': 'DUT_POOL_CTS_PERBUILD',
+        'bvt': 'DUT_POOL_BVT',
+        'cq': 'DUT_POOL_CQ',
+        'cts': 'DUT_POOL_CTS',
+        'quota-metered': 'DUT_POOL_QUOTA_METERED',
+        'suites': 'DUT_POOL_SUITES',
 }
 SWARMING_DUT_READY_STATUS = 'ready'
 
