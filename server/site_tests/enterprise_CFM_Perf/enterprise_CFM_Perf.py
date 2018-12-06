@@ -8,6 +8,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
+from autotest_lib.client.common_lib.cros import system_metrics_collector
 from autotest_lib.server.cros.cfm import cfm_base_test
 from autotest_lib.server.cros.cfm.utils import bond_http_api
 from autotest_lib.server.cros.cfm.utils import perf_metrics_collector
@@ -19,6 +20,29 @@ _TOTAL_TEST_DURATION_SECONDS = 15 * 60 # 15 minutes
 _DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com/'
                   'chromiumos-test-assets-public/crowd/')
 _VIDEO_NAME = 'crowd720_25frames.y4m'
+
+
+class ParticipantCountMetric(system_metrics_collector.Metric):
+    """
+    Metric for getting the current participant count in a call.
+    """
+    def __init__(self, cfm_facade):
+        """
+        Initializes with a cfm_facade.
+
+        @param cfm_facade object having a get_participant_count() method.
+        """
+        super(ParticipantCountMetric, self).__init__(
+                'participant_count',
+                'participants',
+                higher_is_better=True)
+        self.cfm_facade = cfm_facade
+
+    def collect_metric(self):
+        """
+        Collects one metric value.
+        """
+        self.values.append(self.cfm_facade.get_participant_count())
 
 
 class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
@@ -63,7 +87,12 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         system_facade = self._facade_factory.create_system_facade()
         self._perf_metrics_collector = (
             perf_metrics_collector.PerfMetricsCollector(
-                system_facade, self.cfm_facade, self.output_perf_value))
+                system_facade,
+                self.cfm_facade,
+                self.output_perf_value,
+                additional_system_metrics=[
+                    ParticipantCountMetric(self.cfm_facade),
+                ]))
 
     def setup(self):
         """

@@ -413,3 +413,36 @@ def _wait_for_condition(condition, timeout_seconds=10):
             return
     raise TimeoutError('Timeout after %s seconds waiting for condition %s'
                        % (timeout_seconds, condition))
+
+
+class StartPerfMetricsCollection(Action):
+    """
+    Starts collecting performance data.
+
+    Collection is performed in a background thread so this operation returns
+    immediately.
+
+    This action only collects the data, it does not upload it.
+    Use UploadPerfMetrics to upload the data to the perf dashboard.
+    """
+    def do_execute(self, context):
+        context.perf_metrics_collector.start()
+
+
+class StopPerfMetricsCollection(Action):
+    """
+    Stops collecting performance data.
+
+    This action only stops collecting the data, it does not upload it.
+    Use UploadPerfMetrics to upload the data to the perf dashboard.
+    """
+    def do_execute(self, context):
+        context.perf_metrics_collector.stop()
+
+
+class UploadPerfMetrics(Action):
+    """
+    Uploads the collected perf metrics to the perf dashboard.
+    """
+    def do_execute(self, context):
+        context.perf_metrics_collector.upload_metrics()
