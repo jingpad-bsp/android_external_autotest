@@ -7,7 +7,6 @@ import json
 import logging
 import numpy
 import os
-import re
 import time
 
 from autotest_lib.client.bin import utils
@@ -506,11 +505,7 @@ class power_LoadTest(arc.ArcTest):
         minutes_battery_life_tested = keyvals['minutes_battery_life_tested']
 
         # Avoid polluting the keyvals with non-core domains.
-        # - Minor checkpoints. (start with underscore)
-        # - Individual cpu / gpu frequency buckets. (regex '[cg]pu_\d{3,}')
-        matcher = re.compile(r'_.*|.*_[cg]pu_\d{3,}_.*')
-        core_keyvals = {k: v for k, v in keyvals.iteritems()
-                        if not matcher.match(k)}
+        core_keyvals = power_utils.get_core_keyvals(keyvals)
         if not self._gaia_login:
           core_keyvals = {'INVALID_%s' % str(k): v for k, v in
                           core_keyvals.iteritems()}
