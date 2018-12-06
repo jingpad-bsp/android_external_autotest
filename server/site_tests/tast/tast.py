@@ -10,6 +10,7 @@ import dateutil.parser
 
 from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import test
 from autotest_lib.server import utils
 
@@ -279,9 +280,13 @@ class tast(test.test):
             """
         timeout_sec = self._get_run_tests_timeout_sec()
         logging.info('Running tests with timeout of %d sec', timeout_sec)
+        devservers, _ = dev_server.ImageServer.get_available_devservers(
+            self._host.hostname)
+        logging.info('Using devservers: %s', ', '.join(devservers))
         args = [
             '-resultsdir=' + self.resultsdir,
             '-timeout=' + str(timeout_sec),
+            '-devservers=' + ','.join(devservers),
         ]
         self._run_tast('run', args, timeout_sec + tast._RUN_EXIT_SEC,
                        log_stdout=True)
