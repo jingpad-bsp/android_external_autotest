@@ -404,8 +404,6 @@ class firmware_Cr50DeviceState(Cr50Test):
             # ccd, run through the states again to make sure there are no issues
             # come up when ccd is enabled.
             if not ccd_was_enabled and self.ccd_enabled:
-                # Reboot the EC to reset the device
-                self.ec.reboot()
                 self.run_through_power_states()
         else:
             logging.info('Current setup only supports test with ccd %sabled.',
