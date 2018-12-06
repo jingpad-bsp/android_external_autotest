@@ -102,6 +102,7 @@ def parse_args():
     add_common_args(run_parser)
     run_parser.add_argument('-resultsdir')
     run_parser.add_argument('-timeout')
+    run_parser.add_argument('-devservers')
 
     return parser.parse_args()
 
