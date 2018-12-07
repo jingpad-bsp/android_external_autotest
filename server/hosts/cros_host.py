@@ -1974,8 +1974,3 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     def get_labels(self):
         """Return the detected labels on the host."""
         return self.labels.get_labels(self)
-
-
-    def update_labels(self):
-        """Update the labels on the host."""
-        self.labels.update_labels(self)
