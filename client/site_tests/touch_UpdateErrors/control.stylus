@@ -14,7 +14,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "touch"
 TEST_TYPE = "client"
-DEPENDENCIES = "stylus"
+DEPENDENCIES = "stylus, phase:PVT"
 
 DOC = """
 Search the touch update log entries for errors or failures.
