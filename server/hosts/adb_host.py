@@ -1286,11 +1286,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return self.labels.get_labels(self)
 
 
-    def update_labels(self):
-        """Update the labels for this testbed."""
-        self.labels.update_labels(self)
-
-
     def _sync_time(self):
         """Approximate synchronization of time between host and ADB device.
 
