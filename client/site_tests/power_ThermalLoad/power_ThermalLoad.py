@@ -13,13 +13,13 @@ class power_ThermalLoad(power_test.power_Test):
     """
     version = 1
 
-    URL = 'https://arodic.github.io/p/jellyfish/'
+    JELLYFISH_URL = 'https://arodic.github.io/p/jellyfish/'
     HOUR = 60 * 60
 
-    def run_once(self, url=URL, duration=2.5 * HOUR):
+    def run_once(self, test_url=JELLYFISH_URL, duration=2.5 * HOUR):
         """run_once method.
 
-        @param url: url of webgl heavy page.
+        @param test_url: url of webgl heavy page.
         @param duration: time in seconds to display url and measure power.
         """
         with chrome.Chrome(init_network_controller=True) as self.cr:
@@ -34,17 +34,18 @@ class power_ThermalLoad(power_test.power_Test):
 
             self.backlight.set_percent(100)
 
-            logging.info('Navigating to url: %s', url)
-            tab.Navigate(url)
+            logging.info('Navigating to url: %s', test_url)
+            tab.Navigate(test_url)
             tab.WaitForDocumentReadyStateToBeComplete()
 
-            # Change param to 100 fast moving jellyfish.
-            tab.EvaluateJavaScript('$("#jCount").val(100);')
-            tab.EvaluateJavaScript('$("#jSpeed").val(0.1);')
+            if test_url == self.JELLYFISH_URL:
+                # Change param to 100 fast moving jellyfish.
+                tab.EvaluateJavaScript('$("#jCount").val(100);')
+                tab.EvaluateJavaScript('$("#jSpeed").val(0.1);')
 
-            # Jellyfish is added one by one. Wait until we actually have 100.
-            while tab.EvaluateJavaScript('jellyfish.count') < 100:
-                time.sleep(0.1)
+                # Jellyfish is added one by one. Wait until we have 100.
+                while tab.EvaluateJavaScript('jellyfish.count') < 100:
+                    time.sleep(0.1)
 
             self.start_measurements()
             time.sleep(duration)
