@@ -79,6 +79,12 @@ def make_parser():
     parser.add_argument(
         "--minimum_duts", type=int, default=1, action="store",
         help="A minimum required numbers of DUTs to run this suite.")
+    parser.add_argument(
+        '--quota_account', default=None, action='store',
+        help=("Quota account to be used for this suite's jobs, if applicable. "
+              "Only relevant for jobs running in a quota scheduler pool "
+              "(e.g. quota-metered)."))
+
     # TODO(ayatane): Make sure no callers pass --use_fallback before removing.
     parser.add_argument(
             "--use_fallback", action="store_true", help='Deprecated')
@@ -161,4 +167,5 @@ def parse_suite_spec(options):
             job_keyvals=options.job_keyvals,
             minimum_duts=options.minimum_duts,
             timeout_mins=options.timeout_mins,
+            quota_account=options.quota_account,
     )
