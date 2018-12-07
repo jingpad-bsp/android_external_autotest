@@ -119,10 +119,24 @@ class firmware_Cr50ECReset(Cr50Test):
             raise error.TestFail('Could not release the EC from reset')
         self.guarantee_ec_is_up()
 
+    def check_ec_hibernate(self):
+        """Verify EC hibernate"""
+        try:
+            self.ec_hibernate()
+        except error.TestError, e:
+            if 'Could not put the EC into hibernate' in str(e):
+                raise error.TestNAError("EC hibernate doesn't work.")
+        finally:
+            self.guarantee_ec_is_up()
+
 
     def run_once(self):
         """Make sure 'cr50 ecrst' works as intended."""
         failed_wake = []
+        # The test needs to be able to hibernate the EC. Make sure it works as
+        # intended before running the test.
+        self.check_ec_hibernate()
+
         # Open cr50 so the test has access to ecrst
         self.fast_open(True)
 
