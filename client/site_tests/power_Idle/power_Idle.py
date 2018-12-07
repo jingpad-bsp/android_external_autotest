@@ -29,8 +29,8 @@ class power_Idle(power_test.power_Test):
     """
     version = 1
 
-    def initialize(self, pdash_note=''):
-        super(power_Idle, self).initialize(seconds_period=10.,
+    def initialize(self, pdash_note='', seconds_period=10.):
+        super(power_Idle, self).initialize(seconds_period=seconds_period,
                                            pdash_note=pdash_note)
 
     def run_once(self, warmup_secs=20, idle_secs=120):
