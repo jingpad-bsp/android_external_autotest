@@ -82,6 +82,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     CAP_IS_ACCESSIBLE = 0
     CAP_SETTING = 1
     CAP_REQ = 2
+    GET_CAP_TRIES = 3
 
 
     def __init__(self, servo):
@@ -216,6 +217,29 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return self.get_cap_dict()[cap]
 
 
+    def _get_ccd_cap_string(self):
+        """Return a string with the current capability settings.
+
+        The ccd information is pretty long. Servo micro sometimes drops
+        characters. Run the command a couple of times. Return the capapability
+        string that matches a previous run.
+
+        Raises:
+            TestError if the test could not retrieve consistent capability
+            information.
+        """
+        past_results = []
+        for i in range(self.GET_CAP_TRIES):
+            rv = self.send_safe_command_get_output('ccd',
+                    ["Capabilities:\s+[\da-f]+\s(.*)TPM:"])[0][1]
+            logging.debug(rv)
+            if rv in past_results:
+                return rv
+            past_results.append(rv)
+        logging.debug(past_results)
+        raise error.TestError('Could not get consistent capability information')
+
+
     def get_cap_dict(self, info=None):
         """Get the current ccd capability settings.
 
@@ -233,14 +257,14 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             settings as the value [is_accessible, setting, requirement]
         """
         caps = {}
-        rv = self.send_command_get_output('ccd',
-                ["Capabilities:\s+[\da-f]+\s(.*)Use 'ccd help'"])[0][1]
+        cap_info_str = self._get_ccd_cap_string()
         # There are two capability formats. Extract the setting and the
         # requirement from both formats
         #  UartGscRxECTx   Y 3=IfOpened
         #  or
         #  UartGscRxECTx   Y 0=Default (Always)
-        cap_settings = re.findall('(\S+) +(Y|-).*=(\w+)( \((\S+)\))?', rv)
+        cap_settings = re.findall('(\S+) +(Y|-).*=(\w+)( \((\S+)\))?',
+                                  cap_info_str)
         for cap, accessible, setting, _, required in cap_settings:
             cap_info = [accessible == 'Y', setting, required]
             # If there's only 1 value after =, then the setting is the
@@ -251,7 +275,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
                 caps[cap] = cap_info[info]
             else:
                 caps[cap] = cap_info
-        logging.debug(caps)
+        logging.debug(pprint.pformat(caps))
         return caps
 
 
@@ -281,6 +305,18 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return super(ChromeCr50, self).send_command_get_output(command,
                                                                regexp_list)
 
+
+    def send_safe_command_get_output(self, command, regexp_list):
+        """Restrict the console channels while sending console commands"""
+        self.send_command('chan save')
+        self.send_command('chan 0')
+        try:
+            rv = self.send_command_get_output(command, regexp_list)
+        finally:
+            self.send_command('chan restore')
+        return rv
+
+
     def send_command_retry_get_output(self, command, regexp_list, tries=3):
         """Retry sending a command if we can't find the output.
 
@@ -303,7 +339,6 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         # output
         logging.info('Could not get %r output after %d tries', command, tries)
         raise
-
 
 
     def get_deep_sleep_count(self):
