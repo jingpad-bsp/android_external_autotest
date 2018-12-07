@@ -20,7 +20,7 @@ from skylab_suite import swarming_lib
 def make_parser():
     """Make ArgumentParser instance for run_suite_skylab.py."""
     parser = argparse.ArgumentParser(prog='run_suite_skylab',
-                                     description=__doc__)
+                                     description="Run a test suite in Skylab.")
 
     # Suite-related parameters.
     parser.add_argument('--board', required=True)
@@ -30,10 +30,13 @@ def make_parser():
                   'builds, model and board are synonymous, but board is more '
                   'accurate in some cases. Only pass this option if your build '
                   'is a unified build.'))
+    pool_choices = sorted(swarming_lib.SWARMING_DUT_POOL_MAP.keys())
+    pool_choices.append('')
     parser.add_argument(
-        '--pool', default='suites',
-        help=('Specify the pool of DUTs to run this suite. If you want no '
-              'pool, you can specify it with --pool="". USE WITH CARE.'))
+        '--pool', default='suites', choices=pool_choices,
+        help=('Specify the pool of DUTs to run this suite. Default: suites. '
+              'If you want no pool, you can specify it with --pool="". '
+              'USE WITH CARE.'))
     parser.add_argument(
         '--suite_name', required=True,
         help='Specify the suite to run.')
