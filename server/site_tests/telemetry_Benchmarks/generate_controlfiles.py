@@ -46,7 +46,6 @@ PERF_DAILY_RUN_TESTS = (
 )
 
 PERF_WEEKLY_RUN_TESTS = (
-    'system_health.memory_desktop',
 )
 
 ALL_TESTS = (PERF_PER_BUILD_TESTS +
