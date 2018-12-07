@@ -19,13 +19,13 @@ class PerfMetricsCollector(object):
         @param writer_function function called to collected metrics.
         @param additional_system_metrics Additional metrics to collect.
         """
-        metrics = system_metrics_collector.create_default_metric_set(
+        metric_set = system_metrics_collector.create_default_metric_set(
             system_facade)
-        for system_metric in additional_system_metrics:
-            metrics.append(system_facade)
+        for metric in additional_system_metrics:
+            metric_set.append(metric)
         self._system_metrics_collector = (
             system_metrics_collector.SystemMetricsCollector(system_facade,
-                                                            metrics))
+                                                            metric_set))
         # Media metrics
         data_point_collector = media_metrics_collector.DataPointCollector(
             cfm_facade)
