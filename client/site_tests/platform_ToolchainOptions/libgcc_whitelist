@@ -18,6 +18,7 @@
 /usr/bin/crosvm
 /usr/bin/memd
 /usr/bin/9s
+/usr/bin/crostini_client
 /usr/lib*/libqcow_utils.so
 /usr/lib64/libcrosvm_plugin.so
 # Remove these files after mesa is fixed to not need libgcc_s.
