@@ -98,7 +98,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     KNOWN_TEST_PREFIX = 'network_WiFi_'
     POLLING_INTERVAL_SECONDS = 0.5
-    STARTUP_TIMEOUT_SECONDS = 10
+    STARTUP_TIMEOUT_SECONDS = 30
     SUFFIX_LETTERS = string.ascii_lowercase + string.digits
     SUBNET_PREFIX_OCTETS = (192, 168)
 

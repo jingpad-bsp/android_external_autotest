@@ -42,6 +42,7 @@ SuiteSpec = collections.namedtuple(
                 'job_keyvals',
                 'minimum_duts',
                 'timeout_mins',
+                'quota_account',
         ])
 
 SuiteHandlerSpec = collections.namedtuple(
@@ -80,6 +81,7 @@ TestSpec = collections.namedtuple(
                 'grace_period_secs',
                 'execution_timeout_secs',
                 'io_timeout_secs',
+                'quota_account',
         ])
 
 
@@ -289,6 +291,7 @@ class Suite(object):
         self.job_keyvals = spec.job_keyvals
         self.minimum_duts = spec.minimum_duts
         self.timeout_mins = spec.timeout_mins
+        self.quota_account = spec.quota_account
 
     @property
     def ds(self):
@@ -362,6 +365,7 @@ class Suite(object):
                 grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                 execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                 io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                quota_account=self.quota_account,
         )
 
     def _get_test_specs(self, tests, available_bots, keyvals):

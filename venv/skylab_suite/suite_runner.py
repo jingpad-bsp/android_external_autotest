@@ -24,6 +24,8 @@ SKYLAB_SUITE_USER = 'skylab_suite_runner'
 SKYLAB_LUCI_TAG = 'luci_project:chromeos'
 SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/skylab_swarming_worker'
 
+QUOTA_ACCOUNT_TAG_FORMAT = 'qs_account:%s'
+
 SUITE_WAIT_SLEEP_INTERVAL_SECONDS = 30
 
 # See #5 in crbug.com/873886 for more details.
@@ -209,6 +211,9 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id,
     tags = [SKYLAB_LUCI_TAG, 'build:%s' % test_spec.build]
     if suite_id is not None:
         tags += ['parent_task_id:%s' % suite_id]
+
+    if test_spec.quota_account is not None:
+        tags += [QUOTA_ACCOUNT_TAG_FORMAT % test_spec.quota_account]
 
     provision_expiration_secs = _get_provision_expiration_secs(
             test_spec, is_provision)

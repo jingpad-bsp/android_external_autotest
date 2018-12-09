@@ -62,6 +62,7 @@ suite:cellular_mbim_compliance
 suite:cellular_modem_repair
 suite:cellular_ota
 suite:cellular_ota_att
+suite:cellular_ota_sprint
 suite:cellular_ota_tmobile
 suite:cellular_ota_verizon
 suite:cellular_pseudomodem

@@ -22,7 +22,10 @@ cfm_test = CfmTest(
     scenario=Scenario(
         RebootDut(restart_chrome_for_cfm=True),
         WaitForMeetingsLandingPage(),
+        StartPerfMetricsCollection(),
         Sleep(15 * 60),
+        StopPerfMetricsCollection(),
+        UploadPerfMetrics(),
     ),
 )
 

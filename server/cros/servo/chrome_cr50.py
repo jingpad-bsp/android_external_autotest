@@ -40,6 +40,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     PP_LONG = 300
     CCD_PASSWORD_RATE_LIMIT = 3
     IDLE_COUNT = 'count: (\d+)\s'
+    SHORT_WAIT = 3
     # The version has four groups: the partition, the header version, debug
     # descriptor and then version string.
     # There are two partitions A and B. The active partition is marked with a
@@ -81,6 +82,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     CAP_IS_ACCESSIBLE = 0
     CAP_SETTING = 1
     CAP_REQ = 2
+    GET_CAP_TRIES = 3
 
 
     def __init__(self, servo):
@@ -215,6 +217,29 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return self.get_cap_dict()[cap]
 
 
+    def _get_ccd_cap_string(self):
+        """Return a string with the current capability settings.
+
+        The ccd information is pretty long. Servo micro sometimes drops
+        characters. Run the command a couple of times. Return the capapability
+        string that matches a previous run.
+
+        Raises:
+            TestError if the test could not retrieve consistent capability
+            information.
+        """
+        past_results = []
+        for i in range(self.GET_CAP_TRIES):
+            rv = self.send_safe_command_get_output('ccd',
+                    ["Capabilities:\s+[\da-f]+\s(.*)TPM:"])[0][1]
+            logging.debug(rv)
+            if rv in past_results:
+                return rv
+            past_results.append(rv)
+        logging.debug(past_results)
+        raise error.TestError('Could not get consistent capability information')
+
+
     def get_cap_dict(self, info=None):
         """Get the current ccd capability settings.
 
@@ -232,14 +257,14 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             settings as the value [is_accessible, setting, requirement]
         """
         caps = {}
-        rv = self.send_command_get_output('ccd',
-                ["Capabilities:\s+[\da-f]+\s(.*)Use 'ccd help'"])[0][1]
+        cap_info_str = self._get_ccd_cap_string()
         # There are two capability formats. Extract the setting and the
         # requirement from both formats
         #  UartGscRxECTx   Y 3=IfOpened
         #  or
         #  UartGscRxECTx   Y 0=Default (Always)
-        cap_settings = re.findall('(\S+) +(Y|-).*=(\w+)( \((\S+)\))?', rv)
+        cap_settings = re.findall('(\S+) +(Y|-).*=(\w+)( \((\S+)\))?',
+                                  cap_info_str)
         for cap, accessible, setting, _, required in cap_settings:
             cap_info = [accessible == 'Y', setting, required]
             # If there's only 1 value after =, then the setting is the
@@ -250,7 +275,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
                 caps[cap] = cap_info[info]
             else:
                 caps[cap] = cap_info
-        logging.debug(caps)
+        logging.debug(pprint.pformat(caps))
         return caps
 
 
@@ -280,6 +305,18 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return super(ChromeCr50, self).send_command_get_output(command,
                                                                regexp_list)
 
+
+    def send_safe_command_get_output(self, command, regexp_list):
+        """Restrict the console channels while sending console commands"""
+        self.send_command('chan save')
+        self.send_command('chan 0')
+        try:
+            rv = self.send_command_get_output(command, regexp_list)
+        finally:
+            self.send_command('chan restore')
+        return rv
+
+
     def send_command_retry_get_output(self, command, regexp_list, tries=3):
         """Retry sending a command if we can't find the output.
 
@@ -302,7 +339,6 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         # output
         logging.info('Could not get %r output after %d tries', command, tries)
         raise
-
 
 
     def get_deep_sleep_count(self):
@@ -517,38 +553,52 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
 
     @servo_v4_command
-    def wait_for_ccd_state(self, state, timeout, raise_error):
+    def wait_for_stable_ccd_state(self, state, timeout, raise_error):
         """Wait up to timeout seconds for CCD to be 'on' or 'off'
+
+        Verify ccd is off or on and remains in that state for 3 seconds.
+
         Args:
             state: a string either 'on' or 'off'.
             timeout: time in seconds to wait
             raise_error: Raise TestFail if the value is state is not reached.
 
-        Raises
+        Raises:
             TestFail if ccd never reaches the specified state
         """
         wait_for_enable = state == 'on'
-        logging.info("Wait until ccd is '%s'", state)
-        value = utils.wait_for_value(self.ccd_is_enabled, wait_for_enable,
-                                     timeout_sec=timeout)
-        if value != wait_for_enable:
-            error_msg = "timed out before detecting ccd '%s'" % state
+        logging.info("Wait until ccd is %s", 'on' if wait_for_enable else 'off')
+        enabled = utils.wait_for_value(self.ccd_is_enabled, wait_for_enable,
+                                       timeout_sec=timeout)
+        if enabled != wait_for_enable:
+            error_msg = ("timed out before detecting ccd '%s'" %
+                         ('on' if wait_for_enable else 'off'))
             if raise_error:
                 raise error.TestFail(error_msg)
             logging.warning(error_msg)
-        logging.info("ccd is '%s'", state)
+        else:
+            # Make sure the state doesn't change.
+            enabled = utils.wait_for_value(self.ccd_is_enabled, not enabled,
+                                           timeout_sec=self.SHORT_WAIT)
+            if enabled != wait_for_enable:
+                error_msg = ("CCD switched %r after briefly being %r" %
+                             ('on' if enabled else 'off', state))
+                if raise_error:
+                    raise error.TestFail(error_msg)
+                logging.info(error_msg)
+        logging.info("ccd is %r", 'on' if enabled else 'off')
 
 
     @servo_v4_command
     def wait_for_ccd_disable(self, timeout=60, raise_error=True):
         """Wait for the cr50 console to stop working"""
-        self.wait_for_ccd_state('off', timeout, raise_error)
+        self.wait_for_stable_ccd_state('off', timeout, raise_error)
 
 
     @servo_v4_command
     def wait_for_ccd_enable(self, timeout=60, raise_error=False):
         """Wait for the cr50 console to start working"""
-        self.wait_for_ccd_state('on', timeout, raise_error)
+        self.wait_for_stable_ccd_state('on', timeout, raise_error)
 
 
     @servo_v4_command
@@ -770,7 +820,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             logging.info(e)
             rv = False
         self._servo.set_nocheck('servo_v4_dts_mode', dts_start)
-        self.wait_for_ccd_state(ccd_start, 60, True)
+        self.wait_for_stable_ccd_state(ccd_start, 60, True)
         logging.info('Test setup does%s support servo DTS mode',
                 '' if rv else 'n\'t')
         return rv

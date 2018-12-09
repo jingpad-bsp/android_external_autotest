@@ -33,6 +33,7 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
 
     def cleanup(self):
         super(firmware_RecoveryCacheBootKeys, self).cleanup()
+        self.switcher.simple_reboot()
 
     def boot_to_recovery(self, rebuild_mrc_cache=False):
         """Boot device into recovery mode."""
@@ -120,18 +121,29 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
         logging.info('Ensure we\'ve done memory training.')
         self.boot_to_recovery()
 
-        logging.info('Checking 3-Key recovery boot.')
+        # With EFS, when the EC is in RO and we do a recovery boot, it
+        # causes the EC to do a soft reboot, which will in turn cause
+        # a PMIC reset (double reboot) on SKL/KBL power architectures.
+        # This causes us to lose the request to do MRC training for
+        # this test.  The solution is to make sure that the EC is in
+        # RW before doing a recovery boot to ensure that the double
+        # reboot does not occur and information/requests are not lost.
+        self.switcher.simple_reboot('cold')
+
+        logging.info('Checking recovery boot.')
         self.boot_to_recovery()
 
         if not self.check_cache_used():
-            raise error.TestFail('[3-Key] - Recovery Cache was not used.')
+            raise error.TestFail('Recovery Cache was not used.')
 
-        logging.info('Checking 4-key recovery rebuilt cache boot.')
+        self.switcher.simple_reboot('cold')
+
+        logging.info('Checking recovery boot with forced MRC cache training.')
         self.boot_to_recovery(rebuild_mrc_cache=True)
         self.switcher.wait_for_client()
 
         if not self.check_cache_rebuilt():
-            raise error.TestFail('[4-key] - Recovery Cache was not rebuilt.')
+            raise error.TestFail('Recovery Cache was not rebuilt.')
 
         logging.info('Reboot out of Recovery')
         self.switcher.simple_reboot()

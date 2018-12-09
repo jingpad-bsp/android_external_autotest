@@ -267,6 +267,23 @@ def charge_control_by_ectool(is_charge):
     return False
 
 
+def get_core_keyvals(keyvals):
+    """Get important keyvals to report.
+
+    Remove the following types of non-important keyvals.
+    - Minor checkpoints. (start with underscore)
+    - Individual cpu / gpu frequency buckets. (regex '[cg]pu_\d{3,}')
+
+    Args:
+      keyvals: keyvals to remove non-important ones.
+
+    Returns:
+      Dictionary, keyvals with non-important ones removed.
+    """
+    matcher = re.compile(r'_.*|.*_[cg]pu_\d{3,}_.*')
+    return {k: v for k, v in keyvals.iteritems() if not matcher.match(k)}
+
+
 class BacklightException(Exception):
     """Class for Backlight exceptions."""
 

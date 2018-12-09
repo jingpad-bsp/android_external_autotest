@@ -194,7 +194,8 @@ class BaseDashboard(object):
         encoded = urllib.urlencode(data_obj)
         req = urllib2.Request(uploadurl, encoded)
 
-        @retry.retry(urllib2.URLError, blacklist=[urllib2.HTTPError])
+        @retry.retry(urllib2.URLError, blacklist=[urllib2.HTTPError],
+                     timeout_min=5.0, delay_sec=1, backoff=2)
         def _do_upload():
             urllib2.urlopen(req)
 

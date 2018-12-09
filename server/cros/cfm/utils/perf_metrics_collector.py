@@ -5,47 +5,27 @@ from autotest_lib.client.common_lib.cros.cfm.metrics import (
         media_metrics_collector)
 
 
-class ParticipantCountMetric(system_metrics_collector.Metric):
-    """
-    Metric for getting the current participant count in a call.
-    """
-    def __init__(self, cfm_facade):
-        """
-        Initializes with a cfm_facade.
-
-        @param cfm_facade object having a get_participant_count() method.
-        """
-        super(ParticipantCountMetric, self).__init__(
-                'participant_count',
-                'participants',
-                higher_is_better=True)
-        self.cfm_facade = cfm_facade
-
-    def collect_metric(self):
-        """
-        Collects one metric value.
-        """
-        self.values.append(self.cfm_facade.get_participant_count())
-
-
 class PerfMetricsCollector(object):
     """
     Metrics collector that runs in seprate thread than the caller.
     """
-    def __init__(self, system_facade, cfm_facade, writer_function):
+    def __init__(self, system_facade, cfm_facade, writer_function,
+                 additional_system_metrics=[]):
         """
         Constructor.
 
         @param system_facade facade object to access system utils.
         @param cfm_facade facade object to access cfm utils.
         @param writer_function function called to collected metrics.
+        @param additional_system_metrics Additional metrics to collect.
         """
-        metrics = system_metrics_collector.create_default_metric_set(
+        metric_set = system_metrics_collector.create_default_metric_set(
             system_facade)
-        metrics.append(ParticipantCountMetric(cfm_facade))
+        for metric in additional_system_metrics:
+            metric_set.append(metric)
         self._system_metrics_collector = (
             system_metrics_collector.SystemMetricsCollector(system_facade,
-                                                            metrics))
+                                                            metric_set))
         # Media metrics
         data_point_collector = media_metrics_collector.DataPointCollector(
             cfm_facade)
