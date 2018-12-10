@@ -32,7 +32,7 @@ class CFMFacadeNative(object):
     _USER_ID = 'cr0s-cfm-la6-aut0t3st-us3r@croste.tv'
     _PWD = 'test0000'
     _EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
-    _ENROLLMENT_DELAY = 15
+    _ENROLLMENT_DELAY = 45
     _DEFAULT_TIMEOUT = 30
 
     # Log file locations
@@ -52,6 +52,7 @@ class CFMFacadeNative(object):
 
     def enroll_device(self):
         """Enroll device into CFM."""
+        logging.info('Enrolling device...')
         extra_browser_args = ["--force-devtools-available"]
         self._resource.start_custom_chrome({
             "auto_login": False,
@@ -60,8 +61,10 @@ class CFMFacadeNative(object):
         enrollment.RemoraEnrollment(self._resource._browser, self._USER_ID,
                 self._PWD)
         # Timeout to allow for the device to stablize and go back to the
-        # login screen before proceeding.
+        # OOB screen before proceeding. The device may restart the app a couple
+        # of times before it reaches the OOB screen.
         time.sleep(self._ENROLLMENT_DELAY)
+        logging.info('Enrollment completed.')
 
 
     def restart_chrome_for_cfm(self, extra_chrome_args=None):
@@ -70,6 +73,7 @@ class CFMFacadeNative(object):
         @param extra_chrome_args a list with extra command line arguments for
                 Chrome.
         """
+        logging.info('Restarting chrome for CfM...')
         custom_chrome_setup = {"clear_enterprise_policy": False,
                                "dont_override_profile": True,
                                "disable_gaia_services": False,
@@ -80,6 +84,7 @@ class CFMFacadeNative(object):
         if extra_chrome_args:
             custom_chrome_setup["extra_browser_args"].extend(extra_chrome_args)
         self._resource.start_custom_chrome(custom_chrome_setup)
+        logging.info('Chrome process restarted in CfM mode.')
 
 
     def check_hangout_extension_context(self):
@@ -87,6 +92,7 @@ class CFMFacadeNative(object):
 
         @raises error.TestFail if the URL checks fails.
         """
+        logging.info('Verifying extension contexts...')
         ext_contexts = kiosk_utils.wait_for_kiosk_ext(
                 self._resource._browser, self._EXT_ID)
         ext_urls = [context.EvaluateJavaScript('location.href;')
@@ -102,6 +108,7 @@ class CFMFacadeNative(object):
                 raise error.TestFail(
                     'Unexpected extension context urls, expected one of %s, '
                     'got %s' % (expected_urls, url))
+        logging.info('Hangouts extension contexts verified.')
 
 
     def take_screenshot(self, screenshot_name):
@@ -203,6 +210,9 @@ class CFMFacadeNative(object):
 
     def skip_oobe_after_enrollment(self):
         """Skips oobe and goes to the app landing page after enrollment."""
+        # Due to a variying amount of app restarts before we reach the OOB page
+        # we need to restart Chrome in order to make sure we have the devtools
+        # handle available and up-to-date.
         self.restart_chrome_for_cfm()
         self.check_hangout_extension_context()
         self.wait_for_hangouts_telemetry_commands()
@@ -234,6 +244,7 @@ class CFMFacadeNative(object):
     #      tests to use the new wait_for_hangouts_telemetry_commands api.
     def wait_for_telemetry_commands(self):
         """Wait for telemetry commands."""
+        logging.info('Wait for Hangouts telemetry commands')
         self.wait_for_hangouts_telemetry_commands()
 
 
@@ -266,11 +277,13 @@ class CFMFacadeNative(object):
     # UI commands/functions
     def wait_for_oobe_start_page(self):
         """Wait for oobe start screen to launch."""
+        logging.info('Waiting for OOBE screen')
         self._cfmApi.wait_for_oobe_start_page()
 
 
     def skip_oobe_screen(self):
         """Skip Chromebox for Meetings oobe screen."""
+        logging.info('Skipping OOBE screen')
         self._cfmApi.skip_oobe_screen()
 
 
