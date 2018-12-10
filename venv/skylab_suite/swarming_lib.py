@@ -122,6 +122,11 @@ def _get_client():
             'chromiumos/chromite/third_party/swarming.client/swarming.py')
 
 
+def to_swarming_pool_label(pool):
+    """Transfer passed-in suite pool label to swarming-recognized pool label."""
+    return SWARMING_DUT_POOL_MAP.get(pool, pool)
+
+
 def get_basic_swarming_cmd(command):
     return [_get_client(), command,
             '--auth-service-account-json', SERVICE_ACCOUNT,
