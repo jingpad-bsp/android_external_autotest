@@ -30,10 +30,9 @@ def make_parser():
                   'builds, model and board are synonymous, but board is more '
                   'accurate in some cases. Only pass this option if your build '
                   'is a unified build.'))
-    pool_choices = sorted(swarming_lib.SWARMING_DUT_POOL_MAP.keys())
-    pool_choices.append('')
+    # Allow customized pool label temporarily for crbug.com/913623.
     parser.add_argument(
-        '--pool', default='suites', choices=pool_choices,
+        '--pool', default='suites',
         help=('Specify the pool of DUTs to run this suite. Default: suites. '
               'If you want no pool, you can specify it with --pool="". '
               'USE WITH CARE.'))
