@@ -45,7 +45,7 @@ def run(machine):
     default_actions = str("reboot,plug,unplug,"
                           "login,plug,unplug,"
                           "reboot,plug,login,unplug,plug,"
-                          "reboot, unplug,login,plug"
+                          "reboot, unplug,login,plug,"
                           "suspend,resume,"
                           "unplug,suspend,plug,resume,"
                           "suspend,unplug,resume,plug")
