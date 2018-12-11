@@ -387,6 +387,19 @@ class ServodTelemetryLogger(PowerTelemetryLogger):
 
         return loggers
 
+    def end_measurement(self, client_test_dir):
+      """In addition to the common end_measurement flow dump summaries.
+
+      @param client_test_dir: directory of the client side test.
+      """
+      # Run the shared end_measurement logic first.
+      super(ServodTelemetryLogger, self).end_measurement(client_test_dir)
+      # At this point the PowerMeasurement unit has been processed. Dump its
+      # formatted summaries into the results directory.
+      power_summaries_dir = os.path.join(self._resultsdir, 'power_summaries')
+      if not os.path.exists(power_summaries_dir):
+        os.makedirs(power_summaries_dir)
+      self._pm.SaveSummary(outdir=power_summaries_dir)
 
 class PowerlogTelemetryLogger(PowerTelemetryLogger):
     """This logger class measures power with Sweetberry via powerlog tool.
