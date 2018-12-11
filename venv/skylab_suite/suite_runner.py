@@ -271,7 +271,7 @@ def _schedule_test(test_spec, suite_id=None,
         test_spec.test.name = 'Echo ' + test_spec.test.name
 
     dimensions = {'pool': swarming_lib.SKYLAB_DRONE_POOL,
-                  'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(
+                  'label-pool': swarming_lib.to_swarming_pool_label(
                           test_spec.pool),
                   'label-board': test_spec.board,
                   'dut_state': swarming_lib.SWARMING_DUT_READY_STATUS}

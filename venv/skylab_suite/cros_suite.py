@@ -406,7 +406,7 @@ class Suite(object):
         """Get available bots for suites."""
         bots = swarming_lib.query_bots_list({
                 'pool': swarming_lib.SKYLAB_DRONE_POOL,
-                'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(self.pool),
+                'label-pool': swarming_lib.to_swarming_pool_label(self.pool),
                 'label-board': self.board})
         return [bot for bot in bots if swarming_lib.bot_available(bot)]
 
