@@ -934,11 +934,15 @@ class ArcTest(test.test):
             all local connections, e.g. uiautomator.
         """
         logging.info('Blocking outbound connection')
+        # ipv6
+        _android_shell('ip6tables -I OUTPUT -j REJECT')
+        _android_shell('ip6tables -I OUTPUT -d ip6-localhost -j ACCEPT')
+        # ipv4
         _android_shell('iptables -I OUTPUT -j REJECT')
         _android_shell('iptables -I OUTPUT -p tcp -s 100.115.92.2 '
                        '--sport 5555 '
                        '-j ACCEPT')
-        _android_shell('iptables -I OUTPUT -p tcp -d localhost -j ACCEPT')
+        _android_shell('iptables -I OUTPUT -d localhost -j ACCEPT')
 
     def unblock_outbound(self):
         """ Unblocks the connection from the container to outer network.
@@ -948,11 +952,15 @@ class ArcTest(test.test):
             unblock the outbound connections during the test if needed.
         """
         logging.info('Unblocking outbound connection')
-        _android_shell('iptables -D OUTPUT -p tcp -d localhost -j ACCEPT')
+        # ipv4
+        _android_shell('iptables -D OUTPUT -d localhost -j ACCEPT')
         _android_shell('iptables -D OUTPUT -p tcp -s 100.115.92.2 '
                        '--sport 5555 '
                        '-j ACCEPT')
         _android_shell('iptables -D OUTPUT -j REJECT')
+        # ipv6
+        _android_shell('ip6tables -D OUTPUT -d ip6-localhost -j ACCEPT')
+        _android_shell('ip6tables -D OUTPUT -j REJECT')
 
     def _add_ui_object_not_found_handler(self):
         """Logs the device dump upon uiautomator.UiObjectNotFoundException."""
