@@ -45,7 +45,7 @@ class AutoservVerifyError(error.AutoservError):
 
 
 _DependencyFailure = collections.namedtuple(
-        '_DependencyFailure', ('dependency', 'error'))
+        '_DependencyFailure', ('dependency', 'error', 'tag'))
 
 
 class AutoservVerifyDependencyError(error.AutoservError):
@@ -211,7 +211,7 @@ class _DependencyNode(object):
             except AutoservVerifyDependencyError as e:
                 failures.update(e.failures)
             except Exception as e:
-                failures.add(_DependencyFailure(v.description, str(e)))
+                failures.add(_DependencyFailure(v.description, str(e), v.tag))
         if failures:
             raise AutoservVerifyDependencyError(self, failures)
 
@@ -431,11 +431,16 @@ class RepairAction(_DependencyNode):
 
     @property _trigger_list   List of verification checks that will
                               trigger this repair when they fail.
+    @property host_class      A string identifier that will be
+                              used as a field to send repair metrics.
     """
 
-    def __init__(self, tag, dependencies, triggers):
+    def __init__(self, tag, dependencies, triggers, host_class):
         super(RepairAction, self).__init__(tag, 'repair', dependencies)
         self._trigger_list = triggers
+        self._failure_modes_counter = metrics.Counter(
+            'chromeos/autotest/repair/failure_modes')
+        self.host_class = host_class
 
     def _record_start(self, host, silent):
         """Log a 'START' status line.
@@ -467,6 +472,38 @@ class RepairAction(_DependencyNode):
         self._record(host, silent, 'END FAIL', *args)
         self.status = status
 
+    def _send_failure_metrics(self, host, error, stage):
+        """Send failure mode metrics to monarch
+
+        @param host         Host which this RepairAction targeted to.
+        @param error      An exception that caught in _repair_host.
+        @param stage        In which stage we caught above exception.
+                            Can be one of below value:
+                                'dep'    during verify dependencies
+                                'pre'    during pre-repair trigger verification
+                                'repair' during repair() process itself
+                                'post'   during post-repair trigger verification
+        """
+
+        def get_fields(vf_tag):
+            fields = {
+                'ra_tag': self.tag,
+                'vf_tag': vf_tag,
+                'hostname': host.hostname,
+                'stage': stage,
+                'host_class': self.host_class
+            }
+            return fields
+
+        if isinstance(error, AutoservVerifyDependencyError):
+            # We'll catch all failure tags here for a dependencies error
+            for f in error.failures:
+                self._failure_modes_counter.increment(fields=get_fields(f.tag))
+        else:
+            # When there is failure during repair or unknown failure. there
+            # will be no Verifier, so vf_tag set to 'unknown'.
+            self._failure_modes_counter.increment(fields=get_fields('unknown'))
+
     def _repair_host(self, host, silent):
         """
         Apply this repair action if any triggers fail.
@@ -489,7 +526,11 @@ class RepairAction(_DependencyNode):
         # If we're blocked by a failed dependency, we exit with an
         # exception.  So set status to 'blocked' first.
         self.status = 'blocked'
-        self._verify_dependencies(host, silent)
+        try:
+            self._verify_dependencies(host, silent)
+        except Exception as e:
+            self._send_failure_metrics(host, e, 'dep')
+            raise
         # This is a defensive action.  Every path below should overwrite
         # this setting, but if it doesn't, we want our status to reflect
         # a coding error.
@@ -500,13 +541,15 @@ class RepairAction(_DependencyNode):
             e.log_dependencies(
                     'Attempting this repair action',
                     'Repairing because these triggers failed')
+            self._send_failure_metrics(host, e, 'pre')
             self._record_start(host, silent)
             try:
                 self.repair(host)
             except Exception as e:
                 logging.exception('Repair failed: %s', self.description)
                 self._record_fail(host, silent, e)
-                self._record_end_fail(host, silent, 'failed-action')
+                self._record_end_fail(host, silent, 'repair_failure')
+                self._send_failure_metrics(host, e, 'repair')
                 raise
             try:
                 for v in self._trigger_list:
@@ -517,7 +560,8 @@ class RepairAction(_DependencyNode):
                 e.log_dependencies(
                         'This repair action reported success',
                         'However, these triggers still fail')
-                self._record_end_fail(host, silent, 'failed-trigger')
+                self._record_end_fail(host, silent, 'verify_failure')
+                self._send_failure_metrics(host, e, 'post')
                 raise AutoservRepairError(
                         'Some verification checks still fail')
             except Exception:
@@ -526,9 +570,10 @@ class RepairAction(_DependencyNode):
                 # precaution.
                 self._record_end_fail(host, silent, 'unknown',
                                       'Internal error in repair')
+                self._send_failure_metrics(host, e, 'post')
                 raise
         else:
-            self.status = 'untriggered'
+            self.status = 'skipped'
             logging.info('No failed triggers, skipping repair:  %s',
                          self.description)
 
@@ -574,7 +619,6 @@ class _RootVerifier(Verifier):
     @property
     def description(self):
         return 'All host verification checks pass'
-
 
 
 class RepairStrategy(object):
@@ -684,7 +728,7 @@ class RepairStrategy(object):
         deps = [verifiers[d] for d in dep_tags]
         verifiers[tag] = constructor(tag, deps)
 
-    def __init__(self, verifier_data, repair_data):
+    def __init__(self, verifier_data, repair_data, host_class):
         """
         Construct a `RepairStrategy` from simplified DAG data.
 
@@ -701,14 +745,19 @@ class RepairStrategy(object):
         @param repair_data    Iterable value with constructors for the
                               elements of the repair action list, and
                               their dependencies and triggers.
+        @property host_class  A string identifier that identify what
+                              class of host this repair strategy target
+                              on, will be used as a field to send repair
+                              metrics.
         """
         # Metrics - we report on 'actions' for every repair action
-        # we execute; we report on 'completions' for every complete
+        # we execute; we report on 'strategy' for every complete
         # repair operation.
-        self._completions_counter = metrics.Counter(
-                'chromeos/autotest/repair/completions')
+        self._strategy_counter = metrics.Counter(
+            'chromeos/autotest/repair/repair_strategy')
         self._actions_counter = metrics.Counter(
-                'chromeos/autotest/repair/actions')
+            'chromeos/autotest/repair/repair_actions')
+        self.host_class = host_class
         # We use the `all_verifiers` list to guarantee that our root
         # verifier will execute its dependencies in the order provided
         # to us by our caller.
@@ -728,22 +777,37 @@ class RepairStrategy(object):
         for constructor, tag, deps, triggers in repair_data:
             r = constructor(tag,
                             [verifier_map[d] for d in deps],
-                            [verifier_map[t] for t in triggers])
+                            [verifier_map[t] for t in triggers],
+                            self.host_class)
             self._repair_actions.append(r)
 
-    def _count_completions(self, host, success):
-        try:
-            board = host.host_info_store.board or ''
-        except Exception:
-            board = ''
-        fields = {'success': success, 'board': board}
-        self._completions_counter.increment(fields=fields)
-        for ra in self._repair_actions:
-            fields = {'tag': ra.tag,
-                      'status': ra.status,
-                      'success': success,
-                      'board': board}
-            self._actions_counter.increment(fields=fields)
+    def _send_strategy_metrics(self, host, success):
+        """Send repair strategy metrics to monarch
+
+        @param host     The target to be repaired.
+        @param success  A boolean value that indicate if the
+                        entire repair operation success or not.
+        """
+        fields = {
+            'success': success,
+            'hostname': host.hostname,
+            'host_class': self.host_class
+        }
+        self._strategy_counter.increment(fields=fields)
+
+    def _send_action_metrics(self, host, ra):
+        """Send repair action metrics to monarch
+
+        @param host     The target to be repaired.
+        @param ra       an RepairAction instance.
+        """
+        fields = {
+            'tag': ra.tag,
+            'status': ra.status,
+            'hostname': host.hostname,
+            'host_class': self.host_class
+        }
+        self._actions_counter.increment(fields=fields)
 
     def verify(self, host, silent=False):
         """
@@ -770,9 +834,14 @@ class RepairStrategy(object):
                 # all logging and exception handling was done at
                 # lower levels
                 pass
+            finally:
+                self._send_action_metrics(host, ra)
+
+        success = False
         try:
             self._verify_root._verify_host(host, silent)
+            success = True
         except:
-            self._count_completions(host, False)
             raise
-        self._count_completions(host, True)
+        finally:
+            self._send_strategy_metrics(host, success)
