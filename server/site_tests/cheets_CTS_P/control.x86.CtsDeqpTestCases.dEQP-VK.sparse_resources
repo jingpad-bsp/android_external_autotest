@@ -26,7 +26,7 @@ def run_CTS(machine):
         tag='x86.CtsDeqpTestCases.dEQP-VK.sparse_resources',
         test_name='cheets_CTS_P.x86.CtsDeqpTestCases.dEQP-VK.sparse_resources',
         run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-VK.sparse_resources.*', '--logcat-on-failure'],
-        retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
+        retry_template=['run', 'commandAndExit', 'retry', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-VK.sparse_resources.*', '--retry', '{session_id}'],
         target_module='CtsDeqpTestCases',
         target_plan=None,
         bundle='x86',
