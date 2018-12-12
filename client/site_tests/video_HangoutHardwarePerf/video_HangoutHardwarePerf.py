@@ -104,6 +104,19 @@ class PowerMeasurer(object):
         self._service_stopper = None
 
     def __enter__(self):
+        status = power_status.get_status()
+
+        # We expect the DUT is powered by battery now. But this is not always
+        # true due to other bugs. Disable this test temporarily as workaround.
+        # TODO(johnylin): remove this workaround after AC control is stable
+        #                 crbug.com/914211
+        if status.on_ac():
+            logging.warning('Still powered by AC. Skip this test')
+            raise error.TestNAError('Unable to disable AC.')
+        # Verify that we are running on battery and the battery is sufficiently
+        # charged.
+        status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
+
         self._backlight = power_utils.Backlight()
         self._backlight.set_default()
 
@@ -111,11 +124,6 @@ class PowerMeasurer(object):
                 service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._service_stopper.stop_services()
 
-        status = power_status.get_status()
-
-        # Verify that we are running on battery and the battery is sufficiently
-        # charged.
-        status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
         self._system_power = power_status.SystemPower(status.battery_path)
         self._power_logger = power_status.PowerLogger([self._system_power])
         return self
