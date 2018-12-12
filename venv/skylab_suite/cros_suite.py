@@ -38,6 +38,7 @@ SuiteSpec = collections.namedtuple(
                 'suite_args',
                 'priority',
                 'board',
+                'model',
                 'pool',
                 'job_keyvals',
                 'minimum_duts',
@@ -72,6 +73,7 @@ TestSpec = collections.namedtuple(
                 'test',
                 'priority',
                 'board',
+                'model',
                 'pool',
                 'build',
                 'keyvals',
@@ -287,6 +289,7 @@ class Suite(object):
         self.suite_file_name = spec.suite_file_name
         self.priority = spec.priority
         self.board = spec.board
+        self.model = spec.model
         self.pool = spec.pool
         self.job_keyvals = spec.job_keyvals
         self.minimum_duts = spec.minimum_duts
@@ -356,6 +359,7 @@ class Suite(object):
                 test=test,
                 priority=self.priority,
                 board=self.board,
+                model=self.model,
                 pool=self.pool,
                 build=self.test_source_build,
                 bot_id=bot_id,

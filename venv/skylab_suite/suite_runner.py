@@ -275,6 +275,9 @@ def _schedule_test(test_spec, suite_id=None,
                           test_spec.pool),
                   'label-board': test_spec.board,
                   'dut_state': swarming_lib.SWARMING_DUT_READY_STATUS}
+    if test_spec.model is not None:
+        dimensions['label-model'] = test_spec.model
+
     for dep in test_spec.test.dependencies:
         if dep in _NOT_SUPPORTED_DEPENDENCIES:
             logging.warning('Dependency %s is not supported in skylab', dep)
