@@ -378,4 +378,4 @@ def create_servo_repair_strategy():
         (_ServoRebootRepair, 'servo_reboot', ['servo_ssh'], servod_deps),
         (_DutRebootRepair, 'dut_reboot', ['servod'], ['lid_open']),
     ]
-    return hosts.RepairStrategy(verify_dag, repair_actions)
+    return hosts.RepairStrategy(verify_dag, repair_actions, 'servo')
