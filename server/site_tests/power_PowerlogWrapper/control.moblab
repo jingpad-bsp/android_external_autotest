@@ -4,7 +4,7 @@
 
 from autotest_lib.server import utils
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = "mqg"
 NAME = "power_PowerlogWrapper.moblab"
 PURPOSE = "Measure power with powerlog tool while running a client test."
 CRITERIA = "This test is a wrapper for a client test."
@@ -46,6 +46,7 @@ sweetberry_serial: serial number of sweetberry to use; If not supplied use
 note: User supplied note to tag the specific test; optional.
 """
 
+# Intended for use with Moblab UI.
 args_dict = utils.args_to_dict(args)
 
 def run(machine):
