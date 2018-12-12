@@ -25,7 +25,7 @@ def make_parser():
     # Suite-related parameters.
     parser.add_argument('--board', required=True)
     parser.add_argument(
-            '--model',
+            '--model', default=None,
             help=('The device model to run tests against. For non-unified '
                   'builds, model and board are synonymous, but board is more '
                   'accurate in some cases. Only pass this option if your build '
@@ -162,6 +162,7 @@ def parse_suite_spec(options):
             suite_args=options.suite_args,
             priority=options.priority,
             board=options.board,
+            model=options.model,
             pool=options.pool,
             job_keyvals=options.job_keyvals,
             minimum_duts=options.minimum_duts,
