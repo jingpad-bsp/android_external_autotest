@@ -120,7 +120,7 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
              ignore_timeout, ssh_failure_retry_ok):
         """Helper function for run()."""
         if connect_timeout > timeout:
-            connect_timeout = timeout
+            connect_timeout = int(timeout)
 
         ssh_cmd = self.ssh_command(connect_timeout, options)
         if not env.strip():
@@ -318,7 +318,7 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
             env = " ".join("=".join(pair) for pair in self.env.iteritems())
             elapsed = time.time() - start_time
             try:
-                return self._run(command, int(timeout - elapsed), ignore_status,
+                return self._run(command, timeout - elapsed, ignore_status,
                                  stdout_tee, stderr_tee, connect_timeout, env,
                                  options, stdin, args, ignore_timeout,
                                  ssh_failure_retry_ok)
