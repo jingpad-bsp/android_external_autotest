@@ -58,8 +58,9 @@ GAIA_ID = 'fake-gaia-id'
 # Convert from chrome://policy name to what fake dms expects.
 DEVICE_POLICY_DICT = {
     'DeviceAutoUpdateDisabled': 'update_disabled',
-    'DeviceTargetVersionPrefix': 'target_version_prefix',
-    'DeviceRollbackToTargetVersion': 'rollback_to_target_version'
+    'DeviceEphemeralUsersEnabled': 'ephemeral_users_enabled',
+    'DeviceRollbackToTargetVersion': 'rollback_to_target_version',
+    'DeviceTargetVersionPrefix': 'target_version_prefix'
 }
 
 class EnterprisePolicyTest(test.test):
