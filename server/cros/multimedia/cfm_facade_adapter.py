@@ -4,9 +4,9 @@
 
 """An adapter to remotely access the CFM facade on DUT."""
 
+import logging
 import os
 import tempfile
-import time
 
 
 class CFMFacadeRemoteAdapter(object):
@@ -46,6 +46,7 @@ class CFMFacadeRemoteAdapter(object):
 
     def enroll_device(self):
         """Enroll device into CFM."""
+        logging.info('Enrolling CfM device...')
         self._cfm_proxy.enroll_device()
 
 
@@ -62,10 +63,10 @@ class CFMFacadeRemoteAdapter(object):
         """Reboot device using Chrome runtime API."""
         self._cfm_proxy.reboot_device_with_chrome_api()
 
+
     def skip_oobe_after_enrollment(self):
         """Skips oobe and goes to the app landing page after enrollment."""
-        self._client.run('restart ui', ignore_status=True)
-        time.sleep(self._RESTART_UI_DELAY)
+        logging.info('Skipping OOBE...')
         self._cfm_proxy.skip_oobe_after_enrollment()
 
 
@@ -76,11 +77,13 @@ class CFMFacadeRemoteAdapter(object):
 
     def wait_for_hangouts_telemetry_commands(self):
         """Wait for Hangouts App telemetry commands."""
+        logging.info('Waiting for Hangouts telemetry commands...')
         self._cfm_proxy.wait_for_hangouts_telemetry_commands()
 
 
     def wait_for_meetings_telemetry_commands(self):
         """Waits for Meet App telemetry commands."""
+        logging.info('Waiting for Meet telemetry commands...')
         self._cfm_proxy.wait_for_meetings_telemetry_commands()
 
 
