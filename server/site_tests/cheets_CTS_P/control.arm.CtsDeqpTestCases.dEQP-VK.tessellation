@@ -26,7 +26,7 @@ def run_CTS(machine):
         tag='arm.CtsDeqpTestCases.dEQP-VK.tessellation',
         test_name='cheets_CTS_P.arm.CtsDeqpTestCases.dEQP-VK.tessellation',
         run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-VK.tessellation.*', '--logcat-on-failure'],
-        retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
+        retry_template=['run', 'commandAndExit', 'retry', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-VK.tessellation.*', '--retry', '{session_id}'],
         target_module='CtsDeqpTestCases',
         target_plan=None,
         bundle='arm',

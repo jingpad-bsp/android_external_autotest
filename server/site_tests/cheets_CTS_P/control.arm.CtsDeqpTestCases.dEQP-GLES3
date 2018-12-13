@@ -26,7 +26,7 @@ def run_CTS(machine):
         tag='arm.CtsDeqpTestCases.dEQP-GLES3',
         test_name='cheets_CTS_P.arm.CtsDeqpTestCases.dEQP-GLES3',
         run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-GLES3.*', '--logcat-on-failure'],
-        retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
+        retry_template=['run', 'commandAndExit', 'retry', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-GLES3.*', '--retry', '{session_id}'],
         target_module='CtsDeqpTestCases',
         target_plan=None,
         bundle='arm',

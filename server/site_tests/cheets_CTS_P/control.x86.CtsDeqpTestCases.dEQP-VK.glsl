@@ -26,7 +26,7 @@ def run_CTS(machine):
         tag='x86.CtsDeqpTestCases.dEQP-VK.glsl',
         test_name='cheets_CTS_P.x86.CtsDeqpTestCases.dEQP-VK.glsl',
         run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-VK.glsl.*', '--logcat-on-failure'],
-        retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
+        retry_template=['run', 'commandAndExit', 'retry', '--include-filter', 'CtsDeqpTestCases', '--module', 'CtsDeqpTestCases', '--test', 'dEQP-VK.glsl.*', '--retry', '{session_id}'],
         target_module='CtsDeqpTestCases',
         target_plan=None,
         bundle='x86',
