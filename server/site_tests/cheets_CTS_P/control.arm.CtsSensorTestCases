@@ -20,7 +20,7 @@ def run_CTS(machine):
         'cheets_CTS_P',
         hosts=host_list,
         iterations=1,
-        max_retry=3,
+        max_retry=12,
         needs_push_media=False,
         tag='arm.CtsSensorTestCases',
         test_name='cheets_CTS_P.arm.CtsSensorTestCases',
