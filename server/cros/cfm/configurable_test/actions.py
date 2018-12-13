@@ -446,3 +446,31 @@ class UploadPerfMetrics(Action):
     """
     def do_execute(self, context):
         context.perf_metrics_collector.upload_metrics()
+
+
+class JoinMeetingWithBots(Action):
+    """
+    Joins a new meeting prepopulated with bots.
+    """
+    def __init__(self, bot_count, bots_ttl_min):
+        """
+        Initializes.
+
+        @param bot_count Amount of bots to be in the meeting.
+        @param bots_ttl_min TTL in minutes after which the bots leave.
+        """
+        super(JoinMeetingWithBots, self).__init__()
+        self._bot_count = bot_count
+        # Adds an extra 30 seconds buffer
+        self._bots_ttl_sec = bots_ttl_min * 60 + 30
+
+    def __repr__(self):
+        return 'JoinMeetingWithBots: bot_count:"%d"' % self._bot_count
+
+    def do_execute(self, context):
+        meeting_code = context.bond_api.CreateConference()
+        context.bond_api.AddBotsRequest(
+            meeting_code,
+            self._bot_count,
+            self._bots_ttl_sec);
+        context.cfm_facade.join_meeting_session(meeting_code)

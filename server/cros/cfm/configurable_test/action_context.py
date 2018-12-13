@@ -9,7 +9,8 @@ class ActionContext(object):
                  usb_device_collector=None,
                  usb_port_manager=None,
                  crash_detector=None,
-                 perf_metrics_collector=None):
+                 perf_metrics_collector=None,
+                 bond_api=None):
         """
         Initializes.
 
@@ -26,6 +27,7 @@ class ActionContext(object):
         @param usb_port_manager a UsbPortManager instance.
         @param crash_detector a CrashDetector instance.
         @param perf_metrics_collector a PerfMetricsCollector instance.
+        @param bond_api a BondHttpApi instance
         """
         self.cfm_facade = cfm_facade
         self.file_contents_collector = file_contents_collector
@@ -36,3 +38,4 @@ class ActionContext(object):
         self.usb_port_manager = usb_port_manager
         self.crash_detector = crash_detector
         self.perf_metrics_collector = perf_metrics_collector
+        self.bond_api = bond_api

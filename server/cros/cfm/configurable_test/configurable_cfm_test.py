@@ -5,6 +5,7 @@ from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_collector
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_port_manager
 from autotest_lib.server.cros.cfm import cfm_base_test
 from autotest_lib.server.cros.cfm.configurable_test import action_context
+from autotest_lib.server.cros.cfm.utils import bond_http_api
 from autotest_lib.server.cros.cfm.utils import perf_metrics_collector
 
 
@@ -85,7 +86,8 @@ class ConfigurableCfmTest(cfm_base_test.CfmBaseTest):
                 usb_device_collector=device_collector,
                 usb_port_manager=port_manager,
                 crash_detector=crash_file_detector,
-                perf_metrics_collector=self._create_perf_metrics_collector())
+                perf_metrics_collector=self._create_perf_metrics_collector(),
+                bond_api=bond_http_api.BondHttpApi())
         self.test_runner = TestRunner(context)
 
     def _create_perf_metrics_collector(self):
