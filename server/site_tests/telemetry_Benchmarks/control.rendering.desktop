@@ -25,7 +25,7 @@ Pass local=True to run with local telemetry and no AFE server.
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     dargs = utils.args_to_dict(args)
-    dargs['extra_args'] = '--story-tag-filter=top_real_world_desktop'.split()
+    dargs['extra_args'] = '--story-tag-filter=backdrop_filter,top_real_world_desktop'.split()
     job.run_test('telemetry_Benchmarks', host=host,
                  benchmark='rendering.desktop',
                  tag='rendering.desktop',
