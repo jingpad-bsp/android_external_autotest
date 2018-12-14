@@ -285,6 +285,7 @@ class tast(test.test):
         logging.info('Using devservers: %s', ', '.join(devservers))
         args = [
             '-resultsdir=' + self.resultsdir,
+            '-waituntilready=true',
             '-timeout=' + str(timeout_sec),
             '-devservers=' + ','.join(devservers),
         ]
