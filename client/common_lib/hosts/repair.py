@@ -24,6 +24,7 @@ more failures identified by a `Verifier` object.
 
 import collections
 import logging
+import re
 
 import common
 from autotest_lib.client.common_lib import error
@@ -32,6 +33,10 @@ try:
     from chromite.lib import metrics
 except ImportError:
     from autotest_lib.client.bin.utils import metrics_mock as metrics
+
+#Regular experssion pattern to filter out unwanted hostname.
+_HOSTNAME_PATTERN = 'chromeos[0-9]-row[0-9]+[a-z]?-rack[0-9]+[a-z]?-host[0-9]+'
+_DISALLOWED_HOSTNAME = 'disallowed_hostname'
 
 
 class AutoservVerifyError(error.AutoservError):
@@ -476,7 +481,7 @@ class RepairAction(_DependencyNode):
         """Send failure mode metrics to monarch
 
         @param host         Host which this RepairAction targeted to.
-        @param error      An exception that caught in _repair_host.
+        @param error        An exception that caught in _repair_host.
         @param stage        In which stage we caught above exception.
                             Can be one of below value:
                                 'dep'    during verify dependencies
@@ -489,7 +494,7 @@ class RepairAction(_DependencyNode):
             fields = {
                 'ra_tag': self.tag,
                 'vf_tag': vf_tag,
-                'hostname': host.hostname,
+                'hostname': _filter_metrics_hostname(host),
                 'stage': stage,
                 'host_class': self.host_class
             }
@@ -790,7 +795,7 @@ class RepairStrategy(object):
         """
         fields = {
             'success': success,
-            'hostname': host.hostname,
+            'hostname': _filter_metrics_hostname(host),
             'host_class': self.host_class
         }
         self._strategy_counter.increment(fields=fields)
@@ -804,7 +809,7 @@ class RepairStrategy(object):
         fields = {
             'tag': ra.tag,
             'status': ra.status,
-            'hostname': host.hostname,
+            'hostname': _filter_metrics_hostname(host),
             'host_class': self.host_class
         }
         self._actions_counter.increment(fields=fields)
@@ -845,3 +850,16 @@ class RepairStrategy(object):
             raise
         finally:
             self._send_strategy_metrics(host, success)
+
+
+def _filter_metrics_hostname(host):
+    """
+       Restrict format of hostnames we'll send to monarch
+
+       @param host    An host instance(i.e. ServoHost, CrosHost)
+    """
+    if re.match(_HOSTNAME_PATTERN, host.hostname):
+        return host.hostname
+    else:
+        return _DISALLOWED_HOSTNAME
+
