@@ -36,7 +36,7 @@ class PowerBaseWrapper(test.test):
             raise error.TestNAError(msg)
         # client_test_name is tagged test name.
         client_test_name = config['test']
-        args_list = ['='.join((k, v)) for k, v in config.iteritems()]
+        args_list = ['='.join((k, str(v))) for k, v in config.iteritems()]
         args_string = 'args = ' + json.dumps(args_list)
 
         # Find the client test in autotest file system.
