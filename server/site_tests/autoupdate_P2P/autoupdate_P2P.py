@@ -112,6 +112,12 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
         """
         logging.info('Updating first DUT with a regular update.')
         host.reboot()
+
+        # Sometimes update request is lost if checking right after reboot so
+        # make sure update_engine is ready.
+        self._set_active_p2p_host(self._hosts[0])
+        utils.poll_for_condition(condition=self._is_update_engine_idle,
+                                 desc='Waiting for update engine idle')
         try:
             updater = autoupdater.ChromiumOSUpdater(update_url, host)
             updater.update_image()
@@ -163,6 +169,9 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
         """
         logging.info('Updating second host via p2p.')
         host.reboot()
+        self._set_active_p2p_host(self._hosts[1])
+        utils.poll_for_condition(condition=self._is_update_engine_idle,
+                                 desc='Waiting for update engine idle')
         try:
             # Start a non-interactive update which is required for p2p.
             updater = autoupdater.ChromiumOSUpdater(update_url, host,
