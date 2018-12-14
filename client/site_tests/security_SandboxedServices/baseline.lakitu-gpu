@@ -22,6 +22,7 @@ konlet-startup,root,root,No,No,No,No,No
 # Docker daemon processes.
 dockerd,root,root,No,No,No,No,No
 docker-containe,root,root,No,No,No,No,No
+containerd,root,root,No,No,No,No,No
 
 # Processes that used by GCP compute image packages.
 google_ip_forwa,root,root,No,No,No,No,No
