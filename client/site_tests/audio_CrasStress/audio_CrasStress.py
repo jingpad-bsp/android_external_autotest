@@ -16,7 +16,7 @@ from autotest_lib.client.cros.audio import audio_helper
 _STREAM_TYPE_INPUT = 0
 _STREAM_TYPE_OUTPUT = 1
 
-class audio_CrasOutputStress(test.test):
+class audio_CrasStress(test.test):
     """Checks if output buffer will drift to super high level."""
     version = 2
     _MAX_STREAMS = 3
@@ -141,7 +141,8 @@ class audio_CrasOutputStress(test.test):
         else:
             match_str = self._OUTPUT_BUFFER_LEVEL
 
-        proc = subprocess.Popen(['cras_test_client', '--dump_a'], stdout=subprocess.PIPE)
+        proc = subprocess.Popen(['cras_test_client', '--dump_a'],
+                                stdout=subprocess.PIPE)
         output, err = proc.communicate()
         buffer_level = 0
         for line in output.split('\n'):
