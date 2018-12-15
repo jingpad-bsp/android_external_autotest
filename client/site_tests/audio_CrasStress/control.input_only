@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 AUTHOR = 'The Chromium OS Authors,chromeos-audio@google.com'
-NAME = 'audio_CrasOutputStress'
+NAME = 'audio_CrasStress.input_only'
 ATTRIBUTES = "suite:audio"
-PURPOSE = 'Test device buffer can stay at reasonable level'
+PURPOSE = 'Test input buffer can stay at reasonable level'
 CRITERIA = """
-Fail if device buffer drifts too high.
+Fail if input buffer drifts too high.
 """
 TIME='MEDIUM'
 TEST_CATEGORY = 'Functional'
@@ -15,8 +15,9 @@ TEST_CLASS = "audio"
 TEST_TYPE = 'client'
 
 DOC = """
-Test device buffer can stay at reasonable level by running input and output
-streams randomly.
+Test input buffer can stay at reasonable level
 """
 
-job.run_test('audio_CrasOutputStress')
+job.run_test('audio_CrasStress',
+             input_stream = True,
+             output_stream = False)
