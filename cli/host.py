@@ -1296,8 +1296,10 @@ class host_migrate(action_common.atest_list, host):
 
         label_map = None
         labels = []
+        if self.board:
+            labels.append('board:%s' % self.board)
         if self.model:
-            labels.append('board:%s' % self.model)
+            labels.append('model:%s' % self.model)
         if self.pool:
             labels.append('critical_pool:%s' % self.pool)
         if labels:
