@@ -54,8 +54,7 @@ ALL_TESTS = (PERF_PER_BUILD_TESTS +
 
 EXTRA_ARGS_MAP = {
     'loading.desktop': '--story-tag-filter=typical',
-    'rendering.desktop': '--story-tag-filter=backdrop_filter'
-        ',top_real_world_desktop',
+    'rendering.desktop': '--story-tag-filter=top_real_world_desktop',
 }
 
 DEFAULT_YEAR = str(datetime.now().year)
