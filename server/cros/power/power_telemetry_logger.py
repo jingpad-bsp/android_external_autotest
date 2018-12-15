@@ -560,7 +560,11 @@ class SweetberryThread(threading.Thread):
             next_loop_start_timestamp = start_timestamp + loop * self._interval
             current_timestamp = time.time()
             this_loop_duration = next_loop_start_timestamp - current_timestamp
-            args = ['powerlog']
+            # TODO(b/120910361): Migrate to import powerlog directly
+            # Adding sudo so that we can run powerlog from command line on
+            # moblab. Ideally we should import powerlog module and use it
+            # directly.
+            args = ['sudo', 'powerlog']
             args.extend(self._argv)
             args.extend(['--seconds', str(this_loop_duration)])
             os.system(' '.join(args))
