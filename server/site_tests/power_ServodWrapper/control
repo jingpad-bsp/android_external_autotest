@@ -4,7 +4,7 @@
 
 from autotest_lib.server import utils
 
-AUTHOR = "Chrome OS Team"
+AUTHOR = "mqg"
 NAME = "power_ServodWrapper"
 PURPOSE = "Measure power with servod while running a client test."
 CRITERIA = "This test is a wrapper for a client test."
@@ -43,7 +43,12 @@ vbat_rate: power measurement from EC is logged every vbat_rate seconds;
 note: User supplied note to tag the specific test; optional.
 """
 
-args_dict = utils.args_to_dict(args)
+# Workaround to make it compatible with moblab autotest UI.
+global args_dict
+try:
+    args_dict
+except NameError:
+    args_dict = utils.args_to_dict(args)
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
