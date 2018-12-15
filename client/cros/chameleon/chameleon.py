@@ -19,6 +19,7 @@ except ImportError:
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import audio_board
+from autotest_lib.client.cros.chameleon import chameleon_bluetooth_audio
 from autotest_lib.client.cros.chameleon import edid as edid_lib
 from autotest_lib.client.cros.chameleon import usb_controller
 
@@ -229,6 +230,10 @@ class ChameleonBoard(object):
         else:
             self._audio_board = None
             logging.info('There is no audio board on this Chameleon.')
+        self._bluetooth_ref_controller = (
+            chameleon_bluetooth_audio.
+            BluetoothRefController(chameleon_connection)
+            )
 
 
     def reset(self):
@@ -347,6 +352,14 @@ class ChameleonBoard(object):
         return self._chameleond_proxy.bluetooth_hog_mouse
 
 
+    def get_bluetooth_ref_controller(self):
+        """Gets the emulated BluetoothRefController.
+
+        @return: A BluetoothRefController object.
+        """
+        return self._bluetooth_ref_controller
+
+
     def get_avsync_probe(self):
         """Gets the avsync probe device on Chameleon.
 
@@ -377,6 +390,14 @@ class ChameleonBoard(object):
         @return: A string for MAC address.
         """
         return self._chameleond_proxy.GetMacAddress()
+
+
+    def get_bluetooth_a2dp_sink(self):
+        """Gets the Bluetooth A2DP sink on Fizz.
+
+        @return: A BluetoothA2DPSinkFlow object.
+        """
+        return self._chameleond_proxy.bluetooth_a2dp_sink
 
 
 class ChameleonPort(object):
