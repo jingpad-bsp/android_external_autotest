@@ -4,13 +4,10 @@
 
 """Base class for power measurement tests with telemetry devices."""
 
-import json
 import os
 
-from autotest_lib.client.common_lib import error
-from autotest_lib.server import autotest
 from autotest_lib.server import test
-from autotest_lib.server.cros.dynamic_suite import suite
+from autotest_lib.server.cros.power import wrapper_test_runner
 
 
 class PowerBaseWrapper(test.test):
@@ -21,38 +18,20 @@ class PowerBaseWrapper(test.test):
     """
     version = 1
 
-    def run_once(self, host, config=None):
+    def run_once(self, host, config):
         """Measure power while running the client side test.
 
         @param host: CrosHost object representing the DUT.
         @param config: the args argument from test_that in a dict.
                        required data: {'test': 'test_TestName.tag'}
         """
-        if not config:
-            msg = '%s must run with args input.' % self.__class__.__name__
-            raise error.TestNAError(msg)
-        if 'test' not in config:
-            msg = 'User did not specify client test to run in wrapper.'
-            raise error.TestNAError(msg)
-        # client_test_name is tagged test name.
-        client_test_name = config['test']
-        args_list = ['='.join((k, v)) for k, v in config.iteritems()]
-        args_string = 'args = ' + json.dumps(args_list)
-
-        # Find the client test in autotest file system.
-        fs_getter = suite.create_fs_getter(self.autodir)
-        predicate = suite.test_name_equals_predicate(client_test_name)
-        client_test = suite.find_and_parse_tests(fs_getter, predicate)
-        if not client_test:
-            msg = '%s is not a valid client test name.' % client_test_name
-            raise error.TestNAError(msg)
-
-        autotest_client = autotest.Autotest(host)
+        test_runner = wrapper_test_runner.WrapperTestRunner(
+                config, self.autodir)
+        client_test_name = test_runner.get_tagged_test_name()
         ptl = self._get_power_telemetry_logger(host, config, self.resultsdir)
         try:
             ptl.start_measurement()
-            # If multiple tests with the same name are found, run the first one.
-            autotest_client.run(args_string +'\n' + client_test[0].text)
+            test_runner.run_test(host)
         finally:
             client_test_dir = os.path.join(self.outputdir, client_test_name)
             # If client test name is not tagged in its own control file.

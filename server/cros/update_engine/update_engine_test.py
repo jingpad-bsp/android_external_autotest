@@ -531,6 +531,19 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         return rootfs_hostlog, reboot_hostlog
 
 
+    def _set_active_p2p_host(self, host):
+        """
+        Choose which p2p host device to run commands on.
+
+        For P2P tests with multiple DUTs we need to be able to choose which
+        host within self._hosts we want to issue commands on.
+
+        @param host: The host to run commands on.
+
+        """
+        self._create_update_engine_variables(host.run, host.get_file)
+
+
     def _run_client_test_and_check_result(self, test_name, **kwargs):
         """
         Kicks of a client autotest and checks that it didn't fail.

@@ -101,6 +101,7 @@ def parse_args():
     run_parser = subparsers.add_parser('run')
     add_common_args(run_parser)
     run_parser.add_argument('-resultsdir')
+    run_parser.add_argument('-waituntilready')
     run_parser.add_argument('-timeout')
     run_parser.add_argument('-devservers')
 
