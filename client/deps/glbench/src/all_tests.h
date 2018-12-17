@@ -13,6 +13,7 @@ TestBase* GetFboFillRateTest();
 TestBase* GetFillRateTest();
 TestBase* GetReadPixelTest();
 TestBase* GetSwapTest();
+TestBase* GetTextureRebindTest();
 TestBase* GetTextureReuseTest();
 TestBase* GetTextureUpdateTest();
 TestBase* GetTextureUploadTest();
