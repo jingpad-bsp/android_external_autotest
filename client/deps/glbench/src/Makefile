@@ -29,6 +29,7 @@ SOURCES_GL_BENCH += attributefetchtest.cc varyingsandddxytest.cc cleartest.cc
 SOURCES_GL_BENCH += texturetest.cc texturereusetest.cc textureupdatetest.cc
 SOURCES_GL_BENCH += textureuploadtest.cc trianglesetuptest.cc fillratetest.cc
 SOURCES_GL_BENCH += windowmanagercompositingtest.cc drawsizetest.cc
+SOURCES_GL_BENCH += texturerebind.cc
 SOURCES_GL_BENCH += md5.cc png_helper.cc utils.cc waffle_stuff.cc filepath.cc
 
 SOURCES_WINDOWMANAGERTEST = windowmanagertest.cc utils.cc waffle_stuff.cc filepath.cc
