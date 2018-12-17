@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <functional>
 #include <limits>
+#include <map>
 #include <string>
 #include <vector>
 
