@@ -163,6 +163,7 @@ int main(int argc, char* argv[]) {
       glbench::GetTextureUploadTest(),
       glbench::GetFboFillRateTest(),
       glbench::GetDrawSizeTest(),
+      glbench::GetTextureRebindTest(),
   };
 
   if (FLAGS_list) {
