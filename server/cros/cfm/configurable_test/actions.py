@@ -448,29 +448,57 @@ class UploadPerfMetrics(Action):
         context.perf_metrics_collector.upload_metrics()
 
 
-class JoinMeetingWithBots(Action):
+class CreateMeetingWithBots(Action):
     """
-    Joins a new meeting prepopulated with bots.
+    Creates a new meeting prepopulated with bots.
+
+    Call JoinMeetingWithBots() do join it with a CfM.
     """
-    def __init__(self, bot_count, bots_ttl_min):
+    def __init__(self, bot_count, bots_ttl_min, muted=True):
         """
         Initializes.
 
         @param bot_count Amount of bots to be in the meeting.
         @param bots_ttl_min TTL in minutes after which the bots leave.
+        @param muted If the bots are audio muted or not.
         """
-        super(JoinMeetingWithBots, self).__init__()
+        super(CreateMeetingWithBots, self).__init__()
         self._bot_count = bot_count
         # Adds an extra 30 seconds buffer
         self._bots_ttl_sec = bots_ttl_min * 60 + 30
+        self._muted = muted
 
     def __repr__(self):
-        return 'JoinMeetingWithBots: bot_count:"%d"' % self._bot_count
+        return (
+            'CreateMeetingWithBots:\n'
+            ' bot_count: %d\n'
+            ' bots_ttl_sec: %d\n'
+            ' muted: %s' % (self._bot_count, self._bots_ttl_sec, self._muted)
+        )
 
     def do_execute(self, context):
-        meeting_code = context.bond_api.CreateConference()
+        if context.bots_meeting_code:
+            raise AssertionError(
+                'A meeting with bots is already running. '
+                'Repeated calls to CreateMeetingWithBots() are not supported.')
+        context.bots_meeting_code = context.bond_api.CreateConference()
         context.bond_api.AddBotsRequest(
-            meeting_code,
+            context.bots_meeting_code,
             self._bot_count,
             self._bots_ttl_sec);
-        context.cfm_facade.join_meeting_session(meeting_code)
+        mute_cmd = 'mute_audio' if self._muted else 'unmute_audio'
+        context.bond_api.ExecuteScript('@all %s' % mute_cmd,
+                                       context.bots_meeting_code)
+
+
+class JoinMeetingWithBots(Action):
+    """
+    Joins an existing meeting started via CreateMeetingWithBots().
+    """
+    def do_execute(self, context):
+        meeting_code = context.bots_meeting_code
+        if not meeting_code:
+            raise AssertionError(
+                'Meeting with bots was not started. '
+                'Did you forget to call CreateMeetingWithBots()?')
+        context.cfm_facade.join_meeting_session(context.bots_meeting_code)
