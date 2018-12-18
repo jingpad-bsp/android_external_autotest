@@ -76,9 +76,9 @@ class VMSanity(object):
 
       # ARC test.
       if is_arc_available:
-        arc.wait_for_android_process('org.chromium.arc.intent_helper')
         arc.wait_for_adb_ready()
         logging.info('Android booted successfully.')
+        arc.wait_for_android_process('org.chromium.arc.intent_helper')
         if not arc.is_package_installed('android'):
           raise TestFail('"android" system package was not listed by '
                          'Package Manager.')
