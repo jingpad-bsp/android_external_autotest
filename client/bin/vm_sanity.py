@@ -84,7 +84,7 @@ class VMSanity(object):
                          'Package Manager.')
 
     if is_arc_available:
-      utils.poll_for_condition(lambda: not arc.is_adb_connected(),
+      utils.poll_for_condition(lambda: not arc.is_android_container_alive(),
                                timeout=15,
                                desc='Android container still running '
                                'after Chrome shutdown.')
