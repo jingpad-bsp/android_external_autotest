@@ -23,7 +23,8 @@ BOT_COUNT = 7
 cfm_test = CfmTest(
     scenario=Scenario(
         WaitForMeetingsLandingPage(),
-        JoinMeetingWithBots(BOT_COUNT, DURATION_MIN),
+        CreateMeetingWithBots(BOT_COUNT, DURATION_MIN, muted=True),
+        JoinMeetingWithBots(),
         StartPerfMetricsCollection(),
         Sleep(DURATION_MIN * 60),
         StopPerfMetricsCollection(),

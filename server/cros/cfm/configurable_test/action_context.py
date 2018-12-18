@@ -39,3 +39,4 @@ class ActionContext(object):
         self.crash_detector = crash_detector
         self.perf_metrics_collector = perf_metrics_collector
         self.bond_api = bond_api
+        self.bots_meeting_code = None
