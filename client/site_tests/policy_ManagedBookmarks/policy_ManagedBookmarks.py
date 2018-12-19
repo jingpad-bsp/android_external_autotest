@@ -9,7 +9,8 @@ from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
-    """Test effect of ManagedBookmarks policy on Chrome OS behavior.
+    """
+    Test effect of ManagedBookmarks policy on Chrome OS behavior.
 
     This test verifies the behavior of Chrome OS for a range of valid values
     of the ManagedBookmarks user policy, as defined by three test cases:
@@ -48,16 +49,17 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
         @returns displayed_bookmarks: a list containing dictionaries of the
             managed bookmarks.
         """
-        # Open Bookmark Manager with specified folder selected.
+        # Open Bookmark Manager.
         tab = self.navigate_to_url('chrome://bookmarks')
 
-        # Nodes are all bookmarks and directories
-        nodes = tab.EvaluateJavaScript('bookmarks.StoreClient.getState().nodes')
+        # Nodes are all bookmarks and directories.
+        nodes = tab.EvaluateJavaScript(
+                    'bookmarks.StoreClient[1].getState().nodes')
 
         displayed_bookmarks = []
         for node in nodes.values():
-            # The node with parentId 0 is the managed bookmarks directory
-            if (node.get('unmodifiable', '') == 'managed' and
+            # The node with parentId 0 is the managed bookmarks directory.
+            if (node.get('unmodifiable') == 'managed' and
                     node['parentId'] != '0'):
                 bookmark = {'name': node['title'], 'url': node['url']}
                 displayed_bookmarks.append(bookmark)
