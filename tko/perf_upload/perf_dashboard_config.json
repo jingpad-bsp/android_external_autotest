@@ -587,6 +587,11 @@
     "master_name": "ChromeOSTastInformationalChrome"
   },
   {
+    "autotest_name": "telemetry_Benchmarks.backdrop_filter.rendering.desktop",
+    "master_name": "ChromeOSPerf",
+    "dashboard_test_name": "backdrop_filter.rendering.desktop"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.blink_perf.image_decoder",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "blink_perf.image_decoder"
