@@ -538,9 +538,10 @@ class TestPage(object):
                 timeout=30)
 
 
-    def get_page_width(self):
+    def get_page_zoom(self):
         """Return window.innerWidth for this page."""
-        return int(self._tab.EvaluateJavaScript('window.innerWidth'))
+        return float(self._tab.EvaluateJavaScript(
+                            'window.visualViewport.scale'))
 
 
 class EventsPage(TestPage):
