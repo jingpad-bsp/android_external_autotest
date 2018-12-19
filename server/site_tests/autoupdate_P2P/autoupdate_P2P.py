@@ -123,8 +123,8 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
             updater.update_image()
         except autoupdater.RootFSUpdateError:
             logging.exception('Failed to update the first DUT.')
-            raise error.TestFail('Updating the first DUT failed. Please check '
-                                 'the update_engine logs in the results dir.')
+            raise error.TestFail('Updating the first DUT failed. Error: %s.' %
+                                 self._get_last_error_string())
         finally:
             logging.info('Saving update engine logs to results dir.')
             host.get_file(self._UPDATE_ENGINE_LOG,
@@ -179,8 +179,8 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
             updater.update_image()
         except autoupdater.RootFSUpdateError:
             logging.exception('Failed to update the second DUT via P2P.')
-            raise error.TestFail('Failed to update the second DUT. Please '
-                                 'checkout update_engine logs in results dir.')
+            raise error.TestFail('Failed to update the second DUT. Error: %s' %
+                                 self._get_last_error_string())
         finally:
             logging.info('Saving update engine logs to results dir.')
             host.get_file(self._UPDATE_ENGINE_LOG,
