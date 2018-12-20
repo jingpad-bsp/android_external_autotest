@@ -684,6 +684,10 @@
     "master_name": "ChromeOSVideo"
   },
   {
+    "autotest_name": "video_JEAPerf",
+    "master_name": "ChromeOSVideo"
+  },
+  {
     "autotest_name": "video_MediaRecorderPerf",
     "master_name": "ChromeOSVideo"
   },
