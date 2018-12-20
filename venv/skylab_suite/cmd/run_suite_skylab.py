@@ -88,6 +88,8 @@ def _run_suite(options):
                      options.dry_run)
 
     if options.create_and_return:
+        suite_tracking.log_create_task(suite_job.suite_name,
+                                       suite_handler.suite_id)
         suite_tracking.print_child_test_annotations(suite_handler)
         return run_suite_common.SuiteResult(run_suite_common.RETURN_CODES.OK)
 
