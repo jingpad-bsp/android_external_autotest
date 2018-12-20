@@ -25,7 +25,11 @@ _DEFAULT_SSH_PORT = 22
 # Number of seconds to wait for the host to shut down in wait_down().
 _DEFAULT_WAIT_DOWN_TIME_SECONDS = 120
 
-# Timeout in seconds for a single call of get_boot_id() in wait_down().
+# Number of seconds to wait for the host to boot up in wait_up().
+_DEFAULT_WAIT_UP_TIME_SECONDS = 120
+
+# Timeout in seconds for a single call of get_boot_id() in wait_down()
+# and a single ssh ping in wait_up().
 _DEFAULT_MAX_PING_TIMEOUT = 10
 
 class AbstractSSHHost(remote.RemoteHost):
@@ -594,8 +598,9 @@ class AbstractSSHHost(remote.RemoteHost):
         """
         Pings remote host via ssh.
 
-        @param timeout: Time in seconds before giving up.
+        @param timeout: Command execution timeout in seconds.
                         Defaults to 60 seconds.
+        @param connect_timeout: ssh connection timeout in seconds.
         @param base_cmd: The base command to run with the ssh ping.
                          Defaults to true.
         @raise AutoservSSHTimeout: If the ssh ping times out.
@@ -624,7 +629,8 @@ class AbstractSSHHost(remote.RemoteHost):
         """
         Check if the remote host is up by ssh-ing and running a base command.
 
-        @param timeout: timeout in seconds.
+        @param timeout: command execution timeout in seconds.
+        @param connect_timeout: ssh connection timeout in seconds.
         @param base_cmd: a base command to run with ssh. The default is 'true'.
         @returns True if the remote host is up before the timeout expires,
                  False otherwise.
@@ -646,7 +652,7 @@ class AbstractSSHHost(remote.RemoteHost):
         return ping_runner.PingRunner().ping(ping_config).received > 0
 
 
-    def wait_up(self, timeout=None):
+    def wait_up(self, timeout=_DEFAULT_WAIT_UP_TIME_SECONDS):
         """
         Wait until the remote host is up or the timeout expires.
 
@@ -659,14 +665,14 @@ class AbstractSSHHost(remote.RemoteHost):
         @returns True if the host was found to be up before the timeout expires,
                  False otherwise
         """
-        if timeout:
-            current_time = int(time.time())
-            end_time = current_time + timeout
+        current_time = int(time.time())
+        end_time = current_time + timeout
 
         autoserv_error_logged = False
-        while not timeout or current_time < end_time:
-            if self.is_up(timeout=end_time - current_time,
-                          connect_timeout=20):
+        while current_time < end_time:
+            ping_timeout = min(_DEFAULT_MAX_PING_TIMEOUT,
+                               end_time - current_time)
+            if self.is_up(timeout=ping_timeout, connect_timeout=ping_timeout):
                 try:
                     if self.are_wait_up_processes_up():
                         logging.debug('Host %s is now up', self.host_port)
