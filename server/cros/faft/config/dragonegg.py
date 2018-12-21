@@ -15,3 +15,4 @@ class Values(object):
     servo_prog_state_delay = 10
     dark_resume_capable = True
     custom_usb_enable_names = ['EN_USB_A_5V']
+    smm_store = False

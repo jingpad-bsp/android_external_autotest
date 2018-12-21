@@ -11,3 +11,4 @@ class Values(object):
     has_lid = False
     has_keyboard = False
     has_eventlog = False
+    smm_store = False

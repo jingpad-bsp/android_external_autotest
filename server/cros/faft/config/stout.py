@@ -13,3 +13,4 @@ class Values():
                    [0x29, 'release'],
                    [0x43, 'press'],
                    [0x43, 'release']]
+    smm_store = False

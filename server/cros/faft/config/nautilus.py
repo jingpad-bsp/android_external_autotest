@@ -15,3 +15,4 @@ class Values(object):
     servo_prog_state_delay = 10
     delay_reboot_to_ping = 40
     dark_resume_capable = True
+    smm_store = False

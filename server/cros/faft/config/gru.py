@@ -12,3 +12,4 @@ class Values(object):
     ec_capability = ['battery', 'charging', 'keyboard', 'arm', 'lid']
     ec_boot_to_console = 0.2
     firmware_screen = 7
+    smm_store = False
