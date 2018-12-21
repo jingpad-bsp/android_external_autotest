@@ -189,6 +189,9 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
                    roam_to_bssid, timeout_seconds=self.TIMEOUT_SECONDS):
                 raise error.TestFail('Failed to roam.')
 
+        self.context.client.shill.disconnect(router_ssid)
+        self.context.router.deconfig()
+
     def run_once(self,host):
         """Set global FT switch and call test_body"""
 
