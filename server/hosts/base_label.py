@@ -8,7 +8,9 @@
 import logging
 
 import common
+from autotest_lib.server.hosts import afe_store
 from autotest_lib.server.hosts import host_info
+from autotest_lib.server.hosts import shadowing_store
 
 
 def forever_exists_decorate(exists):
@@ -238,7 +240,20 @@ class LabelRetriever(object):
                 new_labels.append(label)
 
 
-    def update_labels(self, host):
+    def _commit_info(self, host, new_info, keep_pool):
+        if keep_pool and isinstance(host.host_info_store,
+                                    shadowing_store.ShadowingStore):
+            primary_store = afe_store.AfeStoreKeepPool(host.hostname)
+            host.host_info_store.commit_with_substitute(
+                    new_info,
+                    primary_store=primary_store,
+                    shadow_store=None)
+            return
+
+        host.host_info_store.commit(new_info)
+
+
+    def update_labels(self, host, keep_pool=False):
         """
         Retrieve the labels from the host and update if needed.
 
@@ -259,4 +274,4 @@ class LabelRetriever(object):
                 attributes=old_info.attributes,
         )
         if old_info != new_info:
-            host.host_info_store.commit(new_info)
+            self._commit_info(host, new_info, keep_pool)
