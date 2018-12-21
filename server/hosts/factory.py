@@ -215,9 +215,9 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
         try:
             _verify_connectivity(connectivity_class, hostname, **args)
             host_class = _detect_host(connectivity_class, hostname, **args)
-        except error.AutoservRunError:
-            logging.warning('Failed to verify connectivity to host.'
-                            ' Skipping host auto detection logic.')
+        except (error.AutoservRunError, error.AutoservSSHTimeout):
+            logging.exception('Failed to verify connectivity to host.'
+                              ' Skipping host auto detection logic.')
             host_class = cros_host.CrosHost
             logging.debug('Defaulting to CrosHost.')
 
