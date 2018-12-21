@@ -394,6 +394,7 @@ class UpdateEngineUtil(object):
         """
         err_str = 'Updating payload state for error code'
         log = self._run('cat %s' % self._UPDATE_ENGINE_LOG).stdout.split()
+        logging.debug(log)
         targets = [line for line in log if err_str in line]
         logging.debug('Error lines found: %s', targets)
         if not targets:
