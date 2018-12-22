@@ -105,19 +105,31 @@ def get_task_id_for_task_summaries(task_id):
     return task_id[:-1] + '0'
 
 
-def _log_buildbot_links(suite_handler, suite_name, test_results):
-    logging.info('Links for buildbot:')
+def log_create_task(suite_name, task_id):
+    """Print create task of suite."""
     annotations = autotest.chromite_load('buildbot_annotations')
-    reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
     print(annotations.StepLink(
             'Link to the suite create task: %s' % suite_name,
-            swarming_lib.get_task_link(get_task_id_for_task_summaries(
-                    suite_handler.suite_id))))
+            swarming_lib.get_task_link(
+                    get_task_id_for_task_summaries(task_id))))
+
+
+def log_wait_task(suite_name, task_id):
+    """Print create task of suite."""
+    annotations = autotest.chromite_load('buildbot_annotations')
+    print(annotations.StepLink(
+            'Link to the suite wait task: %s' % suite_name,
+            swarming_lib.get_task_link(
+                    get_task_id_for_task_summaries(task_id))))
+
+
+def _log_buildbot_links(suite_handler, suite_name, test_results):
+    logging.info('Links for buildbot:')
+    if suite_handler.suite_id is not None:
+        log_create_task(suite_name, suite_handler.suite_id)
+
     if suite_handler.task_id is not None:
-        print(annotations.StepLink(
-                'Link to the suite wait task: %s' % suite_name,
-                swarming_lib.get_task_link(get_task_id_for_task_summaries(
-                        suite_handler.task_id))))
+        log_wait_task(suite_name, suite_handler.task_id)
 
     if (suite_handler.is_provision() and
         suite_handler.is_provision_successfully_finished()):
@@ -125,6 +137,8 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
         # finishes and claims that it succeeds. Skip logging them in buildbot.
         return
 
+    annotations = autotest.chromite_load('buildbot_annotations')
+    reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
     for result in test_results:
         if result['state'] not in [swarming_lib.TASK_COMPLETED_SUCCESS,
                                    swarming_lib.TASK_RUNNING]:
