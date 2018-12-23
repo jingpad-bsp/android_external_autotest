@@ -59,7 +59,7 @@ def provision_machine(machine):
         label_update_success = True
         start_time = datetime.datetime.now()
         try:
-            host.labels.update_labels(host)
+            host.labels.update_labels(host, keep_pool=True)
         except Exception:
             logging.exception('Exception while updating labels.')
             label_update_success = False

@@ -41,7 +41,7 @@ def repair(machine):
                                            provision.Repair)
 
         try:
-            target.labels.update_labels(target)
+            target.labels.update_labels(target, keep_pool=True)
         except Exception:
             logging.exception('Exception while updating labels.')
     except Exception:
