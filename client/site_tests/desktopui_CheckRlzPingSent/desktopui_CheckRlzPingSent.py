@@ -77,7 +77,7 @@ class desktopui_CheckRlzPingSent(test.test):
         if not logged_in:
             with chrome.Chrome(logged_in=True):
                 # Wait some time for the DUT to get locked.
-                time.sleep(10)
+                time.sleep(20)
 
         with chrome.Chrome(logged_in=logged_in) as cr:
             self._check_url_for_rlz(cr)
