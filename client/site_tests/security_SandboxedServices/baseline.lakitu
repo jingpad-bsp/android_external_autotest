@@ -1,4 +1,5 @@
 exe,euser,egroup,pidns,mntns,caps,nonewprivs,filter
+# NOTE: When modifying this file, do the same for baseline.lakitu-gpu as well.
 
 # See the baseline file for docs.
 
@@ -22,6 +23,7 @@ konlet-startup,root,root,No,No,No,No,No
 # Docker daemon processes.
 dockerd,root,root,No,No,No,No,No
 docker-containe,root,root,No,No,No,No,No
+containerd,root,root,No,No,No,No,No
 
 # Processes that used by GCP compute image packages.
 google_ip_forwa,root,root,No,No,No,No,No
