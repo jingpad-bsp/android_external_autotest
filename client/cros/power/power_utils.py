@@ -272,7 +272,10 @@ def get_core_keyvals(keyvals):
 
     Remove the following types of non-important keyvals.
     - Minor checkpoints. (start with underscore)
-    - Individual cpu / gpu frequency buckets. (regex '[cg]pu_\d{3,}')
+    - Individual cpu / gpu frequency buckets.
+      (regex '[cg]pu(freq(_\d+)+)?_\d{3,}')
+    - Specific idle states from cpuidle/cpupkg.
+      (regex '.*cpu(idle|pkg)[ABD-Za-z0-9_\-]+C[^0].*')
 
     Args:
       keyvals: keyvals to remove non-important ones.
@@ -280,7 +283,11 @@ def get_core_keyvals(keyvals):
     Returns:
       Dictionary, keyvals with non-important ones removed.
     """
-    matcher = re.compile(r'_.*|.*_[cg]pu_\d{3,}_.*')
+    matcher = re.compile(r"""
+                         _.*|
+                         .*_[cg]pu(freq(_\d+)+)?_\d{3,}_.*|
+                         .*cpu(idle|pkg)[ABD-Za-z0-9_\-]+C[^0].*
+                         """, re.X)
     return {k: v for k, v in keyvals.iteritems() if not matcher.match(k)}
 
 

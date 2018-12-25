@@ -854,6 +854,7 @@ class CPUIdleStats(AbstractStats):
                     continue
 
                 cpuidle_stats[name] += usecs
+                cpuidle_stats['non-C0'] += usecs
 
         return cpuidle_stats
 
@@ -913,6 +914,7 @@ class CPUPackageStats(AbstractStats):
             return {}
         stats = dict((state, 0) for state in self._platform_states)
         stats['C0_C1'] = 0
+        stats['non-C0_C1'] = 0
 
         for cpu in os.listdir('/dev/cpu'):
             if not os.path.exists(template % cpu):
@@ -926,6 +928,7 @@ class CPUPackageStats(AbstractStats):
             for (state, msr) in self._platform_states.iteritems():
                 ticks = utils.rdmsr(msr, cpu)
                 stats[state] += ticks
+                stats['non-C0_C1'] += ticks
                 stats['C0_C1'] -= ticks
 
         return stats
