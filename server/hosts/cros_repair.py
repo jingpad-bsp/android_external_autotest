@@ -443,7 +443,7 @@ class _ResetRepairAction(hosts.RepairAction):
                 # If the DUT is up, we want to declare success, even if
                 # log gathering fails for some reason.  So, if there's
                 # a failure, just log it and move on.
-                logging.exception('Unexpected failure in log '
+                logging.exception('Non-critical failure in log '
                                   'collection during %s.',
                                   self.tag)
             return
