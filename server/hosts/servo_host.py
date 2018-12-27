@@ -464,13 +464,9 @@ class ServoHost(ssh_host.SSHHost):
             return
 
         if self._needs_synchronized_reboot():
-            logging.info('servo host has multiple duts, scheduling '
-                            'synchronized reboot')
-            afe = frontend_wrappers.RetryingAFE(
-                    timeout_min=5, delay_sec=10,
-                    server=server_utils.get_global_afe_hostname())
-            dut_list = self.get_attached_duts(afe)
-            self.schedule_synchronized_reboot(dut_list, afe)
+            logging.info('Servohost requies synchronized reboot, which is no'
+                         ' longer supported. Manually reboot servohost instead.'
+                         ' See crbug/848528')
             return
 
         self._reboot_post_upgrade()
