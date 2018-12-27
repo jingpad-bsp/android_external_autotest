@@ -459,13 +459,8 @@ class ServoHost(ssh_host.SSHHost):
 
         @param updater: a ChromiumOSUpdater instance for checking
             whether reboot is needed.
-        @return Return a (status, build) tuple reflecting the
-            update_engine status and current build of the host
-            at the end of the call.
         """
-        current_build_number = self._get_release_version()
-        status = updater.check_update_status()
-        if status == autoupdater.UPDATER_NEED_REBOOT:
+        if updater.check_update_status() == autoupdater.UPDATER_NEED_REBOOT:
             # Check if we need to schedule an organized reboot.
             afe = frontend_wrappers.RetryingAFE(
                     timeout_min=5, delay_sec=10,
@@ -476,10 +471,10 @@ class ServoHost(ssh_host.SSHHost):
                 logging.info('servo host has multiple duts, scheduling '
                              'synchronized reboot')
                 self.schedule_synchronized_reboot(dut_list, afe)
-                return status, current_build_number
+                return
 
             logging.info('Rebooting servo host %s from build %s',
-                         self.hostname, current_build_number)
+                         self.hostname, self._get_release_version())
             # Tell the reboot() call not to wait for completion.
             # Otherwise, the call will log reboot failure if servo does
             # not come back.  The logged reboot failure will lead to
@@ -504,15 +499,12 @@ class ServoHost(ssh_host.SSHHost):
                         'servo host %s failed to shut down.' %
                         self.hostname)
             if self.wait_up(timeout=120):
-                current_build_number = self._get_release_version()
-                status = updater.check_update_status()
                 logging.info('servo host %s back from reboot, with build %s',
-                             self.hostname, current_build_number)
+                             self.hostname, self._get_release_version())
             else:
                 raise error.AutoservHostError(
                         'servo host %s failed to come back from reboot.' %
                         self.hostname)
-        return status, current_build_number
 
 
     def update_image(self, wait_for_update=False):
@@ -561,7 +553,9 @@ class ServoHost(ssh_host.SSHHost):
         url = ds.get_update_url(target_build)
 
         updater = autoupdater.ChromiumOSUpdater(update_url=url, host=self)
-        status, current_build_number = self._check_for_reboot(updater)
+        self._check_for_reboot(updater)
+        current_build_number = self._get_release_version()
+        status = updater.check_update_status()
         update_pending = True
         if status in autoupdater.UPDATER_PROCESSING_UPDATE:
             logging.info('servo host %s already processing an update, update '
