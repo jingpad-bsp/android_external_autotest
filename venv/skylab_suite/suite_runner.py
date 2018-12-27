@@ -116,9 +116,9 @@ def _run_suite(test_specs, suite_handler, dry_run=False):
     """Make a new suite."""
     suite_id = os.environ.get('SWARMING_TASK_ID')
     _schedule_test_specs(test_specs, suite_handler, suite_id, dry_run)
+    suite_handler.set_suite_id(suite_id)
 
     if suite_id is not None and suite_handler.should_wait():
-        suite_handler.set_suite_id(suite_id)
         _wait_for_results(suite_handler, dry_run=dry_run)
 
 
