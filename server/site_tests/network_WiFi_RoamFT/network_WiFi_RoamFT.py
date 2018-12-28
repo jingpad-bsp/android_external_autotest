@@ -98,8 +98,15 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
                        r0kh='%s %s %s' % (mac1, id1, key0),
                        r1kh='%s %s %s' % (mac1, mac1, key1),
                        use_bridge=True)
-        router1_conf = hostap_config.HostapConfig(channel=48,
-                       mode=hostap_config.HostapConfig.MODE_11A,
+        n_caps = [hostap_config.HostapConfig.N_CAPABILITY_HT40_PLUS]
+        ac_caps = [hostap_config.HostapConfig.AC_CAPABILITY_SHORT_GI_80]
+        channel_width_80_mhz = hostap_config.HostapConfig.VHT_CHANNEL_WIDTH_80
+        router1_conf = hostap_config.HostapConfig(channel=157,
+                       mode=hostap_config.HostapConfig.MODE_11AC_PURE,
+                       n_capabilities=n_caps,
+                       ac_capabilities=ac_caps,
+                       vht_channel_width=channel_width_80_mhz,
+                       vht_center_channel=155,
                        security_config=self._security_config,
                        bssid=mac1,
                        mdid=mdid,
