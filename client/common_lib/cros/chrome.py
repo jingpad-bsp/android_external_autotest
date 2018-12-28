@@ -56,6 +56,8 @@ class Chrome(object):
                  username=None, password=None, gaia_id=None,
                  arc_mode=None, disable_arc_opt_in=True,
                  disable_arc_opt_in_verification=True,
+                 disable_app_sync=False,
+                 disable_play_auto_install=False,
                  init_network_controller=False, login_delay=0):
         """
         Constructor of telemetry wrapper.
@@ -93,6 +95,12 @@ class Chrome(object):
              for data migration tests where user's home data is already set up
              with opted-in state before login, this option needs to be set to
              False with disable_arc_opt_in=True to make ARC container work.
+        @param disable_app_sync:
+            Adds --arc-disable-app-sync to browser args and this disables ARC
+            app sync flow. By default it is enabled.
+        @param disable_play_auto_install:
+            Adds --arc-disable-play-auto-install to browser args and this
+            disables ARC Play Auto Install flow. By default it is enabled.
         @param login_delay: Time for idle in login screen to simulate the time
                             required for password typing.
         """
@@ -116,6 +124,12 @@ class Chrome(object):
             if disable_arc_opt_in and disable_arc_opt_in_verification:
                 finder_options.browser_options.AppendExtraBrowserArgs(
                         ['--disable-arc-opt-in-verification'])
+            if disable_app_sync:
+                finder_options.browser_options.AppendExtraBrowserArgs(
+                        ['--arc-disable-app-sync'])
+            if disable_play_auto_install:
+                finder_options.browser_options.AppendExtraBrowserArgs(
+                        ['--arc-disable-play-auto-install'])
             logged_in = True
 
         self._browser_type = (self.BROWSER_TYPE_LOGIN
