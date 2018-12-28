@@ -674,6 +674,36 @@ class AbstractStats(object):
         raise NotImplementedError('Override _read_stats in the subclass!')
 
 
+CPU_BASE_PATH = '/sys/devices/system/cpu/'
+
+def get_all_cpus():
+    """
+    Retrieve all numbers of 'cpu\d+' files under |CPU_BASE_PATH|.
+    """
+    cpu_entry_re = re.compile(r'cpu(\d+)')
+    cpus = []
+    for f in os.listdir(CPU_BASE_PATH):
+      match = cpu_entry_re.match(f)
+      if match:
+        cpus.append(int(match.groups()[0]))
+    return frozenset(cpus)
+
+def get_cpus_filepaths_for_suffix(cpus, suffix):
+    """
+    For each cpu in |cpus| check whether |CPU_BASE_PATH|/cpu%d/|suffix| exists.
+    Return tuple of two lists t:
+                    t[0]: all cpu ids where the condition above holds
+                    t[1]: all full paths where condition above holds.
+    """
+    available_cpus = []
+    available_paths = []
+    for c in cpus:
+        c_file_path = os.path.join(CPU_BASE_PATH, 'cpu%d' % c, suffix)
+        if os.path.exists(c_file_path):
+          available_cpus.append(c)
+          available_paths.append(c_file_path)
+    return (available_cpus, available_paths)
+
 class CPUFreqStats(AbstractStats):
     """
     CPU Frequency statistics
@@ -682,39 +712,35 @@ class CPUFreqStats(AbstractStats):
     MSR_IA32_MPERF = 0xe7
     MSR_IA32_APERF = 0xe8
 
-    def __init__(self, start_cpu=-1, end_cpu=-1):
-        cpufreq_stats_path = '/sys/devices/system/cpu/cpu*/cpufreq/stats/' + \
-                             'time_in_state'
-        cpufreq_key_path = '/sys/devices/system/cpu/cpu*/cpufreq/' + \
-                           'scaling_available_frequencies'
+    def __init__(self, cpus=None):
+        name = 'cpufreq'
+        stats_suffix = 'cpufreq/stats/time_in_state'
+        key_suffix = 'cpufreq/scaling_available_frequencies'
         intel_pstate_msr_path = '/dev/cpu/*/msr'
-        self._file_paths = glob.glob(cpufreq_stats_path)
-        cpufreq_key_paths = glob.glob(cpufreq_key_path)
-        num_cpus = len(self._file_paths)
+        all_cpus = get_all_cpus()
+        if not cpus:
+            cpus = all_cpus
+        cpus, self._file_paths = get_cpus_filepaths_for_suffix(cpus,
+                                                               stats_suffix)
+        if len(cpus) and len(cpus) < len(all_cpus):
+            name = '%s_%s' % (name, '_'.join([str(c) for c in cpus]))
+        _, cpufreq_key_paths = get_cpus_filepaths_for_suffix(cpus, key_suffix)
         intel_pstate_msr_paths = glob.glob(intel_pstate_msr_path)
         self._running_intel_pstate = False
         self._initial_perf = None
         self._current_perf = None
         self._max_freq = 0
-        name = 'cpufreq'
         if not self._file_paths:
             logging.debug('time_in_state file not found')
             if intel_pstate_msr_paths:
                 logging.debug('intel_pstate msr file found')
                 self._num_cpus = len(intel_pstate_msr_paths)
                 self._running_intel_pstate = True
-        else:
-            if (start_cpu >= 0 and end_cpu >= 0
-                    and not (start_cpu == 0 and end_cpu == num_cpus - 1)):
-                self._file_paths = self._file_paths[start_cpu : end_cpu]
-                cpufreq_key_paths = cpufreq_key_paths[start_cpu : end_cpu]
-                name += '_' + str(start_cpu) + '_' + str(end_cpu)
 
         self._available_freqs = set()
         for path in cpufreq_key_paths:
-            if os.path.exists(path):
-                self._available_freqs |= \
-                        set(int(x) for x in utils.read_file(path).split())
+            self._available_freqs |= set(int(x) for x in
+                                         utils.read_file(path).split())
 
         super(CPUFreqStats, self).__init__(name=name)
 
@@ -785,15 +811,15 @@ class CPUIdleStats(AbstractStats):
     # as ac <-> battery transitions.
     # TODO (snanda): Handle non-S0 states. Time spent in suspend states is
     # currently not factored out.
-    def __init__(self, start_cpu=-1, end_cpu=-1):
-        cpuidle_path = '/sys/devices/system/cpu/cpu*/cpuidle'
-        self._cpus = glob.glob(cpuidle_path)
-        num_cpus = len(self._cpus)
+    def __init__(self, cpus=None):
         name = 'cpuidle'
-        if (start_cpu >= 0 and end_cpu >= 0
-                and not (start_cpu == 0 and end_cpu == num_cpus - 1)):
-            self._cpus = self._cpus[start_cpu : end_cpu]
-            name = name + '_' + str(start_cpu) + '_' + str(end_cpu)
+        cpuidle_suffix = 'cpuidle'
+        all_cpus = get_all_cpus()
+        if not cpus:
+            cpus = all_cpus
+        cpus, self._cpus = get_cpus_filepaths_for_suffix(cpus, cpuidle_suffix)
+        if len(cpus) and len(cpus) < len(all_cpus):
+            name = '%s_%s' % (name, '_'.join([str(c) for c in cpus]))
         super(CPUIdleStats, self).__init__(name=name)
 
 
@@ -1224,34 +1250,39 @@ def get_cpu_sibling_groups():
     In systems with both small core and big core,
     returns groups of small and big sibling groups.
     """
-    siblings_paths = '/sys/devices/system/cpu/cpu*/topology/' + \
-                    'core_siblings_list'
+    siblings_suffix = 'topology/core_siblings_list'
     sibling_groups = []
-    sibling_file_paths = glob.glob(siblings_paths)
-    if not len(sibling_file_paths) > 0:
-        return sibling_groups;
-    total_cpus = len(sibling_file_paths)
-    i = 0
-    sibling_list_pattern = re.compile('(\d+)-(\d+)')
-    while (i <  total_cpus):
-        siblings_data = utils.read_file(sibling_file_paths[i])
-        sibling_match = sibling_list_pattern.match(siblings_data)
-        sibling_start, sibling_end = (int(x) for x in sibling_match.groups())
-        sibling_groups.append((sibling_start, sibling_end))
-        i = sibling_end + 1
-    return sibling_groups
+    cpus_processed = set()
+    cpus, sibling_file_paths = get_cpus_filepaths_for_suffix(get_all_cpus(),
+                                                             siblings_suffix)
+    for c, siblings_path in zip(cpus, sibling_file_paths):
+        if c in cpus_processed:
+            # This cpu is already part of a sibling group. Skip.
+            continue
+        siblings_data = utils.read_file(siblings_path)
+        sibling_group = set()
+        for sibling_entry in siblings_data.split(','):
+            entry_data = sibling_entry.split('-')
+            sibling_start = sibling_end = int(entry_data[0])
+            if len(entry_data) > 1:
+              sibling_end = int(entry_data[1])
+            siblings = set(range(sibling_start, sibling_end + 1))
+            sibling_group |= siblings
+        cpus_processed |= sibling_group
+        sibling_groups.append(frozenset(sibling_group))
+    return tuple(sibling_groups)
 
 
-def get_avaliable_cpu_stats():
+def get_available_cpu_stats():
     """Return CPUFreq/CPUIdleStats groups by big-small siblings groups."""
     ret = [CPUPackageStats()]
     cpu_sibling_groups = get_cpu_sibling_groups()
     if not cpu_sibling_groups:
         ret.append(CPUFreqStats())
         ret.append(CPUIdleStats())
-    for cpu_start, cpu_end in cpu_sibling_groups:
-        ret.append(CPUFreqStats(cpu_start, cpu_end))
-        ret.append(CPUIdleStats(cpu_start, cpu_end))
+    for cpu_group in cpu_sibling_groups:
+        ret.append(CPUFreqStats(cpu_group))
+        ret.append(CPUIdleStats(cpu_group))
     return ret
 
 
@@ -1260,7 +1291,7 @@ class StatoMatic(object):
     def __init__(self):
         self._start_uptime_secs = kernel_trace.KernelTrace.uptime_secs()
         self._astats = [USBSuspendStats(), GPUFreqStats(incremental=False)]
-        self._astats.extend(get_avaliable_cpu_stats())
+        self._astats.extend(get_available_cpu_stats())
         if os.path.isdir(DevFreqStats._DIR):
             self._astats.extend([DevFreqStats(f) for f in \
                                  os.listdir(DevFreqStats._DIR)])
@@ -1850,7 +1881,7 @@ class CPUStatsLogger(MeasurementLogger):
         # We don't use measurements since CPU stats can't measure separately.
         super(CPUStatsLogger, self).__init__([], seconds_period, checkpoint_logger)
 
-        self._stats = get_avaliable_cpu_stats()
+        self._stats = get_available_cpu_stats()
         self._stats.append(GPUFreqStats())
         self.domains = []
         for stat in self._stats:
