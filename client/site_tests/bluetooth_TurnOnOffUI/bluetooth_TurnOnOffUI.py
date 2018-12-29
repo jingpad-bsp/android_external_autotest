@@ -94,7 +94,16 @@ class bluetooth_TurnOnOffUI(graphics_utils.GraphicsTest):
 
         return self.xmlrpc_delegate._is_powered_on()
 
-    def turn_on_bluetooth(self, bt_page):
+    def click_bluetooth_button(self, driver, bt_page):
+        """Click on the bluetooth on/off button using javascript
+
+        @param: driver:Chromedriver object
+        @param: bt_page:Bluetooth page web element
+        """
+        button = bt_page.find_element_by_css_selector(self.ENABLE_BT_CSS)
+        driver.execute_script("arguments[0].click();", button)
+
+    def turn_on_bluetooth(self, bt_page, driver):
         """Turn on BT through UI
 
         @param: bt_page:Bluetooth page web element
@@ -102,14 +111,14 @@ class bluetooth_TurnOnOffUI(graphics_utils.GraphicsTest):
         if self.is_bluetooth_enabled():
             logging.info('Bluetooth is turned on already..')
         else:
-            bt_page.find_element_by_css_selector(self.ENABLE_BT_CSS).click()
+            self.click_bluetooth_button(driver, bt_page)
             time.sleep(self.DELAY_BW_TOGGLE_ON_OFF)
             if self.is_bluetooth_enabled():
                 logging.info('Turned on BT successfully..')
             else:
                 raise error.TestFail('BT is not turned on..')
 
-    def turn_off_bluetooth(self, bt_page):
+    def turn_off_bluetooth(self, bt_page, driver):
         """Turn off BT through UI
 
         @param: bt_page:Bluetooth page web element
@@ -117,7 +126,7 @@ class bluetooth_TurnOnOffUI(graphics_utils.GraphicsTest):
         if not self.is_bluetooth_enabled():
             logging.info('Bluetooth is turned off already within time.')
         else:
-            bt_page.find_element_by_css_selector(self.ENABLE_BT_CSS).click()
+            self.click_bluetooth_button(driver, bt_page)
             time.sleep(self.DELAY_BW_TOGGLE_ON_OFF)
             if not self.is_bluetooth_enabled():
                 logging.info('Turned off BT successfully..')
@@ -134,10 +143,10 @@ class bluetooth_TurnOnOffUI(graphics_utils.GraphicsTest):
         with chromedriver.chromedriver() as chromedriver_instance:
             driver = chromedriver_instance.driver
             bt_page = self.bluetooth_page(driver)
-            self.turn_off_bluetooth(bt_page)
+            self.turn_off_bluetooth(bt_page, driver)
             for iteration in xrange(1, iteration_count + 1):
                 logging.info("**** Turn on/off BT iteration: %d ****",
                              iteration)
-                self.turn_on_bluetooth(bt_page)
-                self.turn_off_bluetooth(bt_page)
+                self.turn_on_bluetooth(bt_page, driver)
+                self.turn_off_bluetooth(bt_page, driver)
         self.success = True
