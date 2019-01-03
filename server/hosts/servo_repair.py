@@ -92,13 +92,7 @@ class _ConfigVerifier(hosts.Verifier):
 
         @return The list of config files to check.
         """
-        # TODO(jrbarnette):  Testing `CONFIG_FILE` without a port number
-        # is a legacy.  Ideally, we would force all servos in the lab to
-        # update, and then remove this case.
-        config_list = ['%s_%d' % (self.CONFIG_FILE, host.servo_port)]
-        if host.servo_port == host.DEFAULT_PORT:
-            config_list.append(self.CONFIG_FILE)
-        return config_list
+        return ['%s_%d' % (self.CONFIG_FILE, host.servo_port)]
 
     @property
     def description(self):
