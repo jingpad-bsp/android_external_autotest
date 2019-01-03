@@ -464,22 +464,30 @@ class ServoHost(ssh_host.SSHHost):
             self._reboot_post_upgrade()
 
 
-    def _reboot_post_upgrade(self):
-        """Reboot this servo host because an upgrade is waiting."""
-        # Check if we need to schedule an organized reboot.
+    def _needs_synchronized_reboot(self):
+        """Does this servohost need synchronized reboot across multiple DUTs"""
+        # TODO(pprabhu) Use HostInfo in this check instead of hitting AFE.
         afe = frontend_wrappers.RetryingAFE(
                 timeout_min=5, delay_sec=10,
                 server=server_utils.get_global_afe_hostname())
         dut_list = self.get_attached_duts(afe)
-        logging.info('servo host has the following duts: %s', dut_list)
-        if len(dut_list) > 1:
+        return len(dut_list) > 1
+
+
+    def _reboot_post_upgrade(self):
+        """Reboot this servo host because an upgrade is waiting."""
+        if self._needs_synchronized_reboot():
             logging.info('servo host has multiple duts, scheduling '
                             'synchronized reboot')
+            afe = frontend_wrappers.RetryingAFE(
+                    timeout_min=5, delay_sec=10,
+                    server=server_utils.get_global_afe_hostname())
+            dut_list = self.get_attached_duts(afe)
             self.schedule_synchronized_reboot(dut_list, afe)
             return
 
-        logging.info('Rebooting servo host %s from build %s',
-                        self.hostname, self._get_release_version())
+        logging.info('Rebooting servo host %s from build %s', self.hostname,
+                     self._get_release_version())
         # Tell the reboot() call not to wait for completion.
         # Otherwise, the call will log reboot failure if servo does
         # not come back.  The logged reboot failure will lead to
