@@ -84,15 +84,15 @@ class _ConfigVerifier(hosts.Verifier):
                     '%s is %s; it should be %s' % (attr, val, expected_val))
 
 
-    def _get_configs(self, host):
+    def _get_config(self, host):
         """
-        Return all the config files to check.
+        Return the config file to check.
 
         @param host     Host object.
 
-        @return The list of config files to check.
+        @return The config file to check.
         """
-        return ['%s_%d' % (self.CONFIG_FILE, host.servo_port)]
+        return '%s_%d' % (self.CONFIG_FILE, host.servo_port)
 
     @property
     def description(self):
@@ -123,12 +123,12 @@ class _SerialConfigVerifier(_ConfigVerifier):
         # not set.
         if host.servo_serial is None:
             return
-        for config in self._get_configs(host):
-            serialval = self._get_config_val(host, config, self.ATTR)
-            if serialval is not None:
-                self._validate_attr(host, serialval, host.servo_serial,
-                                    self.ATTR, config)
-                return
+        config = self._get_config(host)
+        serialval = self._get_config_val(host, config, self.ATTR)
+        if serialval is not None:
+            self._validate_attr(host, serialval, host.servo_serial,
+                                self.ATTR, config)
+            return
         msg = 'Servo serial is unconfigured; should be %s' % host.servo_serial
         raise hosts.AutoservVerifyError(msg)
 
@@ -156,12 +156,12 @@ class _BoardConfigVerifier(_ConfigVerifier):
         """
         if not host.is_cros_host():
             return
-        for config in self._get_configs(host):
-            boardval = self._get_config_val(host, config, self.ATTR)
-            if boardval is not None:
-                self._validate_attr(host, boardval, host.servo_board, self.ATTR,
-                                    config)
-                return
+        config = self._get_config(host)
+        boardval = self._get_config_val(host, config, self.ATTR)
+        if boardval is not None:
+            self._validate_attr(host, boardval, host.servo_board, self.ATTR,
+                                config)
+            return
         msg = 'Servo board is unconfigured'
         if host.servo_board is not None:
             msg += '; should be %s' % host.servo_board
