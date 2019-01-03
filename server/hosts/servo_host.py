@@ -451,7 +451,7 @@ class ServoHost(ssh_host.SSHHost):
                                       *args, **dargs)
 
 
-    def _check_for_reboot(self, updater):
+    def _maybe_reboot_post_upgrade(self, updater):
         """Reboot this servo host if an upgrade is waiting.
 
         If the host has successfully downloaded and finalized a new
@@ -460,9 +460,12 @@ class ServoHost(ssh_host.SSHHost):
         @param updater: a ChromiumOSUpdater instance for checking
             whether reboot is needed.
         """
-        if updater.check_update_status() != autoupdater.UPDATER_NEED_REBOOT:
-            return
+        if updater.check_update_status() == autoupdater.UPDATER_NEED_REBOOT:
+            self._reboot_post_upgrade()
 
+
+    def _reboot_post_upgrade(self):
+        """Reboot this servo host because an upgrade is waiting."""
         # Check if we need to schedule an organized reboot.
         afe = frontend_wrappers.RetryingAFE(
                 timeout_min=5, delay_sec=10,
@@ -555,7 +558,7 @@ class ServoHost(ssh_host.SSHHost):
         url = ds.get_update_url(target_build)
 
         updater = autoupdater.ChromiumOSUpdater(update_url=url, host=self)
-        self._check_for_reboot(updater)
+        self._maybe_reboot_post_upgrade(updater)
         current_build_number = self._get_release_version()
         status = updater.check_update_status()
         update_pending = True
