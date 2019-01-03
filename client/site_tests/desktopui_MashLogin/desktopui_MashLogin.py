@@ -53,6 +53,7 @@ class desktopui_MashLogin(test.test):
         # under mash due to differences in how the GPU process is configured
         # with mus hosting viz. http://crbug.com/669965
         mash_browser_args = ['--enable-features=Mash',
+                             '--disable-features=SingleProcessMash',
                              '--gpu-no-complete-info-collection']
 
         logging.info('Testing Chrome with Mash startup.')
