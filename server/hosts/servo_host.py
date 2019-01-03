@@ -460,51 +460,53 @@ class ServoHost(ssh_host.SSHHost):
         @param updater: a ChromiumOSUpdater instance for checking
             whether reboot is needed.
         """
-        if updater.check_update_status() == autoupdater.UPDATER_NEED_REBOOT:
-            # Check if we need to schedule an organized reboot.
-            afe = frontend_wrappers.RetryingAFE(
-                    timeout_min=5, delay_sec=10,
-                    server=server_utils.get_global_afe_hostname())
-            dut_list = self.get_attached_duts(afe)
-            logging.info('servo host has the following duts: %s', dut_list)
-            if len(dut_list) > 1:
-                logging.info('servo host has multiple duts, scheduling '
-                             'synchronized reboot')
-                self.schedule_synchronized_reboot(dut_list, afe)
-                return
+        if updater.check_update_status() != autoupdater.UPDATER_NEED_REBOOT:
+            return
 
-            logging.info('Rebooting servo host %s from build %s',
-                         self.hostname, self._get_release_version())
-            # Tell the reboot() call not to wait for completion.
-            # Otherwise, the call will log reboot failure if servo does
-            # not come back.  The logged reboot failure will lead to
-            # test job failure.  If the test does not require servo, we
-            # don't want servo failure to fail the test with error:
-            # `Host did not return from reboot` in status.log.
-            self.reboot(fastsync=True, wait=False)
+        # Check if we need to schedule an organized reboot.
+        afe = frontend_wrappers.RetryingAFE(
+                timeout_min=5, delay_sec=10,
+                server=server_utils.get_global_afe_hostname())
+        dut_list = self.get_attached_duts(afe)
+        logging.info('servo host has the following duts: %s', dut_list)
+        if len(dut_list) > 1:
+            logging.info('servo host has multiple duts, scheduling '
+                            'synchronized reboot')
+            self.schedule_synchronized_reboot(dut_list, afe)
+            return
 
-            # We told the reboot() call not to wait, but we need to wait
-            # for the reboot before we continue.  Alas.  The code from
-            # here below is basically a copy of Host.wait_for_restart(),
-            # with the logging bits ripped out, so that they can't cause
-            # the failure logging problem described above.
-            #
-            # The black stain that this has left on my soul can never be
-            # erased.
-            old_boot_id = self.get_boot_id()
-            if not self.wait_down(timeout=self.WAIT_DOWN_REBOOT_TIMEOUT,
-                                  warning_timer=self.WAIT_DOWN_REBOOT_WARNING,
-                                  old_boot_id=old_boot_id):
-                raise error.AutoservHostError(
-                        'servo host %s failed to shut down.' %
-                        self.hostname)
-            if self.wait_up(timeout=120):
-                logging.info('servo host %s back from reboot, with build %s',
-                             self.hostname, self._get_release_version())
-            else:
-                raise error.AutoservHostError(
-                        'servo host %s failed to come back from reboot.' %
-                        self.hostname)
+        logging.info('Rebooting servo host %s from build %s',
+                        self.hostname, self._get_release_version())
+        # Tell the reboot() call not to wait for completion.
+        # Otherwise, the call will log reboot failure if servo does
+        # not come back.  The logged reboot failure will lead to
+        # test job failure.  If the test does not require servo, we
+        # don't want servo failure to fail the test with error:
+        # `Host did not return from reboot` in status.log.
+        self.reboot(fastsync=True, wait=False)
+
+        # We told the reboot() call not to wait, but we need to wait
+        # for the reboot before we continue.  Alas.  The code from
+        # here below is basically a copy of Host.wait_for_restart(),
+        # with the logging bits ripped out, so that they can't cause
+        # the failure logging problem described above.
+        #
+        # The black stain that this has left on my soul can never be
+        # erased.
+        old_boot_id = self.get_boot_id()
+        if not self.wait_down(timeout=self.WAIT_DOWN_REBOOT_TIMEOUT,
+                                warning_timer=self.WAIT_DOWN_REBOOT_WARNING,
+                                old_boot_id=old_boot_id):
+            raise error.AutoservHostError(
+                    'servo host %s failed to shut down.' %
+                    self.hostname)
+        if self.wait_up(timeout=120):
+            logging.info('servo host %s back from reboot, with build %s',
+                            self.hostname, self._get_release_version())
+        else:
+            raise error.AutoservHostError(
+                    'servo host %s failed to come back from reboot.' %
+                    self.hostname)
 
 
     def update_image(self, wait_for_update=False):
