@@ -125,12 +125,14 @@ class _SerialConfigVerifier(_ConfigVerifier):
             return
         config = self._get_config(host)
         serialval = self._get_config_val(host, config, self.ATTR)
-        if serialval is not None:
-            self._validate_attr(host, serialval, host.servo_serial,
-                                self.ATTR, config)
-            return
-        msg = 'Servo serial is unconfigured; should be %s' % host.servo_serial
-        raise hosts.AutoservVerifyError(msg)
+        if serialval is None:
+            raise hosts.AutoservVerifyError(
+                    'Servo serial is unconfigured; should be %s'
+                    % host.servo_serial
+            )
+
+        self._validate_attr(host, serialval, host.servo_serial, self.ATTR,
+                            config)
 
 
 
@@ -158,14 +160,14 @@ class _BoardConfigVerifier(_ConfigVerifier):
             return
         config = self._get_config(host)
         boardval = self._get_config_val(host, config, self.ATTR)
-        if boardval is not None:
-            self._validate_attr(host, boardval, host.servo_board, self.ATTR,
-                                config)
-            return
-        msg = 'Servo board is unconfigured'
-        if host.servo_board is not None:
-            msg += '; should be %s' % host.servo_board
-        raise hosts.AutoservVerifyError(msg)
+        if boardval is None:
+            msg = 'Servo board is unconfigured'
+            if host.servo_board is not None:
+                msg += '; should be %s' % host.servo_board
+            raise hosts.AutoservVerifyError(msg)
+
+        self._validate_attr(host, boardval, host.servo_board, self.ATTR,
+                            config)
 
 
 class _ServodJobVerifier(hosts.Verifier):
