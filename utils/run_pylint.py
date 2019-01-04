@@ -34,26 +34,6 @@ pylint_version = float("%s.%s" % (major, minor))
 # some files make pylint blow up, so make sure we ignore them
 BLACKLIST = ['/site-packages/*', '/contrib/*', '/frontend/afe/management.py']
 
-# patch up the logilab module lookup tools to understand autotest_lib.* trash
-import logilab.common.modutils
-_ffm = logilab.common.modutils.file_from_modpath
-def file_from_modpath(modpath, path=None, context_file=None):
-    """
-    Wrapper to eliminate autotest_lib from modpath.
-
-    @param modpath: name of module splitted on '.'
-    @param path: optional list of paths where module should be searched for.
-    @param context_file: path to file doing the importing.
-    @return The path to the module as returned by the parent method invocation.
-    @raises: ImportError if these is no such module.
-    """
-    if modpath[0] == "autotest_lib":
-        return _ffm(modpath[1:], path, context_file)
-    else:
-        return _ffm(modpath, path, context_file)
-logilab.common.modutils.file_from_modpath = file_from_modpath
-
-
 import pylint.lint
 from pylint.checkers import base, imports, variables
 
