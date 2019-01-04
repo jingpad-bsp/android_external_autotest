@@ -40,6 +40,7 @@ PERF_DAILY_RUN_TESTS = (
     'blink_perf.image_decoder',
     'cros_tab_switching.typical_24',
     'dromaeo',
+    'media.desktop',
     'memory.desktop',
     'smoothness.tough_pinch_zoom_cases',
     'webrtc',
