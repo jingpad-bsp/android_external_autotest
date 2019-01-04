@@ -25,7 +25,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.tradefed-run-collect-tests',
         test_name='cheets_CTS_Instant.arm.tradefed-run-collect-tests',
-        run_template=['run', 'commandAndExit', 'collect-tests-only', '--disable-reboot', '--module-arg', 'CtsMediaTestCases:skip-media-download:true', '--module-arg', 'CtsMediaStressTestCases:skip-media-download:true', '--module-arg', 'CtsMediaBitstreamsTestCases:skip-media-download:true'],
+        run_template=['run', 'commandAndExit', 'collect-tests-only', '--disable-reboot'],
         retry_template=None,
         target_module=None,
         target_plan=None,
