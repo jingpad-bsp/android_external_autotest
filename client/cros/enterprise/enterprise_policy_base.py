@@ -62,6 +62,24 @@ DEVICE_POLICY_DICT = {
     'DeviceRollbackToTargetVersion': 'rollback_to_target_version',
     'DeviceTargetVersionPrefix': 'target_version_prefix'
 }
+# Default settings for managed user policies
+DEFAULT_POLICY = {
+    'AllowDinosaurEasterEgg': False,
+    'ArcBackupRestoreServiceEnabled': 0,
+    'ArcEnabled': False,
+    'ArcGoogleLocationServicesEnabled': 0,
+    'CaptivePortalAuthenticationIgnoresProxy': False,
+    'CastReceiverEnabled': False,
+    'ChromeOsMultiProfileUserBehavior': 'primary-only',
+    'EasyUnlockAllowed': False,
+    'InstantTetheringAllowed': False,
+    'NTLMShareAuthenticationEnabled': False,
+    'NTPContentSuggestionsEnabled': False,
+    'NetBiosShareDiscoveryEnabled': False,
+    'QuickUnlockModeWhitelist': [],
+    'SmartLockSigninAllowed': False,
+    'SmsMessagesAllowed': False
+}
 
 class EnterprisePolicyTest(test.test):
     """Base class for Enterprise Policy Tests."""
@@ -507,44 +525,54 @@ class EnterprisePolicyTest(test.test):
         return stats
 
 
-    def _compare_values(self, policy_name, expected_value, value_shown):
+    def _compare_values(self, policy_name, input_value, value_shown):
         """Pass if an expected value and the chrome://policy version match.
 
         Handles some of the inconsistencies in the chrome://policy JSON format.
 
+        @param policy_name: The policy name to be verified.
+        @param input_value: The setting given for the policy.
+        @param value_shown: The setting of the policy from the DUT.
+
         @raises: error.TestError if policy values do not match.
 
         """
+        expected_value = copy.deepcopy(input_value)
+
         # If we expect a list and don't have a list, modify the value_shown.
         if isinstance(expected_value, list):
             if isinstance(value_shown, str):
-                if '{' in value_shown: # List of dicts.
+                if '{' in value_shown:  # List of dicts.
                     value_shown = decode_json_string('[%s]' % value_shown)
-                elif ',' in value_shown: # List of strs.
+                elif ',' in value_shown:  # List of strs.
                     value_shown = value_shown.split(',')
-                else: # List with one str.
+                else:  # List with one str.
                     value_shown = [value_shown]
-            elif not isinstance(value_shown, list): # List with one element.
+            elif not isinstance(value_shown, list):  # List with one element.
                 value_shown = [value_shown]
 
         # Special case for user and device network configurations.
         # Passphrases are hidden on the policy page, so the passphrase
         # field needs to be converted to asterisks to be compared.
-        sanitized_expected_value = copy.deepcopy(expected_value)
         SANITIZED_PASSWORD = '*' * 8
         if policy_name.endswith('OpenNetworkConfiguration'):
-            for network in sanitized_expected_value['NetworkConfigurations']:
+            for network in expected_value['NetworkConfigurations']:
                 wifi = network['WiFi']
                 if 'Passphrase' in wifi:
                     wifi['Passphrase'] = SANITIZED_PASSWORD
                 if 'EAP' in wifi and 'Password' in wifi['EAP']:
                     wifi['EAP']['Password'] = SANITIZED_PASSWORD
 
-        if sanitized_expected_value != value_shown:
+        # Some managed policies have a default value when they are not set.
+        # Replace these unset policies with their default value.
+        elif policy_name in DEFAULT_POLICY and expected_value is None:
+            expected_value = DEFAULT_POLICY[policy_name]
+
+        if expected_value != value_shown:
             raise error.TestError('chrome://policy shows the incorrect value '
                                   'for %s!  Expected %s, got %s.' % (
-                                          policy_name, sanitized_expected_value,
-                                          value_shown))
+                                      policy_name, expected_value,
+                                      value_shown))
 
 
     def verify_policy_value(self, policy_name, expected_value):
