@@ -460,8 +460,20 @@ class ServoHost(ssh_host.SSHHost):
         @param updater: a ChromiumOSUpdater instance for checking
             whether reboot is needed.
         """
-        if updater.check_update_status() == autoupdater.UPDATER_NEED_REBOOT:
-            self._reboot_post_upgrade()
+        if updater.check_update_status() != autoupdater.UPDATER_NEED_REBOOT:
+            return
+
+        if self._needs_synchronized_reboot():
+            logging.info('servo host has multiple duts, scheduling '
+                            'synchronized reboot')
+            afe = frontend_wrappers.RetryingAFE(
+                    timeout_min=5, delay_sec=10,
+                    server=server_utils.get_global_afe_hostname())
+            dut_list = self.get_attached_duts(afe)
+            self.schedule_synchronized_reboot(dut_list, afe)
+            return
+
+        self._reboot_post_upgrade()
 
 
     def _needs_synchronized_reboot(self):
@@ -476,16 +488,6 @@ class ServoHost(ssh_host.SSHHost):
 
     def _reboot_post_upgrade(self):
         """Reboot this servo host because an upgrade is waiting."""
-        if self._needs_synchronized_reboot():
-            logging.info('servo host has multiple duts, scheduling '
-                            'synchronized reboot')
-            afe = frontend_wrappers.RetryingAFE(
-                    timeout_min=5, delay_sec=10,
-                    server=server_utils.get_global_afe_hostname())
-            dut_list = self.get_attached_duts(afe)
-            self.schedule_synchronized_reboot(dut_list, afe)
-            return
-
         logging.info('Rebooting servo host %s from build %s', self.hostname,
                      self._get_release_version())
         # Tell the reboot() call not to wait for completion.
