@@ -16,10 +16,8 @@ import xmlrpclib
 import os
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import dev_server
@@ -29,7 +27,6 @@ from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils as server_utils
 from autotest_lib.server.cros import autoupdater
-from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import servo_repair
@@ -65,8 +62,6 @@ AUTOTEST_BASE = _CONFIG.get_config_value(
         'SCHEDULER', 'drone_installation_directory',
         default='/usr/local/autotest')
 
-_SERVO_HOST_REBOOT_TEST_NAME = 'servohost_Reboot'
-_SERVO_HOST_FORCE_REBOOT_TEST_NAME = 'servohost_Reboot.force_reboot'
 
 class ServoHost(ssh_host.SSHHost):
     """Host class for a host that controls a servo, e.g. beaglebone."""
@@ -363,86 +358,6 @@ class ServoHost(ssh_host.SSHHost):
         """
         return lsbrelease_utils.get_current_board(
                 lsb_release_content=self.run('cat /etc/lsb-release').stdout)
-
-
-    def _choose_dut_for_synchronized_reboot(self, dut_list, afe):
-        """Choose which dut to schedule servo host reboot job.
-
-        We'll want a semi-deterministic way of selecting which host should be
-        scheduled for the servo host reboot job.  For now we'll sort the
-        list with the expectation the dut list will stay consistent.
-        From there we'll grab the first dut that is available so we
-        don't schedule a job on a dut that will never run.
-
-        @param dut_list:  List of the dut hostnames to choose from.
-        @param afe:       Instance of the AFE.
-
-        @return hostname of dut to schedule job on.
-        """
-        afe_hosts = afe.get_hosts(dut_list)
-        afe_hosts.sort()
-        for afe_host in afe_hosts:
-            if afe_host.status not in host_states.UNAVAILABLE_STATES:
-                return afe_host.hostname
-        # If they're all unavailable, just return the first sorted dut.
-        dut_list.sort()
-        return dut_list[0]
-
-
-    def _sync_job_scheduled_for_duts(self, dut_list, afe):
-        """Checks if a synchronized reboot has been scheduled for these duts.
-
-        Grab all the host queue entries that aren't completed for the duts and
-        see if any of them have the expected job name.
-
-        @param dut_list:  List of duts to check on.
-        @param afe:       Instance of the AFE.
-
-        @returns True if the job is scheduled, False otherwise.
-        """
-        afe_hosts = afe.get_hosts(dut_list)
-        for afe_host in afe_hosts:
-            hqes = afe.get_host_queue_entries(host=afe_host.id, complete=0)
-            for hqe in hqes:
-                job = afe.get_jobs(id=hqe.job.id)
-                if job and job[0].name in (_SERVO_HOST_REBOOT_TEST_NAME,
-                                           _SERVO_HOST_FORCE_REBOOT_TEST_NAME):
-                    return True
-        return False
-
-
-    def schedule_synchronized_reboot(self, dut_list, afe, force_reboot=False):
-        """Schedule a job to reboot the servo host.
-
-        When we schedule a job, it will create a ServoHost object which will
-        go through this entire flow of checking if a reboot is needed and
-        trying to schedule it.  There is probably a better approach to setting
-        up a synchronized reboot but I'm coming up short on better ideas so I
-        apologize for this circus show.
-
-        @param dut_list:      List of duts that need to be locked.
-        @param afe:           Instance of afe.
-        @param force_reboot:  Boolean to indicate if a forced reboot should be
-                              scheduled or not.
-        """
-        # If we've already scheduled job on a dut, we're done here.
-        if self._sync_job_scheduled_for_duts(dut_list, afe):
-            return
-
-        # Looks like we haven't scheduled a job yet.
-        test = (_SERVO_HOST_REBOOT_TEST_NAME if not force_reboot
-                else _SERVO_HOST_FORCE_REBOOT_TEST_NAME)
-        dut = self._choose_dut_for_synchronized_reboot(dut_list, afe)
-        getter = control_file_getter.FileSystemGetter([AUTOTEST_BASE])
-        control_file = getter.get_control_file_contents_by_name(test)
-        control_type = control_data.CONTROL_TYPE_NAMES.SERVER
-        try:
-            afe.create_job(control_file=control_file, name=test,
-                           control_type=control_type, hosts=[dut])
-        except Exception as e:
-            # Sometimes creating the job will raise an exception. We'll log it
-            # but we don't want to fail because of it.
-            logging.exception('Scheduling reboot job failed due to Exception.')
 
 
     def reboot(self, *args, **dargs):
