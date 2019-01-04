@@ -286,15 +286,22 @@ def scan_for_networks(ssid, capturer, ap_spec):
     freq = ap_spec_module.FREQUENCY_TABLE[ap_spec.channel]
     wifi_if = capturer.get_wlanif(freq, 'managed')
     capturer.host.run('%s link set %s up' % (capturer.cmd_ip, wifi_if))
+
+    logging.info("Scanning for network ssid: %s", ssid)
     # We have some APs that need a while to come on-line
-    networks = utils.poll_for_condition(
-            condition=lambda: capturer.iw_runner.wait_for_scan_result(
-                    wifi_if,
-                    ssids=[ssid],
-                    wait_for_all=True),
-            timeout=300,
-            sleep_interval=35,
-            desc='Timed out getting IWBSSes')
+    networks = list()
+    try:
+        networks = utils.poll_for_condition(
+                condition=lambda: capturer.iw_runner.wait_for_scan_result(
+                        wifi_if,
+                        ssids=[ssid],
+                        wait_for_all=True),
+                timeout=300,
+                sleep_interval=35,
+                desc='Timed out getting IWBSSes')
+    except utils.TimeoutError:
+        pass
+
     capturer.remove_interface(wifi_if)
     return networks
 
