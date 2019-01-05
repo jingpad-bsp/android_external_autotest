@@ -151,12 +151,14 @@ class UpdateEngineUtil(object):
             if status is not None:
                 if self._UPDATE_STATUS_REPORTING_ERROR_EVENT == status[
                     self._CURRENT_OP]:
-                    raise error.TestFail('Update status reported error.')
+                    err_str = self._get_last_error_string()
+                    raise error.TestFail('Update status reported error: %s' %
+                                         err_str)
                 if status[self._CURRENT_OP] == self._UPDATE_STATUS_IDLE:
+                    err_str = self._get_last_error_string()
                     raise error.TestFail('Update status was unexpectedly '
                                          'IDLE when we were waiting for the '
-                                         'update to complete. Please check '
-                                         'the update engine logs.')
+                                         'update to complete: %s' % err_str)
                 if any(arg in status[self._CURRENT_OP] for arg in statuses):
                     break
             time.sleep(1)
@@ -392,12 +394,12 @@ class UpdateEngineUtil(object):
         @returns: The error message.
 
         """
-        err_str = 'Updating payload state for error code'
-        log = self._run('cat %s' % self._UPDATE_ENGINE_LOG).stdout
+        err_str = 'Updating payload state for error code: '
+        log = self._run('cat %s' % self._UPDATE_ENGINE_LOG).stdout.splitlines()
         targets = [line for line in log if err_str in line]
         logging.debug('Error lines found: %s', targets)
         if not targets:
           return None
         else:
-          return targets[-1].rpartition(':')[2]
+          return targets[-1].rpartition(err_str)[2]
 
