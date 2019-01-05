@@ -3,15 +3,14 @@
 # found in the LICENSE file.
 
 import logging
-import shutil
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros.cellular import test_environment
 from autotest_lib.client.cros.update_engine import nano_omaha_devserver
+from autotest_lib.client.cros.update_engine import update_engine_test
 
-class autoupdate_CannedOmahaUpdate(test.test):
+class autoupdate_CannedOmahaUpdate(update_engine_test.UpdateEngineTest):
     """
     Client-side mechanism to update a DUT with a given image.
 
@@ -24,9 +23,6 @@ class autoupdate_CannedOmahaUpdate(test.test):
 
     """
     version = 1
-
-    def cleanup(self):
-        shutil.copy('/var/log/update_engine.log', self.resultsdir)
 
 
     def run_canned_update(self, allow_failure):
@@ -43,7 +39,8 @@ class autoupdate_CannedOmahaUpdate(test.test):
         except error.CmdError as e:
             self._omaha.stop()
             if not allow_failure:
-                raise error.TestFail('Update attempt failed: %s' % e)
+                raise error.TestFail('Update attempt failed: %s' %
+                                     self._get_last_error_string())
             else:
                 logging.info('Ignoring failed update. Failure reason: %s', e)
 
