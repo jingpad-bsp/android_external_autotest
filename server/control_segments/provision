@@ -49,8 +49,7 @@ def provision_machine(machine):
     try:
         job.sysinfo.add_logdir(
                 sysinfo.logdir(constants.AUTOUPDATE_PRESERVE_LOG))
-        provision.run_special_task_actions(job, host, labels_list,
-                                           provision.Provision)
+        provision.Provision.run_task_actions(job, host, labels_list)
         host.verify()
 
         # Let's update the labels on the host and track how long it takes.
