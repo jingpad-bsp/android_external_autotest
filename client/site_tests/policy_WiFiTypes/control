@@ -13,7 +13,8 @@ DOC = '''
 This test should be run through the 'policy_WiFiTypesServer' test.
 
 'policy_WiFiTypes' sets the OpenNetworkConfiguration policy and attempts to
-connect to the given AP. Fails if the DUT does not connect.
+connect to the given AP. Fails if the DUT does not connect. Tests with both
+autoconnect on and off.
 
 '''
 

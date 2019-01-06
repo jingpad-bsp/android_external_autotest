@@ -12,7 +12,7 @@ class policy_WiFiTypesServer(wifi_cell_test_base.WiFiCellTestBase):
 
 
     def run_once(self, host, ap_config, security=None, eap=None, password=None,
-                 identity=None, autoconnect=None, ca_cert=None):
+                 identity=None, ca_cert=None, client_cert=None):
         """
         Set up an AP for a WiFi authentication type then run the client test.
 
@@ -26,7 +26,8 @@ class policy_WiFiTypesServer(wifi_cell_test_base.WiFiCellTestBase):
         @param password: Password, if the network type requires it.
         @param ca_cert: CA certificate in PEM format. Required
             for EAP networks.
-        @param autoconnect: True iff network policy should autoconnect.
+        @param client_cert: Client certificate in PKCS#12 format. Required for
+            EAP-TLS networks.
 
         """
         self.context.router.require_capabilities(
@@ -43,8 +44,8 @@ class policy_WiFiTypesServer(wifi_cell_test_base.WiFiCellTestBase):
                            eap=eap,
                            password=password,
                            identity=identity,
-                           autoconnect=autoconnect,
                            ca_cert=ca_cert,
+                           client_cert=client_cert,
                            check_client_result=True)
 
         self.context.router.deconfig()
