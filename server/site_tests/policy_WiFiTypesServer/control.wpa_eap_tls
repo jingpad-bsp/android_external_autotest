@@ -6,8 +6,7 @@ AUTHOR = 'timkovich'
 TIME = 'SHORT'
 NAME = 'policy_WiFiTypesServer.wpa_eap_tls'
 TEST_TYPE = 'Server'
-# TODO(timkovich): Disabled for now: crbug.com/883522
-# ATTRIBUTES = 'suite:ent-wificell'
+ATTRIBUTES = 'suite:ent-wificell'
 DEPENDENCIES = 'wificell'
 
 DOC = """
@@ -42,7 +41,8 @@ def run(machine):
                  security='WPA-EAP',
                  eap='EAP-TLS',
                  identity='chromeos',
-                 ca_cert=site_eap_certs.ca_cert_1)
+                 ca_cert=site_eap_certs.ca_cert_1,
+                 client_cert=site_eap_certs.client_cert_1_pkcs12)
 
 
 parallel_simple(run, machines)
