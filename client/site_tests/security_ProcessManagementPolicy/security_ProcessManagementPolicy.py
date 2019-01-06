@@ -95,6 +95,10 @@ class security_ProcessManagementPolicy(test.test):
         self._test_setuid("cros-disks", "chronos", True, False)
         # Make sure 'shill' can't setuid() to 'chronos'
         self._test_setuid("shill", "chronos", True, False)
+        # Make sure 'openvpn' can't setuid() to 'root'
+        self._test_setuid("openvpn", "root", True, False)
+        # Make sure 'ipsec' can't setuid() to 'root'
+        self._test_setuid("ipsec", "root", True, False)
 
         # Make the test fail if any unexpected behaviour got detected. Note
         # that the error log output that will be included in the failure
