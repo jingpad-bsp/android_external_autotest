@@ -3,20 +3,23 @@
 # found in the LICENSE file.
 
 import dbus
+import gzip
 import logging
 import os
 import subprocess
 import shutil
+import tempfile
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
-from autotest_lib.client.common_lib.cros import dbus_send
 from autotest_lib.client.cros import debugd_util
 
 import archiver
+import configurator
 import helpers
 import fake_printer
+import log_reader
 import multithreaded_processor
 
 # Timeout for printing documents in seconds
@@ -32,6 +35,13 @@ _FIRST_PORT_NUMBER = 9000
 # Values are from platform/system_api/dbus/debugd/dbus-constants.h.
 _CUPS_SUCCESS = 0
 
+# Exceptions, cases that we want to omit/ignore
+# key: document; values: list of PPD files
+_EXCEPTIONS = { 'split_streams.pdf': ['HP-DeskJet_200-pcl3.ppd.gz',
+        'HP-DeskJet_310-pcl3.ppd.gz', 'HP-DeskJet_320-pcl3.ppd.gz',
+        'HP-DeskJet_340C-pcl3.ppd.gz', 'HP-DeskJet_540C-pcl3.ppd.gz',
+        'HP-DeskJet_560C-pcl3.ppd.gz'] }
+
 class platform_PrinterPpds(test.test):
     """
     This test gets a list of PPD files and a list of test documents. It tries
@@ -41,7 +51,7 @@ class platform_PrinterPpds(test.test):
     threads.
 
     """
-    version = 2
+    version = 3
 
 
     def _get_filenames_from_PPD_indexes(self):
@@ -60,47 +70,6 @@ class platform_PrinterPpds(test.test):
         return list(ppd_files)
 
 
-    def _load_component(self, component):
-        """
-        Download filter component via dbus API
-
-        @param component: name of component
-
-        @raises error.TestFail is component is not loaded.
-
-        """
-        logging.info('download component:' + component);
-        res = dbus_send.dbus_send(
-            'org.chromium.ComponentUpdaterService',
-            'org.chromium.ComponentUpdaterService',
-            '/org/chromium/ComponentUpdaterService',
-            'LoadComponent',
-            timeout_seconds=20,
-            user='root',
-            args=[dbus.String(component)])
-        if res.response == '':
-            message = 'Component %s could not be loaded.' % component
-            raise error.TestFail(message)
-
-
-    def _delete_component(self, component):
-        """
-        Delete filter component via dbus API
-
-        @param component: name of component
-
-        """
-        logging.info('delete component:' + component);
-        dbus_send.dbus_send(
-            'org.chromium.ComponentUpdaterService',
-            'org.chromium.ComponentUpdaterService',
-            '/org/chromium/ComponentUpdaterService',
-            'UnloadComponent',
-            timeout_seconds=20,
-            user='root',
-            args=[dbus.String(component)])
-
-
     def _calculate_full_path(self, path):
         """
         Converts path given as a parameter to absolute path.
@@ -117,8 +86,8 @@ class platform_PrinterPpds(test.test):
 
 
     def initialize(
-            self, path_docs,
-            path_ppds=None, path_digests=None, threads_count=8):
+            self, path_docs, path_ppds=None, path_digests=None,
+            debug_mode=False, threads_count=8):
         """
         @param path_docs: path to local directory with documents to print
         @param path_ppds: path to local directory with PPD files to test;
@@ -127,26 +96,28 @@ class platform_PrinterPpds(test.test):
         @param path_digests: path to local directory with digests files for
                 test documents; if None is set then content of printed
                 documents is not verified
+        @param debug_mode: if set to True, then the autotest temporarily
+                remounts the root partition in R/W mode and changes CUPS
+                configuration, what allows to extract pipelines for all tested
+                PPDs and rerun the outside CUPS
         @param threads_count: number of threads to use
 
         """
+        # Calculates absolute paths for all parameters
+        self._location_of_test_docs = self._calculate_full_path(path_docs)
+        self._location_of_PPD_files = self._calculate_full_path(path_ppds)
+        location_of_digests_files = self._calculate_full_path(path_digests)
+
         # This object is used for running tasks in many threads simultaneously
         self._processor = multithreaded_processor.MultithreadedProcessor(
                 threads_count)
 
-        # Unpack archives with all PPD files
-        path_archive = self._calculate_full_path('ppds_all.tar.xz')
-        path_target_dir = self._calculate_full_path('.')
-        file_utils.rm_dir_if_exists(os.path.join(path_target_dir,'ppds_all'))
-        subprocess.call(['tar', 'xJf', path_archive, '-C', path_target_dir])
-        path_archive = self._calculate_full_path('ppds_100.tar.xz')
-        file_utils.rm_dir_if_exists(os.path.join(path_target_dir,'ppds_100'))
-        subprocess.call(['tar', 'xJf', path_archive, '-C', path_target_dir])
+        # This object is responsible for parsing CUPS logs
+        self._log_reader = log_reader.LogReader()
 
-        # Calculates locations of test documents, PPD files and digests files
-        self._location_of_test_docs = self._calculate_full_path(path_docs)
-        self._location_of_PPD_files = self._calculate_full_path(path_ppds)
-        location_of_digests_files = self._calculate_full_path(path_digests)
+        # This object is responsible for the system configuration
+        self._configurator = configurator.Configurator()
+        self._configurator.configure(debug_mode)
 
         # Reads list of test documents
         self._docs = helpers.list_entries_from_directory(
@@ -161,6 +132,17 @@ class platform_PrinterPpds(test.test):
             self._ppds = self._get_filenames_from_PPD_indexes()
         else:
             # ... from the given local directory
+            # Unpack archives with all PPD files:
+            path_archive = self._calculate_full_path('ppds_all.tar.xz')
+            path_target_dir = self._calculate_full_path('.')
+            file_utils.rm_dir_if_exists(
+                    os.path.join(path_target_dir,'ppds_all'))
+            subprocess.call(['tar', 'xJf', path_archive, '-C', path_target_dir])
+            path_archive = self._calculate_full_path('ppds_100.tar.xz')
+            file_utils.rm_dir_if_exists(
+                    os.path.join(path_target_dir,'ppds_100'))
+            subprocess.call(['tar', 'xJf', path_archive, '-C', path_target_dir])
+            # Load PPD files from the chosen directory
             self._ppds = helpers.list_entries_from_directory(
                             path=self._location_of_PPD_files,
                             with_suffixes=('.ppd','.ppd.gz'),
@@ -170,36 +152,43 @@ class platform_PrinterPpds(test.test):
 
         # Load digests files
         self._digests = dict()
-        for doc_name in self._docs:
-            if location_of_digests_files is None:
+        if location_of_digests_files is None:
+            for doc_name in self._docs:
                 self._digests[doc_name] = dict()
-            else:
+        else:
+            path_blacklist = os.path.join(location_of_digests_files,
+                    'blacklist.txt')
+            blacklist = helpers.load_blacklist(path_blacklist)
+            for doc_name in self._docs:
                 digests_name = doc_name + '.digests'
                 path = os.path.join(location_of_digests_files, digests_name)
-                self._digests[doc_name] = helpers.parse_digests_file(path)
+                self._digests[doc_name] = helpers.parse_digests_file(path,
+                        blacklist)
 
-        # Load components required by some printers (Epson and Star)
-        self._loaded_components = []
-        for component in ('epson-inkjet-printer-escpr', 'star-cups-driver'):
-            self._load_component(component)
-            self._loaded_components.append(component)
+        # Prepare a working directory for pipelines
+        if debug_mode:
+            self._pipeline_dir = tempfile.mkdtemp(dir='/tmp')
+        else:
+            self._pipeline_dir = None
 
 
     def cleanup(self):
         """
-        Cleanup - unloading all loaded components.
+        Cleanup.
 
         """
-        # Deleted components loaded during initialization
-        if hasattr(self, '_loaded_components'):
-            for component in self._loaded_components:
-                self._delete_component(component)
+        # Resore previous system settings
+        self._configurator.restore()
 
         # Delete directories with PPD files
         path_ppds = self._calculate_full_path('ppds_100')
         file_utils.rm_dir_if_exists(path_ppds)
         path_ppds = self._calculate_full_path('ppds_all')
         file_utils.rm_dir_if_exists(path_ppds)
+
+        # Delete pipeline working directory
+        if self._pipeline_dir is not None:
+            file_utils.rm_dir_if_exists(self._pipeline_dir)
 
 
     def run_once(self, path_outputs=None):
@@ -248,15 +237,11 @@ class platform_PrinterPpds(test.test):
 
         # Calculate digests files for output documents (if dumped)
         if self._path_output_directory is not None:
-            # loads list of ppds to omit
-            blacklist = helpers.load_blacklist()
-            blacklist += failures
-            # generates digest file fo each output directory
             for doc_name in self._docs:
                 path = os.path.join(self._path_output_directory,
                         doc_name + '.digests')
                 helpers.save_digests_file(path, self._new_digests[doc_name],
-                        blacklist)
+                        failures)
 
         # Raises an exception if at least one test failed
         if len(failures) > 0:
@@ -309,22 +294,34 @@ class platform_PrinterPpds(test.test):
         It tries to run the following steps:
         1. Starts an instance of FakePrinter
         2. Configures CUPS printer
-        3. Sends tests documents to the CUPS printer
-        4. Fetches the raw document from the FakePrinter
-        5. Dumps the raw document if self._path_output_directory is set
-        6. Verifies raw document's digest if the digest is available
-        7. Removes CUPS printer and stops FakePrinter
+        3. For each test document run the following steps:
+            3a. Sends tests documents to the CUPS printer
+            3b. Fetches the raw document from the FakePrinter
+            3c. Parse CUPS logs and check for any errors
+            3d. If self._pipeline_dir is set, extract the executed CUPS
+                pipeline, rerun it in bash console and verify every step and
+                final output
+            3e. If self._path_output_directory is set, save the raw document
+                and all intermediate steps in the provided directory
+            3f. If the digest is available, verify a digest of an output
+                documents
+        4. Removes CUPS printer and stops FakePrinter
         If the test fails this method throws an exception.
 
+        @param ppd_name: a name of the PPD file
         @param ppd_content: a content of the PPD file
         @param port: a port for the printer
 
         @throws Exception when the test fails
 
         """
-        # Save the PPD file for an external pipeline
-        if self._path_output_directory is not None:
-            path_ppd = '/tmp/' + ppd_name
+        # Create work directory for external pipelines and save the PPD file
+        # there (if needed)
+        path_ppd = None
+        if self._pipeline_dir is not None:
+            path_pipeline_ppd_dir = os.path.join(self._pipeline_dir, ppd_name)
+            os.makedirs(path_pipeline_ppd_dir)
+            path_ppd = os.path.join(path_pipeline_ppd_dir, ppd_name)
             with open(path_ppd, 'wb') as file_ppd:
                 file_ppd.write(ppd_content)
             if path_ppd.endswith('.gz'):
@@ -348,32 +345,58 @@ class platform_PrinterPpds(test.test):
                 # Prints all test documents
                 try:
                     for doc_name in self._docs:
+                        # Omit exceptions
+                        if ( doc_name in _EXCEPTIONS and
+                                ppd_name in _EXCEPTIONS[doc_name] ):
+                            if self._path_output_directory is not None:
+                                self._new_digests[doc_name][ppd_name] = (
+                                        helpers.calculate_digest('\x00') )
+                            continue
                         # Full path to the test document
                         path_doc = os.path.join(
                                         self._location_of_test_docs, doc_name)
                         # Sends test document to printer
-                        job_name = 'job_%05d' % port
-                        argv = ['lp', '-d', cups_printer_id, '-t', job_name]
+                        argv = ['lp', '-d', cups_printer_id]
                         argv += [path_doc]
                         subprocess.call(argv)
+                        # Prepare a workdir for the pipeline (if needed)
+                        path_pipeline_workdir_temp = None
+                        if self._pipeline_dir is not None:
+                            path_pipeline_workdir = os.path.join(
+                                    path_pipeline_ppd_dir, doc_name)
+                            path_pipeline_workdir_temp = os.path.join(
+                                    path_pipeline_workdir, 'temp')
+                            os.makedirs(path_pipeline_workdir_temp)
                         # Gets the output document from the fake printer
                         doc = printer.fetch_document(_FAKE_PRINTER_TIMEOUT)
                         digest = helpers.calculate_digest(doc)
-                        # Dumps output document to the output directory (if set)
+                        # Retrive data from the log file
+                        no_errors, logs, pipeline = \
+                                self._log_reader.extract_result(
+                                        cups_printer_id, path_ppd, path_doc,
+                                        path_pipeline_workdir_temp)
+                        # Archive obtained results in the output directory
                         if self._path_output_directory is not None:
                             self._archivers[doc_name].save_file(
                                     ppd_name, '.out', doc, apply_gzip=True)
+                            self._archivers[doc_name].save_file(
+                                    ppd_name, '.log', logs)
+                            if pipeline is not None:
+                                self._archivers[doc_name].save_file(
+                                        ppd_name, '.sh', pipeline)
                             # Set new digest
                             self._new_digests[doc_name][ppd_name] = digest
-                            # Reruns the pipeline and dump intermediate outputs
-                            path_pipeline = '/tmp/cups_%s' % job_name
-                            path_temp_workdir = '/tmp/cups_dir_%s' % job_name
-                            if os.path.isfile(path_pipeline):
-                                self._rerun_whole_pipeline(path_pipeline,
-                                        path_temp_workdir, path_ppd, ppd_name,
-                                        path_doc, doc_name, doc)
+                        # Fail if any of CUPS filters failed
+                        if not no_errors:
+                            raise Exception('One of the CUPS filters failed')
+                        # Reruns the pipeline and dump intermediate outputs
+                        if self._pipeline_dir is not None:
+                            self._rerun_whole_pipeline(
+                                        pipeline, path_pipeline_workdir,
+                                        ppd_name, doc_name, digest)
+                            shutil.rmtree(path_pipeline_workdir)
                         # Check document's digest (if known)
-                        if ( ppd_name in self._digests[doc_name] ):
+                        if ppd_name in self._digests[doc_name]:
                             digest_expected = self._digests[doc_name][ppd_name]
                             if digest_expected != digest:
                                 message = 'Document\'s digest does not match'
@@ -382,77 +405,65 @@ class platform_PrinterPpds(test.test):
                             # Simple validation
                             if len(doc) < 16:
                                 raise Exception('Empty output')
-
                 finally:
-                    # remove CUPS printer
+                    # Remove CUPS printer
                     debugd_util.iface().CupsRemovePrinter(cups_printer_id)
 
             # The fake printer is stopped at the end of "with" statement
         finally:
-            # finalize archivers and cleaning
+            # Finalize archivers and cleaning
             if self._path_output_directory is not None:
                 for doc_name in self._docs:
                     self._archivers[doc_name].finalize_prefix(ppd_name)
-                os.remove(path_ppd)
+            # Clean the pipelines' working directories
+            if self._pipeline_dir is not None:
+                shutil.rmtree(path_pipeline_ppd_dir)
 
 
     def _rerun_whole_pipeline(
-            self, path_pipeline, path_temp_workdir, path_ppd, ppd_name,
-            path_doc, doc_name, doc):
+            self, pipeline, path_workdir, ppd_name, doc_name, digest):
         """
         Reruns the whole pipeline outside CUPS server.
 
         Reruns a printing pipeline dumped from CUPS. All intermediate outputs
         are dumped and archived for future analysis.
 
-        @param path_pipeline: a path to file with pipeline dumped from CUPS
-        @param path_temp_workdir: a temporary directory to use as working
-                directory, it is deleted at the beginning if exists
-        @param path_ppd: a path to PPD file
+        @param pipeline: a pipeline as a bash script
+        @param path_workdir: an existing directory to use as working directory
         @param ppd_name: a filenames prefix used for archivers
-        @param path_doc: a path to an input (printed) document
         @param doc_name: a document name, used to select a proper archiver
-        @param doc: an output produced by CUPS (for comparison)
+        @param digest: an digest of the output produced by CUPS (for comparison)
+
+        @raises Exception in case of any errors
 
         """
-        shutil.rmtree(path_temp_workdir, ignore_errors=True)
-        # edit pipeline script, remove TMPDIR and HOME variables
-        with open(path_pipeline, 'rb') as file_pipeline:
-            pipeline = file_pipeline.readlines()
+        # Save pipeline to a file
+        path_pipeline = os.path.join(path_workdir, 'pipeline.sh')
         with open(path_pipeline, 'wb') as file_pipeline:
-            for line in pipeline:
-                if line.startswith('export TMPDIR='):
-                    continue
-                if line.startswith('export HOME='):
-                    continue
-                file_pipeline.write(line)
-        # create work directory and run pipeline
-        os.mkdir(path_temp_workdir)
-        path_home_and_tmp_dir = os.path.join(path_temp_workdir,'tmp')
-        os.mkdir(path_home_and_tmp_dir)
-        my_env = os.environ.copy()
-        my_env["TEST_PPD"] = path_ppd
-        my_env["TEST_DOCUMENT"] = path_doc
-        my_env["HOME"] = my_env["TMPDIR"] = path_home_and_tmp_dir
+            file_pipeline.write(pipeline)
+        # Run the pipeline
         argv = ['/bin/bash', '-e', path_pipeline]
-        ret = subprocess.Popen(argv, cwd=path_temp_workdir, env=my_env).wait()
-        # Archives the script and all intermediate files
-        self._archivers[doc_name].move_file(ppd_name, '.sh', path_pipeline)
-        i = 0
-        while os.path.isfile(os.path.join(path_temp_workdir, "%d.doc" % (i+1))):
+        ret = subprocess.Popen(argv, cwd=path_workdir).wait()
+        # Find the number of output files
+        i = 1
+        while os.path.isfile(os.path.join(path_workdir, "%d.doc.gz" % i)):
             i += 1
-            self._archivers[doc_name].copy_file(ppd_name, ".err%d" % i,
-                    os.path.join(path_temp_workdir, "%d.err" % i))
-            self._archivers[doc_name].copy_file(ppd_name, ".out%d" % i,
-                    os.path.join(path_temp_workdir, "%d.doc" % i), True)
-        # Reads last output (to compare it with the output produced by CUPS)
-        filename_doc = os.path.join(path_temp_workdir, "%d.doc" % i)
-        with open(filename_doc, 'rb') as last_file:
-            content_digest = helpers.calculate_digest(last_file.read())
-        shutil.rmtree(path_temp_workdir, ignore_errors=True)
+        files_count = i-1
+        # Reads the last output (to compare it with the output produced by CUPS)
+        if ret == 0:
+            with gzip.open(os.path.join(path_workdir,
+                    "%d.doc.gz" % files_count)) as last_file:
+                content_digest = helpers.calculate_digest(last_file.read())
+        # Archives all intermediate files (if desired)
+        if self._path_output_directory is not None:
+            for i in range(1,files_count+1):
+                self._archivers[doc_name].move_file(ppd_name, ".err%d" % i,
+                        os.path.join(path_workdir, "%d.err" % i))
+                self._archivers[doc_name].move_file(ppd_name, ".out%d.gz" % i,
+                        os.path.join(path_workdir, "%d.doc.gz" % i))
         # Validation
-        if content_digest != helpers.calculate_digest(doc):
-            raise Exception("The output returned by the pipeline is different"
-                    " than the output produced by CUPS")
         if ret != 0:
             raise Exception("A pipeline script returned %d" % ret)
+        if content_digest != digest:
+            raise Exception("The output returned by the pipeline is different"
+                    " than the output produced by CUPS")

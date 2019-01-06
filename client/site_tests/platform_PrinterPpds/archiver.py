@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import gzip
 import os
+import shutil
 import subprocess
 import threading
-import gzip
 
 class Archiver():
     """
@@ -139,7 +140,7 @@ class Archiver():
         @param prefix: prefix of filename that the new file will be saved with
         @param name: the rest of the filename of the new file; in summary, the
                 resultant filename of the new file will be prefix+name
-        @param path_file: path to the source file, it will be deleted
+        @param path_file: path to the source file
         @param apply_gzip: if true, the added file will be gzipped, the suffix
                 .gz will be added to its resultant filename
 
@@ -162,8 +163,17 @@ class Archiver():
                 .gz will be added to its resultant filename
 
         """
-        self.copy_file(prefix, name, path_file, apply_gzip)
-        os.remove(path_file)
+        if apply_gzip:
+            self.copy_file(prefix, name, path_file, apply_gzip)
+            os.remove(path_file)
+        else:
+            path_target = os.path.join(self._path_directory, prefix + name)
+            with self._lock:
+                assert prefix in self._filenames_prefixes
+                assert self._filenames_prefixes[prefix][1] is not None
+                assert name not in self._filenames_prefixes[prefix][1]
+                self._filenames_prefixes[prefix][1].add(name)
+            shutil.move(path_file, path_target)
 
 
     def finalize_prefix(self, prefix):
@@ -200,6 +210,6 @@ class Archiver():
             argv += filenames
             process_tar = subprocess.Popen(argv, cwd=self._path_directory)
             if process_tar.wait() != 0:
-                raise "Process 'tar cJf' failed!"
+                raise Exception("Process 'tar cJf' failed!")
             for filename in filenames:
                 os.remove(os.path.join(self._path_directory, filename))
