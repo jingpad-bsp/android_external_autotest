@@ -41,6 +41,7 @@ class cheets_AppCompatTest(arc.ArcTest):
 
         super(cheets_AppCompatTest, self).initialize(
             disable_arc_opt_in=False, extra_browser_args=browser_args,
+            disable_app_sync=True, disable_play_auto_install=True,
             username='crosarcappcompat@gmail.com',
             password='appcompatautotest')
 
@@ -172,22 +173,6 @@ class cheets_AppCompatTest(arc.ArcTest):
         arc.adb_cmd('logcat -G 16M')
 
 
-    def _wait_for_play_store_ready(self):
-        """
-        Wait for the Play Store to update.
-
-        When you log into a device for the first time Play Store will
-        sometimes restart itself to update if it is in the background. This
-        brings it back to the front repeatedly.
-
-        """
-        count = 0
-        while count < 50:
-            arc.adb_shell('am start %s' % self._PLAY_STORE_ACTIVITY)
-            time.sleep(3)
-            count += 1
-
-
     def _get_app_version(self):
         """Grab the version of the application we are testing."""
         self._app_version = arc.adb_shell('dumpsys package %s | grep '
@@ -197,7 +182,6 @@ class cheets_AppCompatTest(arc.ArcTest):
 
     def run_once(self):
         self._increase_logcat_buffer()
-        self._wait_for_play_store_ready()
         self._copy_resources_to_dut()
         self._grant_storage_permission()
         self._start_test()

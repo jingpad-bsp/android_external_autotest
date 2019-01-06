@@ -16,10 +16,8 @@ import xmlrpclib
 import os
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import dev_server
@@ -29,7 +27,6 @@ from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils as server_utils
 from autotest_lib.server.cros import autoupdater
-from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import servo_repair
@@ -65,8 +62,6 @@ AUTOTEST_BASE = _CONFIG.get_config_value(
         'SCHEDULER', 'drone_installation_directory',
         default='/usr/local/autotest')
 
-_SERVO_HOST_REBOOT_TEST_NAME = 'servohost_Reboot'
-_SERVO_HOST_FORCE_REBOOT_TEST_NAME = 'servohost_Reboot.force_reboot'
 
 class ServoHost(ssh_host.SSHHost):
     """Host class for a host that controls a servo, e.g. beaglebone."""
@@ -365,93 +360,13 @@ class ServoHost(ssh_host.SSHHost):
                 lsb_release_content=self.run('cat /etc/lsb-release').stdout)
 
 
-    def _choose_dut_for_synchronized_reboot(self, dut_list, afe):
-        """Choose which dut to schedule servo host reboot job.
-
-        We'll want a semi-deterministic way of selecting which host should be
-        scheduled for the servo host reboot job.  For now we'll sort the
-        list with the expectation the dut list will stay consistent.
-        From there we'll grab the first dut that is available so we
-        don't schedule a job on a dut that will never run.
-
-        @param dut_list:  List of the dut hostnames to choose from.
-        @param afe:       Instance of the AFE.
-
-        @return hostname of dut to schedule job on.
-        """
-        afe_hosts = afe.get_hosts(dut_list)
-        afe_hosts.sort()
-        for afe_host in afe_hosts:
-            if afe_host.status not in host_states.UNAVAILABLE_STATES:
-                return afe_host.hostname
-        # If they're all unavailable, just return the first sorted dut.
-        dut_list.sort()
-        return dut_list[0]
-
-
-    def _sync_job_scheduled_for_duts(self, dut_list, afe):
-        """Checks if a synchronized reboot has been scheduled for these duts.
-
-        Grab all the host queue entries that aren't completed for the duts and
-        see if any of them have the expected job name.
-
-        @param dut_list:  List of duts to check on.
-        @param afe:       Instance of the AFE.
-
-        @returns True if the job is scheduled, False otherwise.
-        """
-        afe_hosts = afe.get_hosts(dut_list)
-        for afe_host in afe_hosts:
-            hqes = afe.get_host_queue_entries(host=afe_host.id, complete=0)
-            for hqe in hqes:
-                job = afe.get_jobs(id=hqe.job.id)
-                if job and job[0].name in (_SERVO_HOST_REBOOT_TEST_NAME,
-                                           _SERVO_HOST_FORCE_REBOOT_TEST_NAME):
-                    return True
-        return False
-
-
-    def schedule_synchronized_reboot(self, dut_list, afe, force_reboot=False):
-        """Schedule a job to reboot the servo host.
-
-        When we schedule a job, it will create a ServoHost object which will
-        go through this entire flow of checking if a reboot is needed and
-        trying to schedule it.  There is probably a better approach to setting
-        up a synchronized reboot but I'm coming up short on better ideas so I
-        apologize for this circus show.
-
-        @param dut_list:      List of duts that need to be locked.
-        @param afe:           Instance of afe.
-        @param force_reboot:  Boolean to indicate if a forced reboot should be
-                              scheduled or not.
-        """
-        # If we've already scheduled job on a dut, we're done here.
-        if self._sync_job_scheduled_for_duts(dut_list, afe):
-            return
-
-        # Looks like we haven't scheduled a job yet.
-        test = (_SERVO_HOST_REBOOT_TEST_NAME if not force_reboot
-                else _SERVO_HOST_FORCE_REBOOT_TEST_NAME)
-        dut = self._choose_dut_for_synchronized_reboot(dut_list, afe)
-        getter = control_file_getter.FileSystemGetter([AUTOTEST_BASE])
-        control_file = getter.get_control_file_contents_by_name(test)
-        control_type = control_data.CONTROL_TYPE_NAMES.SERVER
-        try:
-            afe.create_job(control_file=control_file, name=test,
-                           control_type=control_type, hosts=[dut])
-        except Exception as e:
-            # Sometimes creating the job will raise an exception. We'll log it
-            # but we don't want to fail because of it.
-            logging.exception('Scheduling reboot job failed due to Exception.')
-
-
     def reboot(self, *args, **dargs):
         """Reboot using special servo host reboot command."""
         super(ServoHost, self).reboot(reboot_cmd=self.REBOOT_CMD,
                                       *args, **dargs)
 
 
-    def _check_for_reboot(self, updater):
+    def _maybe_reboot_post_upgrade(self, updater):
         """Reboot this servo host if an upgrade is waiting.
 
         If the host has successfully downloaded and finalized a new
@@ -459,60 +374,63 @@ class ServoHost(ssh_host.SSHHost):
 
         @param updater: a ChromiumOSUpdater instance for checking
             whether reboot is needed.
-        @return Return a (status, build) tuple reflecting the
-            update_engine status and current build of the host
-            at the end of the call.
         """
-        current_build_number = self._get_release_version()
-        status = updater.check_update_status()
-        if status == autoupdater.UPDATER_NEED_REBOOT:
-            # Check if we need to schedule an organized reboot.
-            afe = frontend_wrappers.RetryingAFE(
-                    timeout_min=5, delay_sec=10,
-                    server=server_utils.get_global_afe_hostname())
-            dut_list = self.get_attached_duts(afe)
-            logging.info('servo host has the following duts: %s', dut_list)
-            if len(dut_list) > 1:
-                logging.info('servo host has multiple duts, scheduling '
-                             'synchronized reboot')
-                self.schedule_synchronized_reboot(dut_list, afe)
-                return status, current_build_number
+        if updater.check_update_status() != autoupdater.UPDATER_NEED_REBOOT:
+            return
 
-            logging.info('Rebooting servo host %s from build %s',
-                         self.hostname, current_build_number)
-            # Tell the reboot() call not to wait for completion.
-            # Otherwise, the call will log reboot failure if servo does
-            # not come back.  The logged reboot failure will lead to
-            # test job failure.  If the test does not require servo, we
-            # don't want servo failure to fail the test with error:
-            # `Host did not return from reboot` in status.log.
-            self.reboot(fastsync=True, wait=False)
+        if self._needs_synchronized_reboot():
+            logging.info('Servohost requies synchronized reboot, which is no'
+                         ' longer supported. Manually reboot servohost instead.'
+                         ' See crbug/848528')
+            return
 
-            # We told the reboot() call not to wait, but we need to wait
-            # for the reboot before we continue.  Alas.  The code from
-            # here below is basically a copy of Host.wait_for_restart(),
-            # with the logging bits ripped out, so that they can't cause
-            # the failure logging problem described above.
-            #
-            # The black stain that this has left on my soul can never be
-            # erased.
-            old_boot_id = self.get_boot_id()
-            if not self.wait_down(timeout=self.WAIT_DOWN_REBOOT_TIMEOUT,
-                                  warning_timer=self.WAIT_DOWN_REBOOT_WARNING,
-                                  old_boot_id=old_boot_id):
-                raise error.AutoservHostError(
-                        'servo host %s failed to shut down.' %
-                        self.hostname)
-            if self.wait_up(timeout=120):
-                current_build_number = self._get_release_version()
-                status = updater.check_update_status()
-                logging.info('servo host %s back from reboot, with build %s',
-                             self.hostname, current_build_number)
-            else:
-                raise error.AutoservHostError(
-                        'servo host %s failed to come back from reboot.' %
-                        self.hostname)
-        return status, current_build_number
+        self._reboot_post_upgrade()
+
+
+    def _needs_synchronized_reboot(self):
+        """Does this servohost need synchronized reboot across multiple DUTs"""
+        # TODO(pprabhu) Use HostInfo in this check instead of hitting AFE.
+        afe = frontend_wrappers.RetryingAFE(
+                timeout_min=5, delay_sec=10,
+                server=server_utils.get_global_afe_hostname())
+        dut_list = self.get_attached_duts(afe)
+        return len(dut_list) > 1
+
+
+    def _reboot_post_upgrade(self):
+        """Reboot this servo host because an upgrade is waiting."""
+        logging.info('Rebooting servo host %s from build %s', self.hostname,
+                     self._get_release_version())
+        # Tell the reboot() call not to wait for completion.
+        # Otherwise, the call will log reboot failure if servo does
+        # not come back.  The logged reboot failure will lead to
+        # test job failure.  If the test does not require servo, we
+        # don't want servo failure to fail the test with error:
+        # `Host did not return from reboot` in status.log.
+        self.reboot(fastsync=True, wait=False)
+
+        # We told the reboot() call not to wait, but we need to wait
+        # for the reboot before we continue.  Alas.  The code from
+        # here below is basically a copy of Host.wait_for_restart(),
+        # with the logging bits ripped out, so that they can't cause
+        # the failure logging problem described above.
+        #
+        # The black stain that this has left on my soul can never be
+        # erased.
+        old_boot_id = self.get_boot_id()
+        if not self.wait_down(timeout=self.WAIT_DOWN_REBOOT_TIMEOUT,
+                                warning_timer=self.WAIT_DOWN_REBOOT_WARNING,
+                                old_boot_id=old_boot_id):
+            raise error.AutoservHostError(
+                    'servo host %s failed to shut down.' %
+                    self.hostname)
+        if self.wait_up(timeout=120):
+            logging.info('servo host %s back from reboot, with build %s',
+                            self.hostname, self._get_release_version())
+        else:
+            raise error.AutoservHostError(
+                    'servo host %s failed to come back from reboot.' %
+                    self.hostname)
 
 
     def update_image(self, wait_for_update=False):
@@ -561,7 +479,9 @@ class ServoHost(ssh_host.SSHHost):
         url = ds.get_update_url(target_build)
 
         updater = autoupdater.ChromiumOSUpdater(update_url=url, host=self)
-        status, current_build_number = self._check_for_reboot(updater)
+        self._maybe_reboot_post_upgrade(updater)
+        current_build_number = self._get_release_version()
+        status = updater.check_update_status()
         update_pending = True
         if status in autoupdater.UPDATER_PROCESSING_UPDATE:
             logging.info('servo host %s already processing an update, update '
