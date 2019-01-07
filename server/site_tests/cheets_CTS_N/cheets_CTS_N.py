@@ -100,9 +100,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
 
     def _should_skip_test(self, bundle):
         """Some tests are expected to fail and are skipped."""
-        # newbie and novato are x86 VMs without binary translation. Skip the ARM
-        # tests.
-        no_ARM_ABI_test_boards = ('newbie', 'novato', 'novato-arc64')
+        # novato* are x86 VMs without binary translation. Skip the ARM tests.
+        no_ARM_ABI_test_boards = ('novato', 'novato-arc64')
         if self._get_board_name() in no_ARM_ABI_test_boards and bundle == 'arm':
             return True
         return False
