@@ -17,7 +17,8 @@ NETWORK_TEST_EXTENSION_PATH = cntc.NETWORK_TEST_EXTENSION_PATH
 
 
 def create_network_policy(ssid, security=None, eap=None, password=None,
-                          identity=None, autoconnect=None, ca_cert=None):
+                          identity=None, autoconnect=None, ca_cert=None,
+                          client_cert=None):
     """
     Generate a network configuration policy dictionary for WiFi networks.
 
@@ -29,10 +30,14 @@ def create_network_policy(ssid, security=None, eap=None, password=None,
     @param password: Password, if the network type requires it.
     @param ca_cert: CA certificate in PEM format. Required
         for EAP networks.
+    @param client_cert: Client certificate in base64-encoded PKCS#12 format.
+        Required for EAP-TLS networks.
     @param autoconnect: True iff network policy should autoconnect.
 
     @returns conf: A dictionary in the format suitable to setting as a network
         policy.
+
+    @raises error.TestError: If an invalid network configuration is detected.
 
     """
     if security is None:
@@ -50,12 +55,32 @@ def create_network_policy(ssid, security=None, eap=None, password=None,
         ],
     }
 
+    conf['Type'] = 'UnencryptedConfiguration'
+
+    if eap and ca_cert is None:
+        raise error.TestError('ca_cert is required for EAP networks')
+    if eap == 'EAP-TLS' and client_cert is None:
+        raise error.TestError('client_cert is required for EAP-TLS networks')
+
+    # Generate list of certificate dictionaries.
+    certs = []
+
     if ca_cert is not None:
-        conf['Certificates'] = [
+        certs.append(
             {'GUID': 'CA_CERT',
              'Type': 'Authority',
              'X509': ca_cert}
-        ]
+        )
+
+    if client_cert is not None:
+        certs.append(
+            {'GUID': 'CLIENT_CERT',
+             'Type': 'Client',
+             'PKCS12': client_cert}
+        )
+
+    if certs:
+        conf['Certificates'] = certs
 
     wifi_conf = conf['NetworkConfigurations'][0]['WiFi']
 
@@ -78,10 +103,9 @@ def create_network_policy(ssid, security=None, eap=None, password=None,
             eap_conf['Password'] = password
 
         if eap == 'EAP-TLS':
-            eap_conf['ClientCertType'] = 'Pattern'
-            eap_conf['ClientCertPattern'] = {
-                'IssuerCARef': ['CA_CERT']
-            }
+            eap_conf['ClientCertType'] = 'Ref'
+            eap_conf['ClientCertRef'] = 'CLIENT_CERT'
+            eap_conf['UseSystemCAs'] = False
 
         wifi_conf['EAP'] = eap_conf
 
@@ -186,6 +210,8 @@ class ChromeEnterpriseNetworkContext(object):
 
         """
         network_info = self._get_network_info(ssid)
+        if network_info is None:
+            return None
         return network_info.connectionState
 
 
@@ -216,8 +242,7 @@ class ChromeEnterpriseNetworkContext(object):
                 '"%s"'% network_to_connect.guid)
         logging.debug("Manual network connection status: %r",
                 new_network_connect['status'])
-        if (new_network_connect['status'] ==
-                'chrome-test-call-status-failure'):
+        if new_network_connect['status'] == 'chrome-test-call-status-failure':
             raise error.TestFail(
                     'Could not connect to %s network. Error returned by '
                     'chrome.networkingPrivate.startConnect API: %s' %
@@ -295,12 +320,18 @@ class ChromeEnterpriseNetworkContext(object):
 
         """
         utils.poll_for_condition(
-                lambda:self._get_network_connection_state(ssid) != 'Connecting',
+                lambda: (self._get_network_connection_state(ssid)
+                         != 'Connecting'),
                 exception=error.TestFail('Device stuck in connecting state'),
                 timeout=self.SHORT_TIMEOUT)
+        try:
+            utils.poll_for_condition(
+                    lambda: (self._get_network_connection_state(ssid)
+                             == 'Connected'),
+                    timeout=self.SHORT_TIMEOUT)
+        except utils.TimeoutError:
+            pass
         network_connection_state = self._get_network_connection_state(ssid)
-        if network_connection_state is None:
-            return False
         logging.debug("Connection state for SSID-%r is: %r",
-                ssid, network_connection_state)
+                      ssid, network_connection_state)
         return network_connection_state == 'Connected'

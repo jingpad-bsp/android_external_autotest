@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import gzip
 import json
 import md5
 import os
@@ -48,23 +47,25 @@ def calculate_digest(doc):
     return md5.new(doc).hexdigest()
 
 
-def parse_digests_file(path_digests):
+def parse_digests_file(path_digests, blacklist):
     """
     Parses digests from file.
 
     @param path_digests: a path to a file with digests
+    @param blacklist: list of keys to omit
 
     @returns a dictionary with digests indexed by ppd filenames or an empty
             dictionary if the given file does not exist
 
     """
     digests = dict()
+    blacklist = set(blacklist)
     if os.path.isfile(path_digests):
         with open(path_digests, 'rb') as file_digests:
             lines = file_digests.read().splitlines()
             for line in lines:
                 cols = line.split()
-                if len(cols) >= 2:
+                if len(cols) >= 2 and cols[0] not in blacklist:
                     digests[cols[0]] = cols[1]
     return digests
 
@@ -91,7 +92,7 @@ def save_digests_file(path_digests, digests, blacklist):
         file_digests.write(digests_content)
 
 
-def load_blacklist():
+def load_blacklist(path_blacklist):
     """
     Loads blacklist of outputs to omit.
 
@@ -99,11 +100,12 @@ def load_blacklist():
     because they contain variables like date/time, job id or other non-static
     parameters. This routine returns list of blacklisted ppds.
 
-    @returns a list of ppds to ignore during calculation of digests
+    @param path_blacklist: a path to the file with the list of blacklisted
+            PPD files
+
+    @returns a list of ppds to ignore during verification of digests
 
     """
-    path_current = os.path.dirname(os.path.realpath(__file__))
-    path_blacklist = os.path.join(path_current, 'digests_blacklist.txt')
     with open(path_blacklist) as file_blacklist:
         lines = file_blacklist.readlines()
 
