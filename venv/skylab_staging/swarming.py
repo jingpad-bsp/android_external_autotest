@@ -64,9 +64,12 @@ class Client(object):
     @returns: json response from the Swarming call.
     """
     cros_build_lib = autotest.chromite_load('cros_build_lib')
-    cmd = self._base_cmd('query') + [
-        '%s?%s' % (path, urllib.urlencode(qargs)),
-    ]
+    cmdarg = path
+    if qargs:
+      cmdarg += "?%s" % urllib.urlencode(qargs)
+
+    cmd = self._base_cmd('query') + [cmdarg]
+
     result = cros_build_lib.RunCommand(cmd, capture_output=True)
     return json.loads(result.output)
 
