@@ -31,7 +31,7 @@ class policy_DeviceServer(test.test):
         self.host.reboot()
 
 
-    def run_once(self, client_test, host, case):
+    def run_once(self, client_test, host, case=None):
         """
         Starting point of this test.
 
