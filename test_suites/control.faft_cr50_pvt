@@ -34,6 +34,6 @@ args_dict['add_experimental'] = True
 args_dict['job'] = job
 args_dict['test_args'] = {
 	'ccd_lockout' : 'False',
-	'cr50_qual_version' : '0.3.10/0:0:0'
+	'cr50_qual_version' : '0.3.11/0:0:0'
 }
 dynamic_suite.reimage_and_run(**args_dict)
