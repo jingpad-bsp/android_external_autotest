@@ -196,16 +196,19 @@ class CrosDisksClient(DBusClient):
         'status', 'path'
     )
 
-    def __init__(self, main_loop, bus):
+    def __init__(self, main_loop, bus, timeout_seconds=None):
         """Initializes the instance.
 
         Args:
             main_loop: The GLib main loop.
             bus: The bus where the DBus server is connected to.
+            timeout_seconds: Maximum time in seconds to wait for the DBus
+                             connection.
         """
         super(CrosDisksClient, self).__init__(main_loop, bus,
                                               self.CROS_DISKS_BUS_NAME,
-                                              self.CROS_DISKS_OBJECT_PATH)
+                                              self.CROS_DISKS_OBJECT_PATH,
+                                              timeout_seconds)
         self.interface = dbus.Interface(self.proxy_object,
                                         self.CROS_DISKS_INTERFACE)
         self.properties = dbus.Interface(self.proxy_object,
@@ -392,10 +395,10 @@ class CrosDisksTester(GenericTesterMainLoop):
     """
     def __init__(self, test):
         bus_loop = DBusGMainLoop(set_as_default=True)
-        bus = dbus.SystemBus(mainloop=bus_loop)
+        self.bus = dbus.SystemBus(mainloop=bus_loop)
         self.main_loop = gobject.MainLoop()
         super(CrosDisksTester, self).__init__(test, self.main_loop)
-        self.cros_disks = CrosDisksClient(self.main_loop, bus)
+        self.cros_disks = CrosDisksClient(self.main_loop, self.bus)
 
     def get_tests(self):
         """Returns a list of test methods to be invoked by perform_one_test.
@@ -416,6 +419,16 @@ class CrosDisksTester(GenericTesterMainLoop):
         for test in tests:
             test()
             self.requirement_completed(test.func_name)
+
+    def reconnect_client(self, timeout_seconds=None):
+      """"Reconnect the CrosDisks DBus client.
+
+      Args:
+          timeout_seconds: Maximum time in seconds to wait for the DBus
+                           connection.
+      """
+      self.cros_disks = CrosDisksClient(self.main_loop, self.bus,
+                                        timeout_seconds)
 
 
 class FilesystemTestObject(object):
