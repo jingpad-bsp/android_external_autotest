@@ -178,6 +178,7 @@ def _run_test_push(args):
         deadline - time.time(),
     )
     _logger.info('Triggered skylab_staging_test suite. Task id: %s', task_id)
+    _verify_suite_creation(swclient, task_id)
     _logger.info('Check push_to_prod suite on: \n    %s',
                  swclient.task_url(task_id))
     swclient.wait_for_suite(
@@ -191,6 +192,14 @@ def _run_test_push(args):
     _logger.info('Finished skylab_staging_test suite.')
 
   _verify_test_results(task_id, _EXPECTED_TEST_RESULTS)
+
+
+def _verify_suite_creation(swclient, task_id):
+  """Verify the suite is created successfully."""
+  result = swclient.query('task/%s/result' % task_id, [])
+  if result['state'] != 'COMPLETED' or result['failure']:
+    raise errors.TestPushError('Suite task %s is not successfully created.'
+                               % task_id)
 
 
 def _verify_test_results(task_id, expected_results):
