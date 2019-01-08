@@ -37,8 +37,7 @@ def repair(machine):
 
         target.repair()
         logging.debug('Repair with labels list %s', labels_list)
-        provision.run_special_task_actions(job, target, labels_list,
-                                           provision.Repair)
+        provision.Repair.run_task_actions(job, target, labels_list)
 
         try:
             target.labels.update_labels(target, keep_pool=True)
