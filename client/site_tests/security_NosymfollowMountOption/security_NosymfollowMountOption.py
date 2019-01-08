@@ -24,8 +24,8 @@ class security_NosymfollowMountOption(test.test):
         # TODO(mortonm): add a function to utils to do this kernel version
         # check and raise NAError.
         version = utils.get_kernel_version()
-        if version == "3.8.11" or version == "3.10.18":
-            raise error.TestNAError('Test is n/a for kernels older than 3.14')
+        if version == "3.8.11":
+            raise error.TestNAError('Test is n/a for kernels older than 3.10')
         super(security_NosymfollowMountOption,
             self).__init__(*args, **kwargs)
         self._failure = False
