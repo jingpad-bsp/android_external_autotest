@@ -200,7 +200,13 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
         self.context.router.deconfig()
 
     def run_once(self,host):
-        """Set global FT switch and call test_body"""
+        """
+        Set global FT switch and call test_body.
+
+        TODO(matthewmwang): rewrite test so that it is more reliable.
+        """
+        self.context.client.require_capabilities(
+            [site_linux_system.LinuxSystem.CAPABILITY_SUPPLICANT_ROAMING])
 
         with self.context.client.set_manager_property(self.GLOBAL_FT_PROPERTY,
                                                       True):
