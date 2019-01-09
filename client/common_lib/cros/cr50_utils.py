@@ -79,6 +79,7 @@ ERASED_BID_INT = 0xffffffff
 ERASED_CHIP_BID = (ERASED_BID_INT, ERASED_BID_INT, ERASED_BID_INT)
 # Any image with this board id will run on any device
 EMPTY_IMAGE_BID = '00000000:00000000:00000000'
+EMPTY_IMAGE_BID_CHARACTERS = set(EMPTY_IMAGE_BID)
 SYMBOLIC_BID_LENGTH = 4
 
 gsctool = argparse.ArgumentParser()
@@ -178,13 +179,9 @@ def FindVersion(output, arg):
     # --binver is the only gsctool command that may have bid keys in its
     # versions dictionary. If no bid keys exist, bid will be None.
     bid = GetVersion(versions, BID)
-    # Right now most images that aren't board id locked don't support getting
-    # the board id. To make all non board id locked board ids equal, replace
-    # an empty board id with None
-    #
-    # TODO(mruthven): Remove once all cr50 images support getting the board id.
-    bid = None if bid == EMPTY_IMAGE_BID else bid
-    return ro, rw, bid
+    # Use GetBoardIdInfoString to standardize all board ids to the non
+    # symbolic form.
+    return ro, rw, GetBoardIdInfoString(bid, symbolic=False)
 
 
 def GetSavedVersion(client):
@@ -460,18 +457,19 @@ def GetBoardIdInfoTuple(board_id_str):
     """Convert the string into board id args.
 
     Split the board id string board_id:(mask|board_id_inv):flags to a tuple of
-    its parts. The board id will be converted to its symbolic value. The flags
-    and the mask/board_id_inv will be converted to an int.
+    its parts. Each element will be converted to an integer.
 
     Returns:
-        the symbolic board id, mask|board_id_inv, and flags
+        board id int, mask|board_id_inv, and flags or None if its a universal
+        image.
     """
-    if not board_id_str:
+    # In tests None is used for universal board ids. Some old images don't
+    # support getting board id, so we use None. Convert 0:0:0 to None.
+    if not board_id_str or set(board_id_str) == EMPTY_IMAGE_BID_CHARACTERS:
         return None
 
     board_id, param2, flags = board_id_str.split(':')
-    board_id = GetSymbolicBoardId(board_id)
-    return board_id, int(param2, 16), int(flags, 16)
+    return GetIntBoardId(board_id), int(param2, 16), int(flags, 16)
 
 
 def GetBoardIdInfoString(board_id_info, symbolic=False):
@@ -487,18 +485,16 @@ def GetBoardIdInfoString(board_id_info, symbolic=False):
 
     Returns:
         (board_id|symbolic_board_id):(mask|board_id_inv):flags. Will return
-        None if if the given board id info is not valid
+        None if if the given board id info is empty or is not valid
     """
+    # Convert board_id_info to a tuple if it's a string.
+    if isinstance(board_id_info, str):
+        board_id_info = GetBoardIdInfoTuple(board_id_info)
+
     if not board_id_info:
         return None
 
-    # Get the board id string, the mask value, and the flag value based on the
-    # board_id_info type
-    if isinstance(board_id_info, str):
-        board_id, param2, flags = GetBoardIdInfoTuple(board_id_info)
-    else:
-        board_id, param2, flags = board_id_info
-
+    board_id, param2, flags = board_id_info
     # Get the hex string for board id
     board_id = '%08x' % GetIntBoardId(board_id)
 
