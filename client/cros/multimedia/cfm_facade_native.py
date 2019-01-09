@@ -179,12 +179,18 @@ class CFMFacadeNative(object):
                 ctxs = kiosk_utils.get_webview_contexts(self._resource._browser,
                                                         self._EXT_ID)
                 for ctx in ctxs:
-                    url_query = urlparse.urlparse(ctx.GetUrl()).query
+                    parse_result = urlparse.urlparse(ctx.GetUrl())
+                    url_path = parse_result.path
+                    logging.info('Webview path: "%s"', url_path)
+                    url_query = parse_result.query
                     logging.info('Webview query: "%s"', url_query)
                     params = urlparse.parse_qs(url_query,
                                                keep_blank_values = True)
-                    is_oobe_slave_screen = ('nooobestatesync' in params and
-                                            'oobedone' in params)
+                    is_oobe_slave_screen = (
+                        # Hangouts Classic
+                        ('nooobestatesync' in params and 'oobedone' in params)
+                        # Hangouts Meet
+                        or ('oobesecondary' in url_path))
                     if is_oobe_slave_screen:
                         # Skip the oobe slave screen. Not doing this can cause
                         # the wrong webview context to be returned.
