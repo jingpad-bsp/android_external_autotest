@@ -516,7 +516,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         if self.BID_ERROR in version_info[4]:
             raise error.TestError(version_info)
         bid = version_info[4].split()[1]
-        return bid if bid != cr50_utils.EMPTY_IMAGE_BID else None
+        return cr50_utils.GetBoardIdInfoString(bid)
 
 
     def get_version(self):
