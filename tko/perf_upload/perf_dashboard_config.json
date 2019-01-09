@@ -94,6 +94,18 @@
     "dashboard_test_name": "cheets_CTS"
   },
   {
+    "autotest_name": "enterprise_CFM_MeetingRoomScenario.idle_in_meeting_with_bots",
+    "master_name": "ChromeOS_Enterprise"
+  },
+  {
+    "autotest_name": "enterprise_CFM_MeetingRoomScenario.idle_on_landing_page",
+    "master_name": "ChromeOS_Enterprise"
+  },
+  {
+    "autotest_name": "enterprise_CFM_MeetingRoomScenario.join_leave_meeting_with_bots",
+    "master_name": "ChromeOS_Enterprise"
+  },
+  {
     "autotest_name": "enterprise_CFM_Perf.meet_app",
     "master_name": "ChromeOS_Enterprise"
   },
