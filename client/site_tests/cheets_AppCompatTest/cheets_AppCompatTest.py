@@ -186,6 +186,13 @@ class cheets_AppCompatTest(arc.ArcTest):
                                           self._pkg_name)
 
 
+    def _take_screenshot(self, name):
+        try:
+            graphics_utils.take_screenshot(self.resultsdir, name)
+        except:
+            logging.info('Failed to take screenshot')
+
+
     def run_once(self, retries=3):
         self._increase_logcat_buffer()
         self._copy_resources_to_dut()
@@ -196,12 +203,10 @@ class cheets_AppCompatTest(arc.ArcTest):
 
             # Bring Play Store to front.
             arc.adb_shell('am start %s' % self._PLAY_STORE_ACTIVITY)
-            graphics_utils.take_screenshot(self.resultsdir,
-                                           'test_start')
+            self._take_screenshot('test_start')
             self._start_test()
             logging.info('Iteration %d: Test finished' % trial)
-            graphics_utils.take_screenshot(self.resultsdir,
-                                           'test_end')
+            self._take_screenshot('test_end')
             self._get_app_version()
             self._capture_bugreport()
             self._grab_screenshots()
