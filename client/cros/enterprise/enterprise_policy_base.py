@@ -417,6 +417,7 @@ class EnterprisePolicyTest(test.test):
 
         @param policy_tab: Tab displaying the Policies page.
         @param policy_name: The name of the policy.
+        @param table_index: Index of table in DOM to check.
 
         @returns: A dict of stats, including JSON decode 'value' (see caveat).
                   Also included are 'name', 'status', 'level', 'scope',
@@ -432,19 +433,23 @@ class EnterprisePolicyTest(test.test):
             for (var i = 1, row; row = table.rows[i]; i++) {
                 if (row.className !== 'expanded-value-container') {
                     var name_div = row.getElementsByClassName('name elide')[0];
+                    if (typeof name_div === 'undefined') {
+                        continue;
+                    }
                     var name_links = name_div.getElementsByClassName(
                             'name-link');
                     var name = (name_links.length > 0) ?
                             name_links[0].textContent : name_div.textContent;
                     rowValues['name'] = name;
                     if (name === '%s') {
-                        var value_span = row.getElementsByClassName('value')[0];
-                        rowValues['value'] = value_span.textContent;
-                        stat_names = ['status', 'level', 'scope', 'source'];
+                        stat_names = ['value', 'status', 'level',
+                                      'scope', 'source'];
                         stat_names.forEach(function(entry) {
                             var entry_div = row.getElementsByClassName(
-                                    entry+' elide')[0];
-                            rowValues[entry] = entry_div.textContent;
+                                    entry)[0];
+                            if (typeof entry_div !== 'undefined') {
+                                rowValues[entry] = entry_div.textContent;
+                            }
                         });
                         break;
                     }
@@ -453,12 +458,15 @@ class EnterprisePolicyTest(test.test):
             rowValues;
         ''' % (table_index, policy_name))
 
-        logging.debug('Policy %s row: %s', policy_name, row_values)
-        if not row_values or len(row_values) < 6:
-            raise error.TestError(
-                    'Could not get policy info for %s!' % policy_name)
-
         entries = ['value', 'status', 'level', 'scope', 'source']
+
+        logging.debug('Policy %s row: %s', policy_name, row_values)
+        key_diff = set(entries) - set(row_values.keys())
+        if key_diff:
+            raise error.TestError(
+                    'Could not get policy info for %s. '
+                    'Missing columns: %s.' % (policy_name, key_diff))
+
         for v in entries:
             stats[v] = row_values[v].encode('ascii', 'ignore')
 
@@ -562,7 +570,7 @@ class EnterprisePolicyTest(test.test):
                     wifi['Passphrase'] = SANITIZED_PASSWORD
                 if 'EAP' in wifi and 'Password' in wifi['EAP']:
                     wifi['EAP']['Password'] = SANITIZED_PASSWORD
-            for cert in sanitized_expected_value.get('Certificates', []):
+            for cert in expected_value.get('Certificates', []):
                 if 'PKCS12' in cert:
                     cert['PKCS12'] = SANITIZED_PASSWORD
 
