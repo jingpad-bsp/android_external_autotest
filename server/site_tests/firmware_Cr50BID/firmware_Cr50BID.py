@@ -179,31 +179,30 @@ class firmware_Cr50BID(Cr50Test):
         couple of test cases based on the test mask and board id to verify this
         behavior.
         """
-        bid_int = cr50_utils.ConvertSymbolicBoardId(self.test_bid)
         mask_str = bin(self.test_mask).split('b')[1]
         mask_str = '0' + mask_str if len(mask_str) < 32 else mask_str
         mask_str = mask_str[::-1]
         zero_index = mask_str.find('0')
         one_index = mask_str.find('1')
 
-        # The hex version of the symbolic string should be accepted.
-        self.add_test(hex(bid_int), self.test_flags, self.SUCCESS)
+        # The hex version of the board id should be accepted.
+        self.add_test(hex(self.test_bid_int), self.test_flags, self.SUCCESS)
 
         # Flip a bit we don't care about to make sure it is accepted
         if zero_index != -1:
-            test_bid = bid_int ^ (1 << zero_index)
+            test_bid = self.test_bid_int ^ (1 << zero_index)
             self.add_test(hex(test_bid), self.test_flags, self.SUCCESS)
 
 
         if one_index != -1:
             # Flip a bit we care about to make sure it is rejected
-            test_bid = bid_int ^ (1 << one_index)
+            test_bid = self.test_bid_int ^ (1 << one_index)
             self.add_test(hex(test_bid), self.test_flags, self.BID_ERROR)
         else:
             # If there is not a 1 in the board id mask, then we don't care about
             # the board id at all. Flip all the bits and make sure setting the
             # board id still succeeds.
-            test_bid = bid_int ^ self.MAX_BID
+            test_bid = self.test_bid_int ^ self.MAX_BID
             self.add_test(hex(test_bid), self.test_flags, self.SUCCESS)
 
 
@@ -223,17 +222,17 @@ class firmware_Cr50BID(Cr50Test):
         # If we care about any flag bits, setting the flags to 0 should cause
         # a rejection
         if self.test_flags:
-            self.add_test(self.test_bid, 0, self.BID_ERROR)
+            self.add_test(self.test_bid_sym, 0, self.BID_ERROR)
 
         # Flip a 0 to 1 to make sure it is accepted.
         if zero_index != -1:
             test_flags = self.test_flags | (1 << zero_index)
-            self.add_test(self.test_bid, test_flags, self.SUCCESS)
+            self.add_test(self.test_bid_sym, test_flags, self.SUCCESS)
 
         # Flip a 1 to 0 to make sure it is rejected.
         if one_index != -1:
             test_flags = self.test_flags ^ (1 << one_index)
-            self.add_test(self.test_bid, test_flags, self.BID_ERROR)
+            self.add_test(self.test_bid_sym, test_flags, self.BID_ERROR)
 
 
     def build_tests(self):
@@ -354,7 +353,8 @@ class firmware_Cr50BID(Cr50Test):
         if not image_bid_info:
             raise error.TestError('Need board id locked image to run test')
         # Save the image board id info
-        self.test_bid, self.test_mask, self.test_flags = image_bid_info
+        self.test_bid_int, self.test_mask, self.test_flags = image_bid_info
+        self.test_bid_sym = cr50_utils.GetSymbolicBoardId(self.test_bid_int)
         self.test_bid_str = cr50_utils.GetBoardIdInfoString(ver[2])
         logging.info('Running test with bid locked image %s', ver)
         self.image_versions[self.BID_LOCKED] = ver
@@ -504,7 +504,7 @@ class firmware_Cr50BID(Cr50Test):
             for i, args in enumerate(self.tests):
                 bid, flags, bid_error = args
                 # Replace place holder values with the test values
-                bid = bid if bid != None else self.test_bid
+                bid = bid if bid != None else self.test_bid_sym
                 flags = flags if flags != None else self.test_flags
                 message = '%s %d %s:%x %s' % (test_type, i, bid, flags,
                     bid_error)
