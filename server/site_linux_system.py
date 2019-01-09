@@ -39,6 +39,7 @@ class LinuxSystem(object):
     CAPABILITY_TDLS = 'tdls'
     CAPABILITY_VHT = 'vht'
     CAPABILITY_SME = 'sme'
+    CAPABILITY_SUPPLICANT_ROAMING = "supplicant_roaming"
     BRIDGE_INTERFACE_NAME = 'br0'
     HOSTAP_BRIDGE_INTERFACE_PREFIX = 'hostapbr'
     MIN_SPATIAL_STREAMS = 2
@@ -301,6 +302,8 @@ class LinuxSystem(object):
                 caps.add(self.CAPABILITY_SME)
             if phy.support_vht:
                 caps.add(self.CAPABILITY_VHT)
+            if 'roaming' not in phy.features:
+                caps.add(self.CAPABILITY_SUPPLICANT_ROAMING)
         if any([iw_runner.DEV_MODE_IBSS in phy.modes
                 for phy in self.phy_list]):
             caps.add(self.CAPABILITY_IBSS)

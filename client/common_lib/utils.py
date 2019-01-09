@@ -1979,6 +1979,7 @@ def host_is_in_lab_zone(hostname):
     host_parts = hostname.split('.')
     dns_zone = CONFIG.get_config_value('CLIENT', 'dns_zone', default=None)
     fqdn = '%s.%s' % (host_parts[0], dns_zone)
+    logging.debug('Checking if host %s is in lab zone.', fqdn)
     try:
         socket.gethostbyname(fqdn)
         return True
