@@ -20,7 +20,7 @@ class security_ProcessManagementPolicy(test.test):
     _WHITELIST_DICT = {
         "cros-disks": set(("avfs", "fuse-drivefs", "fuse-exfat",
                                     "fuse-sshfs", "nobody", "ntfs-3g")),
-        "shill": set(("dhcp", "ipsec", "openvpn", "syslog", "nobody", "root")),
+        "shill": set(("dhcp", "ipsec", "openvpn", "syslog", "nobody")),
     }
 
     def __init__(self, *args, **kwargs):
