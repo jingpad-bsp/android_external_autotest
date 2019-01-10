@@ -13,9 +13,10 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
+DEPENDENCIES = "hw_video_acc_enc_vp8"
 
 DOC = """
-This test measures the performance of the Chromium hardware VP8 Video Encode 
+This test measures the performance of the Chromium hardware VP8 Video Encode
 Accelerator in CFM use cases.
 """
 
@@ -32,7 +33,7 @@ test_cases = [
     ('tulip2/tulip2-320x180-55be7124b3aec1b72bfb57f433297193.yuv', True, 320, 180, 17300, 11, 30),
     ('video_tests/webrtc/tulip2-320x180-15fps-8ab55614f72125fe29107146d6f027b2.yuv', True, 320, 180, 17300, 11, 30),
     ('video_tests/webrtc/tulip2-320x180-7.5fps-7632e656ab8f25ad1c5fc2d877320a4c.yuv', True, 320, 180, 17300, 11, 30),
-#Present 
+#Present
     ('video_tests/webrtc/present-c9fe328d47aab9e632659e9069907a5f.yuv', True, 1920, 1080, 4000000, 11, 30),
 ]
 
