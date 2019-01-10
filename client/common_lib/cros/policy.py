@@ -144,7 +144,7 @@ def push_policy_and_verify(policy_string, sm):
     """Push a device policy to the session manager over DBus.
 
     The serialized device policy |policy_string| is sent to the session
-    manager with the StorePolicy DBus call.  Success of the store is
+    manager with the StorePolicyEx DBus call.  Success of the store is
     validated by fetching the policy again and comparing.
 
     @param policy_string: serialized policy to push to the session manager.
@@ -154,10 +154,12 @@ def push_policy_and_verify(policy_string, sm):
     """
     listener = session_manager.OwnershipSignalListener(gobject.MainLoop())
     listener.listen_for_new_policy()
-    sm.StorePolicy(dbus.ByteArray(policy_string), byte_arrays=True)
+    descriptor = session_manager.make_device_policy_descriptor()
+    sm.StorePolicyEx(descriptor,
+                     dbus.ByteArray(policy_string), byte_arrays=True)
     listener.wait_for_signals(desc='Policy push.')
 
-    retrieved_policy = sm.RetrievePolicy(byte_arrays=True)
+    retrieved_policy = sm.RetrievePolicyEx(descriptor, byte_arrays=True)
     if retrieved_policy != policy_string:
         raise error.TestFail('Policy should not be %s' % retrieved_policy)
 
@@ -171,4 +173,5 @@ def get_policy(sm):
 
     @return Serialized PolicyFetchResponse.
     """
-    return sm.RetrievePolicy(byte_arrays=True)
+    return sm.RetrievePolicyEx(session_manager.make_device_policy_descriptor(),
+                               byte_arrays=True)
