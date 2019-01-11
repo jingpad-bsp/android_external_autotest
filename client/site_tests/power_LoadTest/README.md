@@ -93,14 +93,16 @@ a corporate network), follow the instructions below.
   test_that ${DUT_ipaddr} power_LoadTest
   ```
 * Disconnect the wired Ethernet.
-* On the DUT, enter VT2 by pressing `Ctrl + Alt + F2` (right arrow key on
-  Chrome keyboard), and login as `root` (May require password. Default is likely
-  `test0000`. See additional details [here][7] if that doesn't work.
+* On the DUT, enter VT2 by pressing `Ctrl + Alt + F2` (right arrow or refresh
+  key on the Chrome keyboard), and login as `root` (May require password.
+  Default is likely `test0000`. See additional details [here][7] if that doesn't
+  work.
   ```bash
   cd /usr/local/autotest*
   # remove your AC power source right before running the test.
   bin/autotest tests/power_LoadTest/control*
   ```
+* Re-enter VT1 by pressing `Ctrl + Alt + F1` (left arrow on the Chrome keyboard).
 * Now you just need to wait until the battery runs out. (Don't worry, the test
   result is stored on the DUT.)
 * Reconnect the AC power source, boot up, and enter VT2 as `root`.
