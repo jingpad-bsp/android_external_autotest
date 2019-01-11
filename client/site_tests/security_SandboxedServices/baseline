@@ -33,6 +33,7 @@ frecon,root,root,No,No,No,No,No
 
 session_manager,root,root,No,No,No,No,No
 rsyslogd,syslog,syslog,No,Yes,Yes,No,No
+systemd-journal,syslog,syslog,No,Yes,Yes,No,No
 dbus-daemon,messagebus,messagebus,No,No,Yes,No,No
 wpa_supplicant,wpa,wpa,No,No,Yes,Yes,No
 shill,shill,shill,No,No,Yes,Yes,No
