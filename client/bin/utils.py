@@ -967,6 +967,34 @@ def get_storage_error_msg(disk_name, reason):
     return msg
 
 
+_IOSTAT_FIELDS = ('transfers_per_s', 'read_kb_per_s', 'written_kb_per_s',
+                  'read_kb', 'written_kb')
+_IOSTAT_RE = re.compile('ALL' + len(_IOSTAT_FIELDS) * r'\s+([\d\.]+)')
+
+def get_storage_statistics(device=None):
+    """
+    Fetches statistics for a storage device.
+
+    Using iostat(1) it retrieves statistics for a device since last boot.  See
+    the man page for iostat(1) for details on the different fields.
+
+    @param device: Path to a block device. Defaults to the device where root
+            is mounted.
+
+    @returns a dict mapping each field to its statistic.
+
+    @raises ValueError: If the output from iostat(1) can not be parsed.
+    """
+    if device is None:
+        device = get_root_device()
+    cmd = 'iostat -d -k -g ALL -H %s' % device
+    output = utils.system_output(cmd, ignore_status=True)
+    match = _IOSTAT_RE.search(output)
+    if not match:
+        raise ValueError('Unable to get iostat for %s' % device)
+    return dict(zip(_IOSTAT_FIELDS, map(float, match.groups())))
+
+
 def load_module(module_name, params=None):
     # Checks if a module has already been loaded
     if module_is_loaded(module_name):
