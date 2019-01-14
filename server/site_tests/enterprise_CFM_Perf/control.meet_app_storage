@@ -1,0 +1,29 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+from autotest_lib.server import utils
+
+AUTHOR = "lndmrk@chromium.org"
+NAME = "enterprise_CFM_Perf.meet_app_storage"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Performance"
+TEST_CLASS = "enterprise"
+ATTRIBUTES = "suite:hotrod"
+DEPENDENCIES = "meet_app"
+TEST_TYPE = "server"
+JOB_RETRIES = 3
+
+DOC = """
+This test extends enterprise_CFM_Perf.meet_app by also logging metrics for
+persistent storage. This is experimental and should be integrated into the
+existing meet_app control once we establish that collecting storage metrics does
+not have negative impact and that the data is useful.
+"""
+
+def run_test(machine):
+    host = hosts.create_host(machine)
+    job.run_test('enterprise_CFM_Perf', tag='meet_app_storage', host=host,
+                 include_storage_metrics=True)
+
+parallel_simple(run_test, machines)
