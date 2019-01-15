@@ -93,7 +93,8 @@ class GraphicsTest(test.test):
             self._GSC.finalize()
 
         self._output_perf()
-        self._player.close()
+        if self._player:
+            self._player.close()
 
         if hasattr(super(GraphicsTest, self), "cleanup"):
             test_utils._cherry_pick_call(super(GraphicsTest, self).cleanup,
