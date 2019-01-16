@@ -609,8 +609,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # Get the DUT board name from AFE.
         info = self.host_info_store.get()
         board = info.board
-        if board is None:
-            raise hosts.AutoservError('No board label found')
+
+        if board is None or board == '':
+            board = self.servo.get_board()
 
         # If build is not set, try to install firmware from stable CrOS.
         if not build:
