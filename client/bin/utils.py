@@ -1943,20 +1943,6 @@ def get_cpu_max_frequency():
     return max_frequency
 
 
-def get_cpu_min_frequency():
-    """
-    Returns the smallest of the minimum CPU core frequencies.
-    """
-    min_frequency = 1e20
-    paths = utils._get_cpufreq_paths('cpuinfo_min_freq')
-    for path in paths:
-        frequency = _get_float_from_file(path, 0, None, None)
-        min_frequency = min(frequency, min_frequency)
-    # Sanity check.
-    assert min_frequency > 1e8, 'Unreasonably low CPU frequency.'
-    return min_frequency
-
-
 def get_cpu_model():
     """
     Returns the CPU model.
