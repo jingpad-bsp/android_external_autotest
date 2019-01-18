@@ -348,12 +348,14 @@ class ClientTestDashboard(BaseDashboard):
         }
 
         if power_utils.has_battery():
-            # Round the battery size to nearest tenth because it is fluctuated
-            # for platform without battery nominal voltage data.
-            dut_info_dict['sku']['battery_size'] = round(
-                    power_status.get_status().battery[0].energy_full_design, 1)
-            dut_info_dict['sku']['battery_shutdown_percent'] = \
-                    power_utils.get_low_battery_shutdown_percent()
+            status = power_status.get_status()
+            if status.battery:
+                # Round the battery size to nearest tenth because it is
+                # fluctuated for platform without battery nominal voltage data.
+                dut_info_dict['sku']['battery_size'] = round(
+                        status.battery[0].energy_full_design, 1)
+                dut_info_dict['sku']['battery_shutdown_percent'] = \
+                        power_utils.get_low_battery_shutdown_percent()
         return dut_info_dict
 
 
