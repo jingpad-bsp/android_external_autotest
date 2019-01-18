@@ -74,6 +74,10 @@ avahi-daemon,avahi,avahi,No,No,Yes,No,No
 upstart-udev-br,root,root,No,No,No,No,No
 midis,midis,midis,Yes,Yes,Yes,Yes,Yes
 
+# Biometrics services.
+bio_crypto_init,biod,biod,Yes,Yes,Yes,Yes,Yes
+biod,biod,biod,Yes,Yes,Yes,Yes,Yes
+
 # Chrome OS camera services.
 cros_camera_service,arc-camera,arc-camera,Yes,Yes,Yes,Yes,Yes
 cros_camera_algo,arc-camera,arc-camera,Yes,Yes,Yes,Yes,Yes
