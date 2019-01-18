@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'Chromium OS team'
-NAME = 'tast.informational'
+NAME = 'tast.informational-chrome'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:bvt-perbuild, suite:chrome-informational'
