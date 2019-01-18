@@ -63,6 +63,10 @@ class audio_Microphone(test.test):
         alsa_device_name = alsa_utils.convert_device_name(cras_device_name)
         channels = alsa_utils.get_record_device_supported_channels(
                 alsa_device_name)
+        if utils.get_board() == "octopus":
+          # TODO(b/120568903): Some Octopus releases list extra channels,
+          # work around this to ensure the test uses valid ones.
+          channels = filter(lambda c: c <= 4, channels)
         if channels is None:
             raise error.TestFail("Fail to get supported channels for %s",
                                 alsa_device_name)
