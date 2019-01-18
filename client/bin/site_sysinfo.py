@@ -4,6 +4,7 @@
 
 import logging
 import os
+import stat
 
 from autotest_lib.client.common_lib import log
 from autotest_lib.client.common_lib import error, utils, global_config
@@ -191,7 +192,11 @@ class diffable_logdir(logdir):
             for f in files:
                 if f.startswith('autoserv'):
                     continue
-                yield os.path.join(root, f)
+                full_path = os.path.join(root, f)
+                # Only list regular files or symlinks to those (os.stat follows
+                # symlinks)
+                if stat.S_ISREG(os.stat(full_path).st_mode):
+                    yield full_path
 
 
     def _copy_new_data_in_file(self, file_path, src_dir, dest_dir):
