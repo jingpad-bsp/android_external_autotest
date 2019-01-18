@@ -11,6 +11,7 @@ ATTRIBUTES = "suite:hotrod"
 DEPENDENCIES = "meet_app"
 TIME = "LONG"
 TEST_CATEGORY = "Performance"
+TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 
 DOC = """
