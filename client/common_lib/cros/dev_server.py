@@ -2841,8 +2841,15 @@ def get_least_loaded_devserver(devserver_type=ImageServer, hostname=None):
     for p in processes:
         p.start()
     for p in processes:
-        p.join()
-    loads = [output.get() for p in processes]
+        # The timeout for the process commands aren't reliable.  Add
+        # some extra time to the timeout for potential overhead in the
+        # subprocesses.  crbug.com/913695
+        p.join(TIMEOUT_GET_DEVSERVER_LOAD + 10)
+    # Read queue before killing processes to avoid corrupting the queue.
+    loads = [output.get() for p in processes if not p.is_alive()]
+    for p in processes:
+        if p.is_alive():
+            p.terminate()
     # Filter out any load failed to be retrieved or does not support load check.
     loads = [load for load in loads if load and DevServer.CPU_LOAD in load and
              DevServer.is_free_disk_ok(load) and
