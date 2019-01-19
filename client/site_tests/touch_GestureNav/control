@@ -9,7 +9,7 @@ CRITERIA = """
 This test will fail if, after playback of two fingers for back/forward
 long swipes, the active tab does not navigate as expected.
 """
-ATTRIBUTES = "suite:bvt-perbuild, suite:touch"
+ATTRIBUTES = "suite:touch"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "touch"
