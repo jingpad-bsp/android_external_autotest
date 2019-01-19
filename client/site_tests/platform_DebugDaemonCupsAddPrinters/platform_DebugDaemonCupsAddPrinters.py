@@ -16,6 +16,7 @@ _CUPS_SUCCESS = 0
 _CUPS_INVALID_PPD_ERROR = 2
 _CUPS_LPADMIN_ERROR = 3
 _CUPS_AUTOCONF_FAILURE = 4
+_CUPS_BAD_URI = 5
 
 
 class platform_DebugDaemonCupsAddPrinters(test.test):
@@ -120,7 +121,7 @@ class platform_DebugDaemonCupsAddPrinters(test.test):
                  'UnrecognizedProtocol',
                  'badbadbad://127.0.0.1/ipp/fake_printer',
                   ppd_contents)
-        if result != _CUPS_LPADMIN_ERROR:
+        if result != _CUPS_BAD_URI:
             raise error.TestFail(
                   'lpadmin - Unrecognized protocols should be rejected by '
                   'CUPS. %d' %
