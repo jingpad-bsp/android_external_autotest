@@ -29,7 +29,8 @@ class _StubHost(object):
     def __init__(self):
         self._record_sequence = []
         fake_board_name = constants.Labels.BOARD_PREFIX + 'fubar'
-        self.host_info_store = host_info.HostInfo(labels=[fake_board_name])
+        info = host_info.HostInfo(labels=[fake_board_name])
+        self.host_info_store = host_info.InMemoryHostInfoStore(info)
         self.hostname = 'unittest_host'
 
 

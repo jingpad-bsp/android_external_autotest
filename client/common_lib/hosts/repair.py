@@ -759,7 +759,7 @@ class RepairStrategy(object):
         # we execute; we report on 'strategy' for every complete
         # repair operation.
         self._strategy_counter = metrics.Counter(
-            'chromeos/autotest/repair/repair_strategy')
+            'chromeos/autotest/repair/repair_strategy_v2')
         self._actions_counter = metrics.Counter(
             'chromeos/autotest/repair/repair_actions')
         self.host_class = host_class
@@ -786,17 +786,22 @@ class RepairStrategy(object):
                             self.host_class)
             self._repair_actions.append(r)
 
-    def _send_strategy_metrics(self, host, success):
+    def _send_strategy_metrics(self, host, result):
         """Send repair strategy metrics to monarch
 
         @param host     The target to be repaired.
-        @param success  A boolean value that indicate if the
-                        entire repair operation success or not.
+        @param result   A String that describe a final result for the
+                        RepairStrategy.
         """
+        info = host.host_info_store.get()
+        board = info.board if info.board else 'unknown'
+        model = info.model if info.model else 'unknown'
         fields = {
-            'success': success,
+            'board': board,
+            'host_class': self.host_class,
             'hostname': _filter_metrics_hostname(host),
-            'host_class': self.host_class
+            'model': model,
+            'result': result,
         }
         self._strategy_counter.increment(fields=fields)
 
@@ -832,6 +837,7 @@ class RepairStrategy(object):
         @param silent   If true, don't log host status records.
         """
         self._verify_root._reverify()
+        attempted = False
         for ra in self._repair_actions:
             try:
                 ra._repair_host(host, silent)
@@ -841,15 +847,19 @@ class RepairStrategy(object):
                 pass
             finally:
                 self._send_action_metrics(host, ra)
+                if ra.status not in ('skipped', 'blocked'):
+                    attempted = True
 
-        success = False
+        result = 'failure'
         try:
             self._verify_root._verify_host(host, silent)
-            success = True
+            result = 'success' if attempted else 'not_attempted'
         except:
+            if not attempted:
+                result = 'attempt_blocked'
             raise
         finally:
-            self._send_strategy_metrics(host, success)
+            self._send_strategy_metrics(host, result)
 
 
 def _filter_metrics_hostname(host):
