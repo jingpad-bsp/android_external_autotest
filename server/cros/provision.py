@@ -379,22 +379,3 @@ class SpecialTaskActionException(Exception):
 
     This is also a literally meaningless exception.  It's always just discarded.
     """
-
-
-def run_special_task_actions(job, host, labels, task):
-    """
-    Iterate through all `label`s and run any tests on `host` that `task` has
-    corresponding to the passed in labels.
-
-    Emits status lines for each run test, and INFO lines for each skipped label.
-
-    @param job: A job object from a control file.
-    @param host: The host to run actions on.
-    @param labels: The list of job labels to work on.
-    @param task: An instance of _SpecialTaskAction.
-    @returns: None
-    @raises: SpecialTaskActionException if a test fails.
-
-    """
-    warnings.warn('run_special_task_actions is deprecated', stacklevel=2)
-    task.run_task_actions(job, host, labels)
