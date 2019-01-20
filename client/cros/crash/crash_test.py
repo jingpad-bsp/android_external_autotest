@@ -428,9 +428,15 @@ class CrashTest(test.test):
             'selinux_violation',
             'service_failure',
         )
+
+        # TODO(crbug.com/923200): clean up and make more robust.
+        def crash_sender_search(regexp, output):
+            """Narrow search to lines from crash_sender."""
+            return re.search(r'crash_sender.*' + regexp, output)
+
         before_first_crash = None
         while True:
-            crash_header = re.search(
+            crash_header = crash_sender_search(
                 'Considering metadata (\S+)',
                 output
             )
@@ -453,14 +459,14 @@ class CrashTest(test.test):
             output = before_first_crash + output
         logging.debug('Filtered sender output to parse:\n%s', output)
 
-        sleep_match = re.search('Scheduled to send in (\d+)s', output)
+        sleep_match = crash_sender_search('Scheduled to send in (\d+)s', output)
         send_attempt = sleep_match is not None
         if send_attempt:
             sleep_time = int(sleep_match.group(1))
         else:
             sleep_time = None
 
-        meta_match = re.search('Metadata: (\S+) \((\S+)\)', output)
+        meta_match = crash_sender_search('Metadata: (\S+) \((\S+)\)', output)
         if meta_match:
             meta_path = meta_match.group(1)
             report_kind = meta_match.group(2)
@@ -468,37 +474,37 @@ class CrashTest(test.test):
             meta_path = None
             report_kind = None
 
-        payload_match = re.search('Payload: (\S+)', output)
+        payload_match = crash_sender_search('Payload: (\S+)', output)
         if payload_match:
             report_payload = payload_match.group(1)
         else:
             report_payload = None
 
-        exec_name_match = re.search('Exec name: (\S+)', output)
+        exec_name_match = crash_sender_search('Exec name: (\S+)', output)
         if exec_name_match:
             exec_name = exec_name_match.group(1)
         else:
             exec_name = None
 
-        sig_match = re.search('sig: (\S+)', output)
+        sig_match = crash_sender_search('sig: (\S+)', output)
         if sig_match:
             sig = sig_match.group(1)
         else:
             sig = None
 
-        error_type_match = re.search('Error type: (\S+)', output)
+        error_type_match = crash_sender_search('Error type: (\S+)', output)
         if error_type_match:
             error_type = error_type_match.group(1)
         else:
             error_type = None
 
-        image_type_match = re.search('Image type: (\S+)', output)
+        image_type_match = crash_sender_search('Image type: (\S+)', output)
         if image_type_match:
             image_type = image_type_match.group(1)
         else:
             image_type = None
 
-        boot_mode_match = re.search('Boot mode: (\S+)', output)
+        boot_mode_match = crash_sender_search('Boot mode: (\S+)', output)
         if boot_mode_match:
             boot_mode = boot_mode_match.group(1)
         else:
