@@ -167,7 +167,7 @@ def _get_suite_cmd(test_spec, suite_id):
         job_keyvals[constants.PARENT_JOB_ID] = suite_id
 
     cmd = [SKYLAB_DRONE_SWARMING_WORKER]
-    if test_spec.test.test_type == 'client':
+    if test_spec.test.test_type.lower() == 'client':
       cmd += ['-client-test']
 
     cmd += ['-keyvals', _convert_dict_to_string(job_keyvals)]
