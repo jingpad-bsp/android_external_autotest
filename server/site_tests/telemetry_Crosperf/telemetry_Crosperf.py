@@ -212,6 +212,11 @@ class telemetry_Crosperf(test.test):
 
         # Decide whether the test will run locally or by a remote server.
         if args.get('run_local', 'false').lower() == 'true':
+            # We do not use local run for collecting profiles, will raise an
+            # error for this situation.
+            if profiler_args:
+                raise RuntimeError('Profiling with run_local set to true is no '
+                                   'longer supported.')
             # The telemetry scripts will run on DUT.
             _ensure_deps(dut, test_name)
             format_string = ('python %s --browser=system '
