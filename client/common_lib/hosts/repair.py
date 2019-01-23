@@ -125,7 +125,13 @@ class AutoservRepairError(error.AutoservError):
     Instances of this exception can be raised when a `repair()`
     method fails, if no more specific exception is available.
     """
-    pass
+    def __init__(self, description, tag):
+        """
+        @param description  Message describe the exception.
+        @param tag          A short identifier used for metric purpose.
+        """
+        super(AutoservRepairError, self).__init__(description)
+        self.tag = tag
 
 
 class _DependencyNode(object):
@@ -445,6 +451,8 @@ class RepairAction(_DependencyNode):
         self._trigger_list = triggers
         self._failure_modes_counter = metrics.Counter(
             'chromeos/autotest/repair/failure_modes')
+        self._failure_detail_counter = metrics.Counter(
+            'chromeos/autotest/repair/failure_detail')
         self.host_class = host_class
 
     def _record_start(self, host, silent):
@@ -509,6 +517,18 @@ class RepairAction(_DependencyNode):
             # will be no Verifier, so vf_tag set to 'unknown'.
             self._failure_modes_counter.increment(fields=get_fields('unknown'))
 
+        if stage == 'repair':
+            self._send_failure_detail(error)
+
+    def _send_failure_detail(self, error):
+        """Send reason of failure inside repair() to monarch.
+
+        @param error    The exception caught inside repair().
+        """
+        tag = error.tag if isinstance(error, AutoservRepairError) else 'unknown'
+        fields = {'repair_action_tag': self.tag, 'repair_failure_tag': tag}
+        self._failure_detail_counter.increment(fields=fields)
+
     def _repair_host(self, host, silent):
         """
         Apply this repair action if any triggers fail.
@@ -568,7 +588,7 @@ class RepairAction(_DependencyNode):
                 self._record_end_fail(host, silent, 'verify_failure')
                 self._send_failure_metrics(host, e, 'post')
                 raise AutoservRepairError(
-                        'Some verification checks still fail')
+                        'Some verification checks still fail', 'post_verify')
             except Exception:
                 # The specification for `self._verify_list()` says
                 # that this can't happen; this is a defensive

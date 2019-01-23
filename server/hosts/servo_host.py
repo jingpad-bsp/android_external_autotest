@@ -572,7 +572,9 @@ class ServoHost(ssh_host.SSHHost):
                     httplib.BadStatusLine,
                     rpm_client.RemotePowerException) as e:
                 raise hosts.AutoservRepairError(
-                        'Power cycling %s failed: %s' % (self.hostname, e))
+                        'Power cycling %s failed: %s' % (self.hostname, e),
+                        'power_cycle_via_rpm_failed'
+                )
         else:
             logging.info('Skipping power cycling, not a lab device.')
 
