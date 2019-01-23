@@ -11,6 +11,7 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils as _utils
 from autotest_lib.client.common_lib.cros import arc
 from autotest_lib.client.common_lib.cros import arc_common
 from autotest_lib.client.common_lib.cros import chrome
@@ -204,6 +205,8 @@ class power_LoadTest(arc.ArcTest):
             service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._services.stop_services()
 
+        self._detachable_handler = power_utils.BaseActivitySimulator()
+
         # fix up file perms for the power test extension so that chrome
         # can access it
         os.system('chmod -R 755 %s' % self.bindir)
@@ -287,7 +290,6 @@ class power_LoadTest(arc.ArcTest):
         arc_mode = arc_common.ARC_MODE_DISABLED
         if utils.is_arc_available():
             arc_mode = arc_common.ARC_MODE_ENABLED
-        self._detachable_handler = power_utils.BaseActivitySimulator()
 
         try:
             self._browser = chrome.Chrome(extension_paths=[ext_path],
@@ -496,6 +498,11 @@ class power_LoadTest(arc.ArcTest):
 
         minutes_battery_life_tested = keyvals['minutes_battery_life_tested']
 
+        # TODO(coconutruben): overwrite write_perf_keyvals for all power
+        # tests and replace this once power_LoadTest inherits from power_Test.
+        # Dump all keyvals into debug keyvals.
+        _utils.write_keyval(os.path.join(self.resultsdir, 'debug_keyval'),
+                            keyvals)
         # Avoid polluting the keyvals with non-core domains.
         core_keyvals = power_utils.get_core_keyvals(keyvals)
         if not self._gaia_login:
