@@ -125,6 +125,7 @@ suite:faft_normal_ryu
 suite:faft_setup
 suite:faft_smoke
 suite:faft_stress
+suite:fingerprint
 suite:gpu_hang
 suite:graphics
 suite:graphics_browser
