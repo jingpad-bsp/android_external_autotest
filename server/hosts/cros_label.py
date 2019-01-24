@@ -637,6 +637,16 @@ class DetachableBaseLabel(base_label.BaseLabel):
         return host.run('which hammerd', ignore_status=True).exit_status == 0
 
 
+class FingerprintLabel(base_label.BaseLabel):
+    """Label indicating whether device has fingerprint sensor."""
+
+    _NAME = 'fingerprint'
+
+    def exists(self, host):
+        return host.run('test -c /dev/cros_fp',
+                        ignore_status=True).exit_status == 0
+
+
 CROS_LABELS = [
     AccelsLabel(),
     ArcLabel(),
@@ -652,6 +662,7 @@ CROS_LABELS = [
     CtsArchLabel(),
     DetachableBaseLabel(),
     ECLabel(),
+    FingerprintLabel(),
     HWIDLabel(),
     InternalDisplayLabel(),
     LightSensorLabel(),
