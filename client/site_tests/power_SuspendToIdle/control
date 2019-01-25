@@ -9,6 +9,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Logging"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
+ATTRIBUTES = "suite:power_daily"
 
 DOC = """
 Test functionality of Suspend to Idle.
