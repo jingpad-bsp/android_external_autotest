@@ -34,12 +34,9 @@ class camera_V4L2(test.test):
         if os.path.exists(path):
             utils.system("echo 1 > %s" % path)
 
+        if test_list is None:
+            test_list = "halv3" if self.should_test_halv3() else "default"
         self.test_list = test_list
-        if self.test_list is None:
-            if os.path.exists('/usr/bin/cros_camera_service'):
-                self.test_list = "halv3"
-            else:
-                self.test_list = "default"
 
         self.dut_board = utils.get_current_board()
         self.find_video_capture_devices()
@@ -50,6 +47,11 @@ class camera_V4L2(test.test):
                 continue
             self.run_v4l2_unittests(device)
             self.run_v4l2_capture_test(device)
+
+    def should_test_halv3(self):
+        has_v3 = os.path.exists('/usr/bin/cros_camera_service')
+        has_v1 = os.path.exists('/usr/bin/arc_camera_service')
+        return has_v3 and not has_v1
 
     def get_camera_device_usb_info(self, device):
         device_name = ntpath.basename(device)
