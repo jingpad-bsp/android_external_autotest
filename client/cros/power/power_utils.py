@@ -441,6 +441,22 @@ class Backlight(object):
         """
         return float(self._try_bl_cmd('--get_brightness_percent'))
 
+    def linear_to_nonlinear(self, linear):
+        """Convert supplied linear brightness percent to nonlinear.
+
+        Returns float of supplied linear brightness percent converted to
+        nonlinear percent.
+        """
+        return float(self._try_bl_cmd('--linear_to_nonlinear=%f' % linear))
+
+    def nonlinear_to_linear(self, nonlinear):
+        """Convert supplied nonlinear brightness percent to linear.
+
+        Returns float of supplied nonlinear brightness percent converted to
+        linear percent.
+        """
+        return float(self._try_bl_cmd('--nonlinear_to_linear=%f' % nonlinear))
+
     def restore(self):
         """Restore backlight to initial level when instance created."""
         if self._init_level is not None:
