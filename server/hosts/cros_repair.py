@@ -449,7 +449,7 @@ class _ResetRepairAction(hosts.RepairAction):
             return
         raise hosts.AutoservRepairError(
                 'Host %s is still offline after %s.' %
-                (host.hostname, self.tag))
+                (host.hostname, self.tag), 'failed_to_boot_after_' + self.tag)
 
 
 class ServoSysRqRepair(_ResetRepairAction):
@@ -472,7 +472,8 @@ class ServoSysRqRepair(_ResetRepairAction):
                 host.servo.sysrq_x()
             except error.TestFail, ex:
                 raise hosts.AutoservRepairError(
-                      'cannot press sysrq-x: %s.' % str(ex))
+                      'cannot press sysrq-x: %s.' % str(ex),
+                      'cannot_press_sysrq_x')
             # less than 5 seconds between presses.
             time.sleep(2.0)
         self._check_reset_success(host)
