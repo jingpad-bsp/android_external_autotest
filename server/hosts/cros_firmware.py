@@ -190,7 +190,7 @@ class FirmwareRepair(hosts.RepairAction):
         if not _is_firmware_repair_supported(host):
             raise hosts.AutoservRepairError(
                     'Firmware repair is not applicable to host %s.' %
-                    host.hostname)
+                    host.hostname, 'not_applicable')
         repair_utils.require_servo(host)
         host.firmware_install()
 

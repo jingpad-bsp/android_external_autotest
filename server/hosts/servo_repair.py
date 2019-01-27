@@ -259,7 +259,8 @@ class _RestartServod(hosts.RepairAction):
         if not host.is_cros_host():
             raise hosts.AutoservRepairError(
                     'Can\'t restart servod: not running '
-                    'embedded Chrome OS.')
+                    'embedded Chrome OS.',
+                    'servo_not_applicable_to_non_cros_host')
         host.run('stop servod PORT=%d || true' % host.servo_port)
         serial = 'SERIAL=%s' % host.servo_serial if host.servo_serial else ''
         model = 'MODEL=%s' % host.servo_model if host.servo_model else ''
@@ -305,14 +306,16 @@ class _ServoRebootRepair(repair_utils.RebootRepair):
     def repair(self, host):
         if host.is_localhost() or not host.is_cros_host():
             raise hosts.AutoservRepairError(
-                'Target servo is not a test lab servo')
+                'Target servo is not a test lab servo',
+                'servo_not_applicable_to_host_outside_lab')
         host.update_image(wait_for_update=True)
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         dut_list = host.get_attached_duts(afe)
         if len(dut_list) > 1:
             raise hosts.AutoservRepairError(
                     'Repairing labstation with > 1 host not supported.'
-                    ' See crbug.com/843358')
+                    ' See crbug.com/843358',
+                    'can_not_repair_labstation_with_multiple_hosts')
         else:
             super(_ServoRebootRepair, self).repair(host)
 

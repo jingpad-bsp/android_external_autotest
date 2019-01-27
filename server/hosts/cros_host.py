@@ -687,7 +687,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             if not self.wait_up(timeout=usb_boot_timeout):
                 raise hosts.AutoservRepairError(
                         'DUT failed to boot from USB after %d seconds' %
-                        usb_boot_timeout)
+                        usb_boot_timeout, 'failed_to_reboot')
 
         # The new chromeos-tpm-recovery has been merged since R44-7073.0.0.
         # In old CrOS images, this command fails. Skip the error.
@@ -1124,6 +1124,37 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return 'start/running' in self.run('status %s' % service_name,
                                            ignore_status=True).stdout
 
+    def upstart_stop(self, service_name):
+        """Stops an upstart job if it's running.
+
+        @param service_name: Service to stop
+
+        @returns True if service has been stopped or was already stopped
+                 False otherwise.
+        """
+        if not self.upstart_status(service_name):
+            return True
+
+        result = self.run('stop %s' % service_name, ignore_status=True)
+        if result.exit_status != 0:
+            return False
+        return True
+
+    def upstart_restart(self, service_name):
+        """Restarts (or starts) an upstart job.
+
+        @param service_name: Service to start/restart
+
+        @returns True if service has been started/restarted, False otherwise.
+        """
+        cmd = 'start'
+        if self.upstart_status(service_name):
+            cmd = 'restart'
+        cmd = cmd + ' %s' % service_name
+        result = self.run(cmd)
+        if result.exit_status != 0:
+            return False
+        return True
 
     def verify_software(self):
         """Verify working software on a Chrome OS system.

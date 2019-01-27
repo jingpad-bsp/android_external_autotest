@@ -14,7 +14,7 @@ def require_servo(host):
     """Require a DUT to have a working servo for a repair action."""
     if not host.servo:
         raise hosts.AutoservRepairError(
-                '%s has no working servo.' % host.hostname)
+                '%s has no working servo.' % host.hostname, 'no_working_servo')
 
 
 class SshVerifier(hosts.Verifier):
@@ -95,12 +95,13 @@ class RPMCycleRepair(hosts.RepairAction):
     def repair(self, host):
         if not host.has_power():
             raise hosts.AutoservRepairError(
-                    '%s has no RPM connection.' % host.hostname)
+                    '%s has no RPM connection.' % host.hostname,
+                    'no_working_rpm')
         host.power_cycle()
         if not host.wait_up(timeout=host.BOOT_TIMEOUT):
             raise hosts.AutoservRepairError(
                     '%s is still offline after powercycling' %
-                    host.hostname)
+                    host.hostname, 'failed_to_boot_after_rpm_power_cycle')
 
 
     @property

@@ -9,7 +9,8 @@ TEST_TYPE = "client"
 
 DOC = """
 This test records power related statistics while displaying different static
-pages using settings that usually utilizes panel CABC algorithm.
+pages using settings that usually utilize panel CABC algorithm under max
+brightness.
 """
 
 CABC_PAGES = ['white', 'black',
@@ -27,6 +28,6 @@ CABC_PAGES = ['white', 'black',
 
 args_dict = utils.args_to_dict(args)
 pdash_note = args_dict.get('pdash_note', '')
-job.run_test('power_Display', max_brightness=True, tag=NAME.split('.')[1],
+job.run_test('power_Display', brightness='max', tag=NAME.split('.')[1],
              pages=CABC_PAGES, secs_per_page=20, seconds_period=1,
              pdash_note=pdash_note)
