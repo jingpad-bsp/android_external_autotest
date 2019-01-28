@@ -15,8 +15,8 @@ from __future__ import print_function
 import time
 
 
-def reset_servo(servo):
-    """Reset servod on servohost for given host.
+def prepare_servo(servo):
+    """Prepare servo connected to host for installation steps.
 
     @param servo  A server.hosts.ServoHost object.
     """
@@ -31,6 +31,12 @@ def reset_servo(servo):
     servo.run('stop servod PORT=%d' % servo.servo_port,
               ignore_status=True)
     servo.repair()
+
+    # Don't timeout probing for the host usb device, there could be a bunch
+    # of servos probing at the same time on the same servo host.  And
+    # since we can't pass None through the xml rpcs, use 0 to indicate None.
+    if not servo.get_servo().probe_host_usb_dev(timeout=0):
+        raise Exception('No USB stick detected on Servo host')
 
 
 def install_firmware(host):
