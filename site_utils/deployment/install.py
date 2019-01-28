@@ -266,19 +266,9 @@ def _create_host(hostname, afe, afe_host):
             'host_info_store': afe_store.AfeStore(hostname, afe),
     }
     host = hosts.create_host(machine_dict)
-    # Stopping `servod` on the servo host will force `repair()` to
-    # restart it.  We want that restart for a few reasons:
-    #   + `servod` caches knowledge about the image on the USB stick.
-    #     We want to clear the cache to force the USB stick to be
-    #     re-imaged unconditionally.
-    #   + If there's a problem with servod that verify and repair
-    #     can't find, this provides a UI through which `servod` can
-    #     be restarted.
     servo = servo_host.ServoHost(
             **servo_host.get_servo_args_for_host(host))
-    servo.run('stop servod PORT=%d' % servo.servo_port,
-              ignore_status=True)
-    servo.repair()
+    preparedut.reset_servo(servo)
     host.set_servo_host(servo)
     return host
 
