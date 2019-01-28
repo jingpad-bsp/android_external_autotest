@@ -495,7 +495,7 @@ def _install_test_image(host, arguments):
             raise Exception('chromeos-firmwareupdate failed')
     if arguments.install_test_image:
         try:
-            host.servo_install()
+            preparedut.install_test_image()
         except error.AutoservRunError as e:
             logging.exception('Failed to install: %s', e)
             raise Exception('chromeos-install failed')
