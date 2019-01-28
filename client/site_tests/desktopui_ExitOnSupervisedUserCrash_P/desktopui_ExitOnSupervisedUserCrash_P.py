@@ -20,7 +20,7 @@ class desktopui_ExitOnSupervisedUserCrash_P(test.test):
 
 
     def initialize(self):
-        super(desktopui_ExitOnSupervisedUserCrash, self).initialize()
+        super(desktopui_ExitOnSupervisedUserCrash_P, self).initialize()
 
 
     def run_once(self, arc_mode=None):
