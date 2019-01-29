@@ -35,7 +35,8 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
     # a crossystem reading of the kernel version can establish whether the
     # kernel version starts in a valid state).
     TPM_NVRAM_EXPECTED_VALUES = set([
-            '1 4c 57 52 47 1 0 1 0 0 0 0 0', '2 4c 57 52 47 1 0 1 0 0 0 0 55'
+            '1 4c 57 52 47 1 0 1 0 0 0 0 0', '2 4c 57 52 47 1 0 1 0 0 0 0 55',
+            '2 4c 57 52 47 0 0 0 0 0 0 0 e8'
     ])
 
     def initialize(self, host, cmdline_args, ec_wp=None):
