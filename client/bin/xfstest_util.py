@@ -30,6 +30,8 @@ class xfstests_env:
         - SCRATCH_DEV "device containing SCRATCH PARTITION"
         - SCRATCH_MNT "mount point for SCRATCH PARTITION"
 
+        - SCRATCH_DIR "directory on a large partition"
+
         @param job: The job object.
         """
 
@@ -66,6 +68,7 @@ class xfstests_env:
 
         os.environ['TEST_DIR'] = test_dir
         os.environ['SCRATCH_MNT'] = self.env_partition['SCRATCH'].mountpoint
+        os.environ['SCRATCH_DIR'] = self.XFS_MOUNT_PATH
 
         # ChromeOS does not need special option when SELinux is enabled.
         os.environ['SELINUX_MOUNT_OPTIONS'] = ' '
