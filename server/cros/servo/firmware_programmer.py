@@ -274,6 +274,8 @@ class FlashECProgrammer(_BaseProgrammer):
             self._program_cmd += ' --raiden'
         if self._ec_chip == 'stm32':
             self._program_cmd += ' --bitbang_rate=57600'
+        self._program_cmd += ' --verify'
+        self._program_cmd += ' --verbose'
 
 
 class ProgrammerV2(object):
