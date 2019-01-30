@@ -9,3 +9,4 @@ class Values(object):
     chrome_ec = True
     ec_capability = ['battery', 'charging', 'keyboard', 'lid', 'x86' ]
     servo_prog_state_delay = 10
+    smm_store = False

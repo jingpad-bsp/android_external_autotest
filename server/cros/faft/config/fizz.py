@@ -17,3 +17,4 @@ class Values(object):
     chrome_ec = True
     ec_capability = ['x86']
     delay_reboot_to_ping = 40
+    smm_store = False
