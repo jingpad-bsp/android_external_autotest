@@ -430,6 +430,9 @@ class BluetoothAdapterTests(test.test):
     ADAPTER_DISCOVER_TIMEOUT_SECS = 60          # 30 seconds too short sometimes
     ADAPTER_DISCOVER_POLLING_SLEEP_SECS = 1
     ADAPTER_DISCOVER_NAME_TIMEOUT_SECS = 30
+    # TODO(shijinabraham@) Remove when crbug/905374 is fixed
+    ADAPTER_STOP_DISCOVERY_TIMEOUT_SECS = 180
+
     ADAPTER_WAIT_DEFAULT_TIMEOUT_SECS = 10
     ADAPTER_POLLING_DEFAULT_SLEEP_SECS = 1
 
@@ -514,7 +517,7 @@ class BluetoothAdapterTests(test.test):
             utils.poll_for_condition(condition=func,
                                      timeout=timeout,
                                      sleep_interval=sleep_interval,
-                                     desc=('Waiting %s', method_name))
+                                     desc=('Waiting %s' % method_name))
             return True
         except utils.TimeoutError as e:
             logging.error('%s: %s', method_name, e)
@@ -654,7 +657,8 @@ class BluetoothAdapterTests(test.test):
         stop_discovery = self.bluetooth_facade.stop_discovery()
         is_not_discovering = self._wait_for_condition(
                 lambda: not self.bluetooth_facade.is_discovering(),
-                method_name())
+                method_name(),
+                timeout=self.ADAPTER_STOP_DISCOVERY_TIMEOUT_SECS)
 
         self.results = {
                 'stop_discovery': stop_discovery,
