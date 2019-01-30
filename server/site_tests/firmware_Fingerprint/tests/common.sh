@@ -221,3 +221,14 @@ check_hw_and_sw_write_protect_enabled() {
     exit 1
   fi
 }
+
+check_fingerprint_task_is_running() {
+  run_ectool_cmd "fpinfo"
+}
+
+check_fingerprint_task_is_not_running() {
+  if (check_fingerprint_task_is_running) ; then
+    echo "Fingerprint task should not be running"
+    exit 1
+  fi
+}
