@@ -18,3 +18,4 @@ class Values(object):
                    [0x29, 'release'],
                    [0x47, 'press'],
                    [0x47, 'release']]
+    smm_store = False

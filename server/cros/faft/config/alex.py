@@ -11,3 +11,4 @@ class Values(object):
     gbb_version = 1.0
     need_dev_transition = True
     has_eventlog = False
+    smm_store = False

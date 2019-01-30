@@ -15,3 +15,4 @@ class Values(object):
     firmware_screen = 4
     wp_voltage = 'off'
     has_eventlog = False        # Shipped without RTC support in firmware
+    smm_store = False
