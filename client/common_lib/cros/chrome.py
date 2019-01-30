@@ -58,6 +58,7 @@ class Chrome(object):
                  disable_arc_opt_in_verification=True,
                  disable_app_sync=False,
                  disable_play_auto_install=False,
+                 disable_locale_sync=True,
                  init_network_controller=False, login_delay=0):
         """
         Constructor of telemetry wrapper.
@@ -101,6 +102,14 @@ class Chrome(object):
         @param disable_play_auto_install:
             Adds --arc-disable-play-auto-install to browser args and this
             disables ARC Play Auto Install flow. By default it is enabled.
+        @param disable_locale_sync:
+            Adds --arc-disable-locale-sync to browser args and this
+            disables locale sync between Chrome and Android container. In case
+            of disabling sync, Android container is started with language and
+            preference language list as it was set on the moment of starting
+            full instance. Used to prevent random app restarts caused by racy
+            locale change, coming from profile sync. By default locale sync is
+            disabled.
         @param login_delay: Time for idle in login screen to simulate the time
                             required for password typing.
         """
@@ -130,6 +139,9 @@ class Chrome(object):
             if disable_play_auto_install:
                 finder_options.browser_options.AppendExtraBrowserArgs(
                         ['--arc-disable-play-auto-install'])
+            if disable_locale_sync:
+                finder_options.browser_options.AppendExtraBrowserArgs(
+                        ['--arc-disable-locale-sync'])
             logged_in = True
 
         self._browser_type = (self.BROWSER_TYPE_LOGIN
