@@ -117,3 +117,5 @@ class Values(object):
 
     # Timeout of confirming DUT doesn't boot on USB image in Recovery screen
     usb_image_boot_timeout = 180
+
+    smm_store = True

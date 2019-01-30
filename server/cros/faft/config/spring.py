@@ -13,3 +13,4 @@ class Values(object):
     ec_capability = (['battery', 'keyboard', 'arm', 'lid'])
     ec_has_powerbtn_cmd = False
     has_eventlog = False        # No RTC support in firmware
+    smm_store = False

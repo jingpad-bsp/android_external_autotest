@@ -16,3 +16,4 @@ class Values(object):
     wp_voltage = 'pp1800'
     spi_voltage = 'pp1800'
     custom_usb_enable_names = ['EN_USB_A0_5V', 'EN_USB_A1_5V']
+    smm_store = False
