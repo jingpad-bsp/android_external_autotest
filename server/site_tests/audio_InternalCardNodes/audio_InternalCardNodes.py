@@ -6,6 +6,7 @@
 
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.server.cros.audio import audio_test
 from autotest_lib.client.cros.audio import cras_configs
@@ -71,6 +72,19 @@ class audio_InternalCardNodes(audio_test.AudioTest):
         if audio_spec.has_hotwording(board_name, model_name):
             expected_plugged_nodes_without_audio_jack[1].append('HOTWORD')
             expected_plugged_nodes_with_audio_jack[1].append('HOTWORD')
+
+        # If there is no jack plugger, check the nodes without plugging.
+        host_info = host.host_info_store.get()
+        if jack_plugger is None:
+            if 'audio_box' in host_info.labels:
+                raise error.TestError("Failed to detect jack plugger.")
+            hp_jack_node_type = audio_test_utils.check_hp_or_lineout_plugged(
+                    audio_facade)
+            expected_plugged_nodes_with_audio_jack[0].append(hp_jack_node_type)
+
+            audio_test_utils.check_plugged_nodes(
+                    audio_facade, expected_plugged_nodes_with_audio_jack)
+            return
 
         audio_test_utils.check_plugged_nodes(
                 audio_facade, expected_plugged_nodes_without_audio_jack)

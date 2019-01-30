@@ -6,7 +6,6 @@ import glob
 import logging
 import ntpath
 import os
-import re
 import stat
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -58,7 +57,7 @@ class camera_V4L2(test.test):
         vid_path = "/sys/class/video4linux/%s/device/../idVendor" % device_name
         pid_path = "/sys/class/video4linux/%s/device/../idProduct" % device_name
         if not os.path.isfile(vid_path) or not os.path.isfile(pid_path):
-            logging.info("Device %s is not a USB camera" % device)
+            logging.info("Device %s is not a USB camera", device)
             return None
 
         with open(vid_path, 'r') as f_vid, open(pid_path, 'r') as f_pid:
@@ -69,7 +68,7 @@ class camera_V4L2(test.test):
     def is_v4l2_capture_device(self, device):
         executable = os.path.join(self.bindir, "media_v4l2_is_capture_device")
         cmd = "%s %s" % (executable, device)
-        logging.info("Running %s" % cmd)
+        logging.info("Running %s", cmd)
         return utils.system(cmd, ignore_status=True) == 0
 
     def find_video_capture_devices(self):
@@ -83,7 +82,7 @@ class camera_V4L2(test.test):
                     os.minor(statinfo.st_rdev) < self.v4l2_minor_dev_num_max and
                     self.is_v4l2_capture_device(device)):
                 self.v4l2_devices.append(device)
-        logging.info("Detected devices: %s\n" % self.v4l2_devices)
+        logging.info("Detected devices: %s\n", self.v4l2_devices)
         if not self.v4l2_devices:
             raise error.TestFail("No V4L2 devices found!")
 
@@ -93,7 +92,7 @@ class camera_V4L2(test.test):
             options += ["--test-list=%s" % self.test_list]
         executable = os.path.join(self.bindir, "media_v4l2_unittest")
         cmd = "%s %s" % (executable, " ".join(options))
-        logging.info("Running %s" % cmd)
+        logging.info("Running %s", cmd)
         stdout = utils.system_output(cmd, retain_output=True)
 
     def run_v4l2_capture_test(self, device):
@@ -108,5 +107,5 @@ class camera_V4L2(test.test):
 
         executable = os.path.join(self.bindir, "media_v4l2_test")
         cmd = "%s %s" % (executable, " ".join(options))
-        logging.info("Running %s" % cmd)
+        logging.info("Running %s", cmd)
         stdout = utils.system_output(cmd, retain_output=True)
