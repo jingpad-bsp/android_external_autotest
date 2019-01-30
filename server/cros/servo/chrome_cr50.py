@@ -334,7 +334,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             try:
                 return self.send_command_get_output(command, regexp_list)
             except error.TestFail, e:
-                logging.info('Failed to get %r output: %r', command, e.message)
+                logging.info('Failed to get %r output: %r', command, str(e))
         # Raise the last error, if we never successfully returned the command
         # output
         logging.info('Could not get %r output after %d tries', command, tries)
@@ -509,7 +509,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         try:
             version_info = self.get_version_info(self.ACTIVE_BID)
         except error.TestFail, e:
-            logging.info(e.message)
+            logging.info(str(e))
             logging.info('Cannot use the version to get the board id')
             return None
 
