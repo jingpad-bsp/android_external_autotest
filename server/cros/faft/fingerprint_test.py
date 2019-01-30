@@ -32,6 +32,10 @@ class FingerprintTest(test.test):
         'TEST_IMAGE_DEV_RB_NINE': '%s.dev.rb9'
     }
 
+    _ROLLBACK_INITIAL_BLOCK_ID = '1'
+    _ROLLBACK_INITIAL_MIN_VERSION = '0'
+    _ROLLBACK_INITIAL_RW_VERSION = '0'
+
     _SERVER_GENERATED_FW_DIR_NAME = 'generated_fw'
 
     _DUT_TMP_PATH_BASE = '/tmp/fp_test'
@@ -41,6 +45,9 @@ class FingerprintTest(test.test):
     }
 
     _BIOD_UPSTART_JOB_NAME = 'biod'
+    # TODO(crbug.com/925545)
+    _TIMBERSLIDE_UPSTART_JOB_NAME = \
+        'timberslide LOG_PATH=/sys/kernel/debug/cros_fp/console_log'
 
     _INIT_ENTROPY_CMD = 'bio_wash --factory_init'
 
@@ -49,7 +56,7 @@ class FingerprintTest(test.test):
     _ECTOOL_RW_VERSION = 'RW version'
     _ECTOOL_ROLLBACK_BLOCK_ID = 'Rollback block id'
     _ECTOOL_ROLLBACK_MIN_VERSION = 'Rollback min version'
-    _ECTOOL_ROLLBACK_VERSION = 'Rollback version'
+    _ECTOOL_ROLLBACK_RW_VERSION = 'RW rollback version'
 
     @staticmethod
     def _parse_ectool_output(ectool_output):
@@ -76,7 +83,7 @@ class FingerprintTest(test.test):
                                  % ectool_output)
         return ret
 
-    def initialize(self, host, test_dir):
+    def initialize(self, host, test_dir, use_dev_signed_fw=False):
         """Performs initialization."""
         self.host = host
         self.servo = host.servo
@@ -87,6 +94,14 @@ class FingerprintTest(test.test):
 
         logging.info('HW write protect enabled: %s',
                      self.is_hardware_write_protect_enabled())
+
+        # TODO(crbug.com/925545): stop timberslide so /var/log/cros_fp.log
+        # continues to update after flashing.
+        self._timberslide_running = self.host.upstart_status(
+            self._TIMBERSLIDE_UPSTART_JOB_NAME)
+        if self._timberslide_running:
+            logging.info('Stopping %s', self._TIMBERSLIDE_UPSTART_JOB_NAME)
+            self.host.upstart_stop(self._TIMBERSLIDE_UPSTART_JOB_NAME)
 
         self._biod_running = self.host.upstart_status(
             self._BIOD_UPSTART_JOB_NAME)
@@ -115,14 +130,22 @@ class FingerprintTest(test.test):
         self._initialize_test_firmware_image_attrs(
             self._dut_firmware_test_images_dir)
 
-        self._initialize_running_fw_version()
+        self._initialize_running_fw_version(use_dev_signed_fw)
         self._initialize_fw_entropy()
 
     def cleanup(self):
         """Restores original state."""
+        # Once the tests complete we need to make sure we're running the
+        # original firmware (not dev version) and potentially reset rollback.
+        self._initialize_running_fw_version(False)
+        self._initialize_fw_entropy()
         if hasattr(self, '_biod_running') and self._biod_running:
             logging.info('Restarting biod')
             self.host.upstart_restart(self._BIOD_UPSTART_JOB_NAME)
+        # TODO(crbug.com/925545)
+        if hasattr(self, '_timberslide_running') and self._timberslide_running:
+            logging.info('Restarting timberslide')
+            self.host.upstart_restart(self._TIMBERSLIDE_UPSTART_JOB_NAME)
 
         super(FingerprintTest, self).cleanup()
 
@@ -182,16 +205,19 @@ class FingerprintTest(test.test):
                                      val % self.get_fp_board())
             setattr(self, key, full_path)
 
-    def _initialize_running_fw_version(self):
+    def _initialize_running_fw_version(self, use_dev_signed_fw):
         """
         Ensures that the running firmware version matches build version
-        and flashes to correct version if it doesn't match.
+        and factory rollback settings; flashes to correct version if either
+        fails to match.
 
         RO firmware: original version released at factory
         RW firmware: firmware from current build
         """
-        build_rw_firmware_version = self.get_build_rw_firmware_version()
-        golden_ro_firmware_version = self.get_golden_ro_firmware_version()
+        build_rw_firmware_version = \
+            self.get_build_rw_firmware_version(use_dev_signed_fw)
+        golden_ro_firmware_version = \
+            self.get_golden_ro_firmware_version(use_dev_signed_fw)
         logging.info('Build RW firmware version: %s', build_rw_firmware_version)
         logging.info('Golden RO firmware version: %s',
                      golden_ro_firmware_version)
@@ -199,8 +225,11 @@ class FingerprintTest(test.test):
         fw_versions_match = self.running_fw_version_matches_given_version(
             build_rw_firmware_version, golden_ro_firmware_version)
 
-        if not fw_versions_match:
-            self.flash_rw_ro_firmware(self._build_fw_file)
+        if not fw_versions_match or not self.is_rollback_set_to_initial_val():
+            fw_file = self._build_fw_file
+            if use_dev_signed_fw:
+                fw_file = self.TEST_IMAGE_DEV
+            self.flash_rw_ro_firmware(fw_file)
             if not self.running_fw_version_matches_given_version(
                 build_rw_firmware_version, golden_ro_firmware_version):
                 raise error.TestFail(
@@ -228,14 +257,14 @@ class FingerprintTest(test.test):
         return ret
 
     def _get_running_firmware_version(self, fw_type):
-        """Returns dict of RW and RO firmware versions."""
+        """Returns requested firmware version (RW or RO)."""
         result = self._run_ectool_cmd('version')
         parsed = self._parse_ectool_output(result.stdout)
         if result.exit_status != 0:
             raise error.TestFail('Failed to get firmware version')
         version = parsed.get(fw_type)
         if version is None:
-            raise error.TestFail('Failed to get firmware version: ' % fw_type)
+            raise error.TestFail('Failed to get firmware version: %s' % fw_type)
         return version
 
     def get_running_rw_firmware_version(self):
@@ -246,22 +275,62 @@ class FingerprintTest(test.test):
         """Returns running RO firmware version."""
         return self._get_running_firmware_version(self._ECTOOL_RO_VERSION)
 
-    def get_golden_ro_firmware_version(self):
+    def _get_rollback_info(self, info_type):
+        """Returns requested type of rollback info."""
+        result = self._run_ectool_cmd('rollbackinfo')
+        parsed = self._parse_ectool_output(result.stdout)
+        # TODO(crbug.com/924283): rollbackinfo always returns an error
+        # if result.exit_status != 0:
+        #    raise error.TestFail('Failed to get rollback info')
+        info = parsed.get(info_type)
+        if info is None:
+            raise error.TestFail('Failed to get rollback info: %s' % info_type)
+        return info
+
+    def get_rollback_id(self):
+        """Returns rollback ID."""
+        return self._get_rollback_info(self._ECTOOL_ROLLBACK_BLOCK_ID)
+
+    def get_rollback_min_version(self):
+        """Returns rollback min version."""
+        return self._get_rollback_info(self._ECTOOL_ROLLBACK_MIN_VERSION)
+
+    def get_rollback_rw_version(self):
+        """Returns RW rollback version."""
+        return self._get_rollback_info(self._ECTOOL_ROLLBACK_RW_VERSION)
+
+    def _construct_dev_version(self, orig_version):
+        """
+        Given a "regular" version string from a signed build, returns the
+        special "dev" version that we use when creating the test images.
+        """
+        fw_version = orig_version
+        if len(fw_version) + len('.dev') > 31:
+            fw_version = fw_version[:27]
+        fw_version = fw_version + '.dev'
+        return fw_version
+
+    def get_golden_ro_firmware_version(self, use_dev_signed_fw):
         """Returns RO firmware version used in factory."""
         board = self.get_fp_board()
         golden_version = self._GOLDEN_RO_FIRMWARE_VERSION_MAP.get(board)
         if golden_version is None:
             raise error.TestFail('Unable to get golden RO version for board: '
                                  % board)
+        if use_dev_signed_fw:
+            golden_version = self._construct_dev_version(golden_version)
         return golden_version
 
-    def get_build_rw_firmware_version(self):
+    def get_build_rw_firmware_version(self, use_dev_signed_fw):
         """Returns RW firmware version from build (based on filename)."""
         fw_file = os.path.basename(self._build_fw_file)
         if not fw_file.endswith('.bin'):
             raise error.TestFail('Unexpected filename for RW firmware: '
                                  % fw_file)
-        return fw_file[:-4]
+        fw_version = fw_file[:-4]
+        if use_dev_signed_fw:
+            fw_version = self._construct_dev_version(fw_version)
+        return fw_version
 
     def running_fw_version_matches_given_version(self, rw_version, ro_version):
         """
@@ -278,6 +347,20 @@ class FingerprintTest(test.test):
 
         return (running_rw_firmware_version == rw_version and
                 running_ro_firmware_version == ro_version)
+
+    def is_rollback_set_to_initial_val(self):
+        """
+        Returns True if rollbackinfo matches the initial value that it
+        should have coming from the factory.
+        """
+        return (self.get_rollback_id() ==
+                self._ROLLBACK_INITIAL_BLOCK_ID
+                and
+                self.get_rollback_min_version() ==
+                self._ROLLBACK_INITIAL_MIN_VERSION
+                and
+                self.get_rollback_rw_version() ==
+                self._ROLLBACK_INITIAL_RW_VERSION)
 
     def _download_firmware(self, gs_path, dut_file_path):
         """Downloads firmware from Google Storage bucket."""
@@ -356,8 +439,10 @@ class FingerprintTest(test.test):
     def run_test(self, test_name, *args):
         """Runs test on DUT."""
         logging.info('Running %s', test_name)
+        # Redirecting stderr to stdout since some commands intentionally fail
+        # and it's easier to read when everything ordered in the same output
         test_cmd = ' '.join([os.path.join(self._dut_working_dir, test_name)] +
-                            list(args))
+                            list(args) + ['2>&1'])
         logging.info('Test command: %s', test_cmd)
         result = self.run_cmd(test_cmd)
         if result.exit_status != 0:
