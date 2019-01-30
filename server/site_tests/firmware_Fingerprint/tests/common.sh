@@ -211,6 +211,10 @@ enable_sw_write_protect() {
   reboot_ec
 }
 
+disable_sw_write_protect() {
+  run_ectool_cmd "flashprotect" "disable"
+}
+
 check_hw_and_sw_write_protect_enabled() {
   local output
   output="$(get_flashprotect_status)"
