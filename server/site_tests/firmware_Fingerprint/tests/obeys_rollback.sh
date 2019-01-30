@@ -26,6 +26,7 @@ echo "Validating initial state"
 check_has_dev_rw_firmware
 check_has_dev_ro_firmware
 check_running_rw_firmware
+check_fingerprint_task_is_running
 check_is_rollback_set_to_initial_val
 
 echo "Flashing RB1 version"
@@ -33,6 +34,7 @@ flash_rw_firmware "${RB1_FW_FILE}"
 check_has_dev_ro_firmware
 check_has_rb1_rw_firmware
 check_running_rw_firmware
+check_fingerprint_task_is_running
 check_rollback_block_id_matches "2"
 check_rollback_min_version_matches "1"
 check_rollback_rw_version_matches "1"
@@ -42,6 +44,7 @@ flash_rw_firmware "${RB0_FW_FILE}"
 check_has_dev_ro_firmware
 check_has_rb0_rw_firmware
 check_running_ro_firmware
+check_fingerprint_task_is_not_running
 check_rollback_block_id_matches "2"
 check_rollback_min_version_matches "1"
 check_rollback_rw_version_matches "0"
@@ -51,6 +54,7 @@ flash_rw_firmware "${RB9_FW_FILE}"
 check_has_dev_ro_firmware
 check_has_rb9_rw_firmware
 check_running_rw_firmware
+check_fingerprint_task_is_running
 check_rollback_block_id_matches "3"
 check_rollback_min_version_matches "9"
 check_rollback_rw_version_matches "9"
