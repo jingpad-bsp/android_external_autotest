@@ -16,3 +16,4 @@ class Values(object):
                             'usb', 'peci']
     wp_voltage = 'pp3300'
     spi_voltage = 'pp3300'
+    smm_store = False

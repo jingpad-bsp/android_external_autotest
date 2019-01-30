@@ -23,3 +23,5 @@ class Values(object):
 
     chrome_ec = True
     ec_capability = ['x86', 'battery', 'charging', 'lid']
+
+    smm_store = False

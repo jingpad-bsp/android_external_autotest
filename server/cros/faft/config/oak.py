@@ -10,3 +10,4 @@ class Values(object):
     chrome_ec = True
     ec_capability = ['battery', 'charging', 'keyboard', 'arm', 'lid']
     ec_has_powerbtn_cmd = False
+    smm_store = False
