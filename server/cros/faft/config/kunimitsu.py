@@ -13,4 +13,4 @@ class Values(object):
     ec_boot_to_console = 0.2
     ec_capability = ['battery', 'charging', 'doubleboot', 'keyboard',
                      'lid', 'x86', 'usb', 'usbpd_uart' ]
-
+    smm_store = False

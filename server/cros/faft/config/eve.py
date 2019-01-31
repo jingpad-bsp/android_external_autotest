@@ -14,3 +14,4 @@ class Values(object):
     servo_prog_state_delay = 10
     dark_resume_capable = True
     firmware_screen = 15
+    smm_store = False

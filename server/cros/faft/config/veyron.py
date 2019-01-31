@@ -11,3 +11,4 @@ class Values(object):
     wp_voltage = 'pp3300'
     confirm_screen = 6
     has_eventlog = False        # for chrome-os-partner:61078
+    smm_store = False

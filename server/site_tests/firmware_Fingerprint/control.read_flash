@@ -1,16 +1,16 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_FingerprintWriteProtect"
+NAME = "firmware_Fingerprint.ReadFlash"
 PURPOSE = """
-Verify HW write protect prevents RO fingerprint firmware modification
+Verify that fingerprint flash cannot be read.
 """
 CRITERIA = """
-Fails if the RO firmware can be written while HW write protect is enabled.
+Fails if reading from flash succeeds.
 """
 ATTRIBUTES = "suite:fingerprint"
 TIME = "SHORT"
@@ -21,15 +21,15 @@ DEPENDENCIES = "servo, fingerprint"
 JOB_RETRIES = 0
 
 DOC = """
-Enables hardware write protect, attempts to flash the RO fingerprint firmware,
-and verifies that the flashing fails.
+Attempts to read flash from RW firmware and validates that it fails. Then
+attempts to read flash from RO firmware and validates that it fails.
 """
 
 args_dict = utils.args_to_dict(args)
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
-def run_fp_writeprotect(machine):
+def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test("firmware_FingerprintWriteProtect", host=host)
+    job.run_test("firmware_Fingerprint", host=host, test_exe="read_flash.sh")
 
-parallel_simple(run_fp_writeprotect, machines)
+parallel_simple(run, machines)

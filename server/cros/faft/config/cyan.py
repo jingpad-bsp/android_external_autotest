@@ -16,3 +16,4 @@ class Values(object):
     long_rec_combo = True
     wp_voltage = 'pp1800'
     spi_voltage = 'pp1800'
+    smm_store = False

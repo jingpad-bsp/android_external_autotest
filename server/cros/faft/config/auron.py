@@ -14,3 +14,4 @@ class Values(object):
                      'keyboard', 'lid', 'x86', 'usb', 'peci']
     wp_voltage = 'pp3300'
     spi_voltage = 'pp3300'
+    smm_store = False

@@ -124,10 +124,11 @@ class firmware_FMap(FirmwareTest):
 
 
     def check_section(self):
-        """Check RW_SECTION_[AB] and RW_LEGACY.
+        """Check RW_SECTION_[AB], RW_LEGACY and SMMSTORE.
 
         1- check RW_SECTION_[AB] exist, non-zero, same size
         2- RW_LEGACY exist and > 1MB in size
+        3- optionally check SMMSTORE exists and >= 256KB in size
         """
         # Parse map into dictionary.
         bios = {}
@@ -157,6 +158,16 @@ class firmware_FMap(FirmwareTest):
             if bios['RW_LEGACY']['size'] < 1024*1024:
                 succeed = False
                 logging.error('RW_LEGACY size is < 1M')
+        # Check SMMSTORE section.
+        if self.faft_config.smm_store:
+            if 'SMMSTORE' not in bios:
+                succeed = False
+                logging.error('Missing SMMSTORE section in FMAP')
+            else:
+                if int(bios['SMMSTORE']['size'], 16) < 256*1024:
+                    succeed = False
+                    logging.error('SMMSTORE size is < 256KB')
+
         if not succeed:
             raise error.TestFail('SECTION check failed.')
 
