@@ -404,7 +404,8 @@ class Suite(object):
                 self.test_source_build, self.ds)
         tests = suite_common.retrieve_for_suite(
                 cf_getter, self.suite_name)
-        return suite_common.filter_tests(tests)
+        return suite_common.filter_tests(
+                tests, suite_common.name_in_tag_predicate(self.suite_name))
 
     def _get_available_bots(self):
         """Get available bots for suites."""
