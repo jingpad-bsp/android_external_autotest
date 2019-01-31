@@ -84,8 +84,9 @@ class login_UserPolicyKeys(test.test):
         sm.StartSession(ownership.TESTUSER, '')
 
         # No policy stored yet.
-        retrieved_policy = sm.RetrievePolicyForUser(ownership.TESTUSER,
-                                                    byte_arrays=True)
+        retrieved_policy = sm.RetrievePolicyEx(
+                session_manager.make_user_policy_descriptor(ownership.TESTUSER),
+                byte_arrays=True)
         if retrieved_policy:
             raise error.TestError('session_manager already has user policy!')
 
@@ -105,8 +106,9 @@ class login_UserPolicyKeys(test.test):
                                                  public_key,
                                                  policy_data)
         try:
-            sm.StorePolicyForUser(ownership.TESTUSER,
-                                  dbus.ByteArray(policy_response))
+            sm.StorePolicyEx(
+                session_manager.make_user_policy_descriptor(ownership.TESTUSER),
+                dbus.ByteArray(policy_response))
         except dbus.exceptions.DBusException as e:
             raise error.TestFail('Failed to store user policy', e)
 
