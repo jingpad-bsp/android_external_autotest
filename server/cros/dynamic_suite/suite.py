@@ -700,7 +700,7 @@ def name_in_tag_predicate(name):
     @return a callable that takes a ControlData and looks for |name| in that
             ControlData object's suite member.
     """
-    return lambda t: name in t.suite_tag_parts
+    return suite_common.name_in_tag_predicate(name)
 
 
 def create_fs_getter(autotest_dir):
@@ -1322,7 +1322,8 @@ class Suite(_BaseSuite):
     find_and_parse_tests = _deprecated_suite_method(find_and_parse_tests)
     find_possible_tests = _deprecated_suite_method(find_possible_tests)
     create_fs_getter = _deprecated_suite_method(create_fs_getter)
-    name_in_tag_predicate = _deprecated_suite_method(name_in_tag_predicate)
+    name_in_tag_predicate = _deprecated_suite_method(
+            suite_common.name_in_tag_predicate)
     name_in_tag_similarity_predicate = _deprecated_suite_method(
             name_in_tag_similarity_predicate)
     test_name_equals_predicate = _deprecated_suite_method(
@@ -1409,7 +1410,7 @@ class Suite(_BaseSuite):
             build = suite_common.get_test_source_build(builds, **dargs)
             cf_getter = _create_ds_getter(build, devserver)
 
-        return cls([name_in_tag_predicate(name)],
+        return cls([suite_common.name_in_tag_predicate(name)],
                    name, builds, board, cf_getter, **dargs)
 
 
