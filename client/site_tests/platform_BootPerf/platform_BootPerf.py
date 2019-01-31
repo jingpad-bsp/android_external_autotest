@@ -31,12 +31,16 @@ class platform_BootPerf(test.test):
       * seconds_kernel_to_signin_users
       * seconds_kernel_to_login
       * seconds_kernel_to_network
+      * seconds_startup_to_chrome_exec
+      * seconds_chrome_exec_to_login
       * rdbytes_kernel_to_startup
       * rdbytes_kernel_to_startup_done
       * rdbytes_kernel_to_x_started
       * rdbytes_kernel_to_chrome_exec
       * rdbytes_kernel_to_chrome_main
       * rdbytes_kernel_to_login
+      * rdbytes_startup_to_chrome_exec
+      * rdbytes_chrome_exec_to_login
       * seconds_power_on_to_lf_start
       * seconds_power_on_to_lf_end
       * seconds_power_on_to_lk_start
@@ -454,6 +458,17 @@ class platform_BootPerf(test.test):
         results['seconds_shutdown_time'] = shutdown_time
 
 
+    def _calculate_diff(self, results):
+        barriers = ['startup', 'chrome_exec', 'login']
+        for i in range(len(barriers) - 1):
+            for type in ['seconds', 'rdbytes']:
+                begin = '%s_kernel_to_%s' % (type, barriers[i])
+                end = '%s_kernel_to_%s' % (type, barriers[i + 1])
+                if begin in results and end in results:
+                    diff_name = '%s_%s_to_%s' % (type, barriers[i], barriers[i + 1])
+                    results[diff_name] = results[end] - results[begin]
+
+
     def run_once(self):
         """Gather boot time statistics.
 
@@ -477,6 +492,7 @@ class platform_BootPerf(test.test):
         self._gather_firmware_boot_time(results)
         self._gather_vboot_times(results)
         self._gather_reboot_keyvals(results)
+        self._calculate_diff(results)
 
         self._copy_timestamp_files()
         self._copy_console_ramoops()
