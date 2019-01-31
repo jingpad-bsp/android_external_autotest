@@ -66,8 +66,10 @@ class login_OwnershipRetaken(test.test):
         if (utils.read_file(constants.OWNER_KEY_FILE) == pubkey):
             raise error.TestFail('Owner key should have changed!')
 
-        # RetrievePolicy, check sig against new key, check properties
-        retrieved_policy = self._sm.RetrievePolicy(byte_arrays=True)
+        # RetrievePolicyEx, check sig against new key, check properties
+        retrieved_policy = self._sm.RetrievePolicyEx(
+                session_manager.make_device_policy_descriptor(),
+                byte_arrays=True)
         if retrieved_policy is None:
             raise error.TestError('Policy not found')
         policy.compare_policy_response(retrieved_policy,
