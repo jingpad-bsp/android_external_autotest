@@ -23,7 +23,6 @@ class platform_BootPerf(test.test):
     The test calculates some or all of the following keyvals:
       * seconds_kernel_to_startup
       * seconds_kernel_to_startup_done
-      * seconds_kernel_to_x_started
       * seconds_kernel_to_chrome_exec
       * seconds_kernel_to_chrome_main
       * seconds_kernel_to_signin_start
@@ -35,7 +34,6 @@ class platform_BootPerf(test.test):
       * seconds_chrome_exec_to_login
       * rdbytes_kernel_to_startup
       * rdbytes_kernel_to_startup_done
-      * rdbytes_kernel_to_x_started
       * rdbytes_kernel_to_chrome_exec
       * rdbytes_kernel_to_chrome_main
       * rdbytes_kernel_to_login
@@ -64,7 +62,6 @@ class platform_BootPerf(test.test):
     #     roughly, the time when /sbin/init emits the `startup`
     #     Upstart event.
     #   post-startup - Completion of the `chromeos_startup` script.
-    #   x-started - Completion of X server initialization.
     #   chrome-exec - The moment when session_manager exec's the
     #     first Chrome process.
     #   chrome-main - The moment when the first Chrome process
@@ -283,7 +280,6 @@ class platform_BootPerf(test.test):
         values as perf keyvals.  The following keyvals are recorded:
           * seconds_kernel_to_startup
           * seconds_kernel_to_startup_done
-          * seconds_kernel_to_x_started
           * seconds_kernel_to_chrome_exec
           * seconds_kernel_to_chrome_main
           * seconds_kernel_to_login
@@ -336,7 +332,6 @@ class platform_BootPerf(test.test):
         perf keyvals.  The following keyvals are recorded:
           * rdbytes_kernel_to_startup
           * rdbytes_kernel_to_startup_done
-          * rdbytes_kernel_to_x_started
           * rdbytes_kernel_to_chrome_exec
           * rdbytes_kernel_to_chrome_main
           * rdbytes_kernel_to_login
