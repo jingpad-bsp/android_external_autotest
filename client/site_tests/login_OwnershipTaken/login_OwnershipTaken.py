@@ -51,7 +51,9 @@ class login_OwnershipTaken(test.test):
             listener.wait_for_signals(desc='Owner settings written to disk.')
 
             sm = session_manager.connect(bus_loop)
-            retrieved_policy = sm.RetrievePolicy(byte_arrays=True)
+            retrieved_policy = sm.RetrievePolicyEx(
+                    session_manager.make_device_policy_descriptor(),
+                    byte_arrays=True)
             if retrieved_policy is None:
                 raise error.TestFail('Policy not found.')
             self._validate_policy(retrieved_policy, cr.username)
