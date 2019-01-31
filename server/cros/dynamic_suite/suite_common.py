@@ -383,3 +383,16 @@ def filter_tests(tests, predicate=lambda t: True):
                control_data.ControlData.get_test_time_index(t.time),
                reverse=True)
     return tests
+
+
+def name_in_tag_predicate(name):
+    """Returns predicate that takes a control file and looks for |name|.
+
+    Builds a predicate that takes in a parsed control file (a ControlData)
+    and returns True if the SUITE tag is present and contains |name|.
+
+    @param name: the suite name to base the predicate on.
+    @return a callable that takes a ControlData and looks for |name| in that
+            ControlData object's suite member.
+    """
+    return lambda t: name in t.suite_tag_parts
