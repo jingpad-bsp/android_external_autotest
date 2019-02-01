@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='x86.CtsHostsideNetworkTests',
         test_name='cheets_CTS_P.x86.CtsHostsideNetworkTests',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsHostsideNetworkTests', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsHostsideNetworkTests'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsHostsideNetworkTests',
         target_plan=None,
