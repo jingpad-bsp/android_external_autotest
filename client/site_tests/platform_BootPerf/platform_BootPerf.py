@@ -23,7 +23,6 @@ class platform_BootPerf(test.test):
     The test calculates some or all of the following keyvals:
       * seconds_kernel_to_startup
       * seconds_kernel_to_startup_done
-      * seconds_kernel_to_x_started
       * seconds_kernel_to_chrome_exec
       * seconds_kernel_to_chrome_main
       * seconds_kernel_to_signin_start
@@ -31,12 +30,15 @@ class platform_BootPerf(test.test):
       * seconds_kernel_to_signin_users
       * seconds_kernel_to_login
       * seconds_kernel_to_network
+      * seconds_startup_to_chrome_exec
+      * seconds_chrome_exec_to_login
       * rdbytes_kernel_to_startup
       * rdbytes_kernel_to_startup_done
-      * rdbytes_kernel_to_x_started
       * rdbytes_kernel_to_chrome_exec
       * rdbytes_kernel_to_chrome_main
       * rdbytes_kernel_to_login
+      * rdbytes_startup_to_chrome_exec
+      * rdbytes_chrome_exec_to_login
       * seconds_power_on_to_lf_start
       * seconds_power_on_to_lf_end
       * seconds_power_on_to_lk_start
@@ -60,7 +62,6 @@ class platform_BootPerf(test.test):
     #     roughly, the time when /sbin/init emits the `startup`
     #     Upstart event.
     #   post-startup - Completion of the `chromeos_startup` script.
-    #   x-started - Completion of X server initialization.
     #   chrome-exec - The moment when session_manager exec's the
     #     first Chrome process.
     #   chrome-main - The moment when the first Chrome process
@@ -279,7 +280,6 @@ class platform_BootPerf(test.test):
         values as perf keyvals.  The following keyvals are recorded:
           * seconds_kernel_to_startup
           * seconds_kernel_to_startup_done
-          * seconds_kernel_to_x_started
           * seconds_kernel_to_chrome_exec
           * seconds_kernel_to_chrome_main
           * seconds_kernel_to_login
@@ -332,7 +332,6 @@ class platform_BootPerf(test.test):
         perf keyvals.  The following keyvals are recorded:
           * rdbytes_kernel_to_startup
           * rdbytes_kernel_to_startup_done
-          * rdbytes_kernel_to_x_started
           * rdbytes_kernel_to_chrome_exec
           * rdbytes_kernel_to_chrome_main
           * rdbytes_kernel_to_login
@@ -454,6 +453,17 @@ class platform_BootPerf(test.test):
         results['seconds_shutdown_time'] = shutdown_time
 
 
+    def _calculate_diff(self, results):
+        barriers = ['startup', 'chrome_exec', 'login']
+        for i in range(len(barriers) - 1):
+            for type in ['seconds', 'rdbytes']:
+                begin = '%s_kernel_to_%s' % (type, barriers[i])
+                end = '%s_kernel_to_%s' % (type, barriers[i + 1])
+                if begin in results and end in results:
+                    diff_name = '%s_%s_to_%s' % (type, barriers[i], barriers[i + 1])
+                    results[diff_name] = results[end] - results[begin]
+
+
     def run_once(self):
         """Gather boot time statistics.
 
@@ -477,6 +487,7 @@ class platform_BootPerf(test.test):
         self._gather_firmware_boot_time(results)
         self._gather_vboot_times(results)
         self._gather_reboot_keyvals(results)
+        self._calculate_diff(results)
 
         self._copy_timestamp_files()
         self._copy_console_ramoops()
