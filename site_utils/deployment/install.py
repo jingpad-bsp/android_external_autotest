@@ -319,7 +319,8 @@ def _update_host_attributes(afe, hostname, host_attrs):
     @param host_attrs   Dictionary with attributes to be applied to the
                         host.
     """
-    s_hostname, s_port, s_serial = _extract_servo_attributes(host_attrs)
+    s_hostname, s_port, s_serial = _extract_servo_attributes(hostname,
+                                                             host_attrs)
     afe.set_host_attribute(servo_host.SERVO_HOST_ATTR,
                            s_hostname,
                            hostname=hostname)
@@ -332,7 +333,7 @@ def _update_host_attributes(afe, hostname, host_attrs):
                                hostname=hostname)
 
 
-def _extract_servo_attributes(host_attrs):
+def _extract_servo_attributes(hostname, host_attrs):
     """Extract servo attributes from the host attribute dict, setting defaults.
 
     @return (servo_hostname, servo_port, servo_serial)
@@ -476,7 +477,7 @@ def _ensure_label_in_afe(afe_host, label_name, label_value):
 
 
 def _create_host_for_installation(hostname, arguments, host_attrs):
-  s_host, s_port, s_serial = _extract_servo_attributes(host_attrs)
+  s_host, s_port, s_serial = _extract_servo_attributes(hostname, host_attrs)
   return preparedut.create_host(hostname, arguments.board, arguments.model,
                                 s_host, s_port, s_serial)
 
@@ -495,7 +496,9 @@ def _install_test_image(host, arguments):
     if arguments.stageusb:
         try:
             preparedut.download_image_to_servo_usb(
-                    host.get_cros_repair_image_name())
+                    host,
+                    host.get_cros_repair_image_name(),
+            )
         except Exception as e:
             logging.exception('Failed to stage image on USB: %s', e)
             raise Exception('USB staging failed')
@@ -507,7 +510,7 @@ def _install_test_image(host, arguments):
             raise Exception('chromeos-firmwareupdate failed')
     if arguments.install_test_image:
         try:
-            preparedut.install_test_image()
+            preparedut.install_test_image(host)
         except error.AutoservRunError as e:
             logging.exception('Failed to install: %s', e)
             raise Exception('chromeos-install failed')
