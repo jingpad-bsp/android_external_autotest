@@ -165,6 +165,7 @@ int main(int argc, char* argv[]) {
       glbench::GetDrawSizeTest(),
       glbench::GetTextureRebindTest(),
       glbench::GetBufferUploadTest(),
+      glbench::GetBufferUploadSubTest(),
   };
 
   if (FLAGS_list) {
