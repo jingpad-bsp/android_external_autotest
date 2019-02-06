@@ -45,17 +45,18 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.wait_longer_fw_screen_and_close_lid()
 
     def initialize(self, host, cmdline_args):
+        """Initialize the test"""
         super(firmware_FwScreenCloseLid, self).initialize(host, cmdline_args)
         if self.faft_config.has_lid:
-            self.assert_test_image_in_usb_disk()
             self.switcher.setup_mode('dev')
-            self.servo.switch_usbkey('host')
+            self.setup_usbkey(True, host=True)
             usb_dev = self.servo.probe_host_usb_dev()
             # Corrupt the kernel of USB stick. It is needed for triggering a
             # yuck screen later.
             self.corrupt_usb_kernel(usb_dev)
 
     def cleanup(self):
+        """Cleanup the test"""
         try:
             if self.faft_config.has_lid:
                 self.servo.switch_usbkey('host')
@@ -67,6 +68,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         super(firmware_FwScreenCloseLid, self).cleanup()
 
     def run_once(self):
+        """Main test logic"""
         if not self.faft_config.has_lid:
             logging.info('This test does nothing on devices without lid.')
             return
