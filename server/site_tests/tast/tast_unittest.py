@@ -123,6 +123,7 @@ class TastTest(unittest.TestCase):
             'patterns=%s' % self.TEST_PATTERNS,
             'remotebundledir=' + self._remote_bundle_dir,
             'remoterunner=' + self._remote_test_runner_path,
+            'sshretries=%d' % tast.tast._SSH_CONNECT_RETRIES,
             'target=%s:%d' % (self.HOST, self.PORT),
             'verbose=True',
         ]
