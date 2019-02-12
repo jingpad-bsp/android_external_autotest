@@ -77,7 +77,8 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
 
     def get_output(self, cmd, regexp, split_str, sort):
         """Return the cr50 console output"""
-        output = self.cr50.send_command_get_output(cmd, [regexp])[0][1].strip()
+        output = self.cr50.send_safe_command_get_output(cmd,
+                                                        [regexp])[0][1].strip()
         logging.debug('%s output:%s\n', cmd, output)
 
         # Record the original command output
