@@ -504,10 +504,18 @@ def _install_test_image(host, arguments):
             raise Exception('USB staging failed')
     if arguments.install_firmware:
         try:
-            preparedut.install_firmware(host)
+            if arguments.using_servo:
+                logging.debug('Install FW using servo.')
+                preparedut.flash_firmware_using_servo(host)
+            else:
+                logging.debug('Install FW by chromeos-firmwareupdate.')
+                preparedut.install_firmware(host)
         except error.AutoservRunError as e:
             logging.exception('Firmware update failed: %s', e)
-            raise Exception('chromeos-firmwareupdate failed')
+            msg = '%s failed' % (
+                    'Flashing firmware using servo' if arguments.using_servo
+                    else 'chromeos-firmwareupdate')
+            raise Exception(msg)
     if arguments.install_test_image:
         try:
             preparedut.install_test_image(host)
