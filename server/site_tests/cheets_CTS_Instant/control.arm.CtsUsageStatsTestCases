@@ -12,7 +12,6 @@ JOB_RETRIES = 1
 TEST_TYPE = 'server'
 TIME = 'MEDIUM'
 MAX_RESULT_SIZE_KB = 512000
-PRIORITY = 50
 DOC = 'Run module CtsUsageStatsTestCases of the Android Compatibility Test Suite for Instant Apps (CTS Instant) using arm ABI in the ARC++ container.'
 
 def run_CTS(machine):
@@ -25,17 +24,13 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.CtsUsageStatsTestCases',
         test_name='cheets_CTS_Instant.arm.CtsUsageStatsTestCases',
-        run_template=['run', 'commandAndExit', 'cts-instant', '-m', 'CtsUsageStatsTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts-instant', '--module', 'CtsUsageStatsTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsUsageStatsTestCases',
         target_plan=None,
         bundle='arm',
-        warn_on_test_retry=False,
         retry_manual_tests=True,
-        precondition_commands=[
-    '/usr/local/autotest/cros/scripts/wifi connect %s %s' % (ssid, wifipass),
-    '/usr/local/autotest/cros/scripts/reorder-services-moblab.sh wifi',
-],
+        warn_on_test_retry=False,
         timeout=3600)
 
 parallel_simple(run_CTS, machines)
