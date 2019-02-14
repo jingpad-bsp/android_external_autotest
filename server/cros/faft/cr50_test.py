@@ -33,6 +33,14 @@ class Cr50Test(FirmwareTest):
     CLEARED_FWMP_EXIT_STATUS = 1
     CLEARED_FWMP_ERROR_MSG = ('CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS'
                               '_INVALID')
+    # Cr50 may have flash operation errors during the test. Here's an example
+    # of one error message.
+    # do_flash_op:245 errors 20 fsh_pe_control 40720004
+    # The stuff after the ':' may change, but all flash operation errors
+    # contain do_flash_op. do_flash_op is only ever printed if there is an
+    # error during the flash operation. Just search for do_flash_op to simplify
+    # the search string and make it applicable to all flash op errors.
+    CR50_FLASH_OP_ERROR_MSG = 'do_flash_op'
 
     def initialize(self, host, cmdline_args, full_args,
             restore_cr50_state=False, cr50_dev_path='', provision_update=False):
@@ -378,6 +386,32 @@ class Cr50Test(FirmwareTest):
             self._restore_cr50_state()
         finally:
             super(Cr50Test, self).cleanup()
+
+        # Check the logs captured during firmware_test cleanup for cr50 errors.
+        self._get_cr50_stats_from_uart_capture()
+
+
+    def _get_cr50_stats_from_uart_capture(self):
+        """Check cr50 uart output for errors.
+
+        Use the logs captured during firmware_test cleanup to check for cr50
+        errors. Flash operation issues aren't obvious unless you check the logs.
+        All flash op errors print do_flash_op and it isn't printed during normal
+        operation. Open the cr50 uart file and count the number of times this is
+        printed. Log the number of errors.
+        """
+        if not hasattr(self, 'cr50_uart_file'):
+            logging.info('There is not a cr50 uart file')
+            return
+
+        flash_error_count = 0
+        with open(self.cr50_uart_file, 'r') as f:
+            for line in f:
+                if self.CR50_FLASH_OP_ERROR_MSG in line:
+                    flash_error_count += 1
+
+        # Log any flash operation errors.
+        logging.info('do_flash_op count: %d', flash_error_count)
 
 
     def _restore_cr50_state(self):
