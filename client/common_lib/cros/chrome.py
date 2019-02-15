@@ -4,6 +4,7 @@
 
 import logging, os, re
 
+from autotest_lib.client.common_lib.cros import arc_common
 from autotest_lib.client.common_lib.cros import arc_util
 from autotest_lib.client.common_lib.cros import assistant_util
 from autotest_lib.client.cros import constants
@@ -214,7 +215,12 @@ class Chrome(object):
                         if arc_util.should_start_arc(arc_mode):
                             arc_util.enable_play_store(self.autotest_ext, True)
                     else:
-                        arc_util.opt_in(self.browser, self.autotest_ext)
+                        wait_for_provisioning = \
+                                arc_mode != arc_common.ARC_MODE_ENABLED_ASYNC
+                        arc_util.opt_in(
+                                browser = self.browser,
+                                autotest_ext = self.autotest_ext,
+                                wait_for_provisioning = wait_for_provisioning)
                     arc_util.post_processing_after_browser(self)
                 if enable_assistant:
                     assistant_util.enable_assistant(self.autotest_ext)
