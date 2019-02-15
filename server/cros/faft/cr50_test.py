@@ -757,11 +757,25 @@ class Cr50Test(FirmwareTest):
         if self.cr50.get_ccd_level() == 'open':
             return
 
-        self.enter_mode_after_checking_tpm_state('dev')
-        self.ccd_open_from_ap()
-        self.enter_mode_after_checking_tpm_state('normal')
+        # Use the console to open cr50 without entering dev mode if possible. It
+        # takes longer and relies on more systems to enter dev mode and ssh into
+        # the AP. Skip the steps that aren't required.
+        if not self.cr50.get_cap('OpenNoDevMode')[self.cr50.CAP_IS_ACCESSIBLE]:
+            self.enter_mode_after_checking_tpm_state('dev')
+
+        if self.cr50.get_cap('OpenFromUSB')[self.cr50.CAP_IS_ACCESSIBLE]:
+            self.cr50.set_ccd_level(self.cr50.OPEN)
+        else:
+            self.ccd_open_from_ap()
+
         if enable_testlab:
             self.cr50.set_ccd_testlab('on')
+
+        # Make sure the device is in normal mode. After opening cr50, the TPM
+        # should be cleared and the device should automatically reset to normal
+        # mode. Just check to be consistent. It's possible capabilitiy settings
+        # are set to skip wiping the TPM.
+        self.enter_mode_after_checking_tpm_state('normal')
 
 
     def run_gsctool_cmd_with_password(self, password, cmd, name, expect_error):
