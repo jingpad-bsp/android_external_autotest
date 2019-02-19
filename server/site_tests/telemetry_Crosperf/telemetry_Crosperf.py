@@ -4,7 +4,7 @@
 import logging
 import os
 import re
-import time
+import shutil
 import StringIO
 
 import common
@@ -240,30 +240,25 @@ class telemetry_Crosperf(test.test):
         stdout = StringIO.StringIO()
         stderr = StringIO.StringIO()
         try:
+            # If profiler_args specified, we want to add several more options
+            # to the command so that run_benchmark will collect system wide
+            # profiles.
+            if profiler_args:
+                # Remove the `record` from profiler_args
+                profiler_args = ' '.join(profiler_args.split()[1:])
+                command += ' --collect-system-wide-profiles' \
+                           ' --system-wide-profiling-options "%s"' \
+                           % (profiler_args)
+
             logging.info('BENCHMARK CMD: %s', command)
             # Run benchmark at background and get pid of it.
             result = _run_in_background(runner, command, stdout, stderr,
                                         WAIT_FOR_CMD_TIMEOUT_SECS)
             benchmark_pid = int(result.stdout.rstrip())
 
-            # Use perf on DUT to collect profiles.
-            if profiler_args:
-                perf_command = 'nohup perf %s -o %s/perf.data' \
-                               % (profiler_args, DUT_CHROME_RESULTS_DIR)
-                logging.info('PERF CMD: %s', perf_command)
-                # Wait 3 seconds for benchmark to log in and actually start.
-                time.sleep(3)
-                result = _run_in_background(dut, perf_command, stdout, stderr,
-                                            WAIT_FOR_CMD_TIMEOUT_SECS)
-                perf_pid = int(result.stdout.rstrip())
-
-            # Wait until benchmark run finished to stop perf.
+            # Wait until benchmark run finished
             _wait_for_process(runner, benchmark_pid,
                               TELEMETRY_TIMEOUT_MINS * 60)
-            if profiler_args:
-                _kill_perf(dut)
-                # Wait till perf process finishes
-                _wait_for_process(dut, perf_pid, WAIT_FOR_CMD_TIMEOUT_SECS)
 
             # If no command error happens, set exit_code to 0
             exit_code = 0
@@ -307,6 +302,10 @@ class telemetry_Crosperf(test.test):
         # Copy the perf data file into the test_that profiling directory,
         # if necessary. It always comes from DUT.
         if profiler_args:
-            result = self.scp_telemetry_results(client_ip, dut, 'perf.data',
-                                                self.profdir)
+            filepath = os.path.join(self.resultsdir, 'artifacts')
+            for filename in os.listdir(filepath):
+                if filename.endswith('perf.data'):
+                    shutil.copyfile(os.path.join(filepath, filename),
+                                    os.path.join(self.profdir, 'perf.data'))
+
         return result
