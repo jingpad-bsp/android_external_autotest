@@ -4,7 +4,7 @@
 import logging
 import os
 import re
-import time
+import shutil
 import StringIO
 
 import common
@@ -212,11 +212,6 @@ class telemetry_Crosperf(test.test):
 
         # Decide whether the test will run locally or by a remote server.
         if args.get('run_local', 'false').lower() == 'true':
-            # We do not use local run for collecting profiles, will raise an
-            # error for this situation.
-            if profiler_args:
-                raise RuntimeError('Profiling with run_local set to true is no '
-                                   'longer supported.')
             # The telemetry scripts will run on DUT.
             _ensure_deps(dut, test_name)
             format_string = ('python %s --browser=system '
@@ -240,30 +235,24 @@ class telemetry_Crosperf(test.test):
         stdout = StringIO.StringIO()
         stderr = StringIO.StringIO()
         try:
+            # If profiler_args specified, we want to add several more options
+            # to the command so that run_benchmark will collect system wide
+            # profiles.
+            if profiler_args:
+                command += ' --interval-profiling-period=story_run' \
+                           ' --interval-profiling-target=system_wide' \
+                           ' --interval-profiler-options="%s"' \
+                           % (profiler_args)
+
             logging.info('BENCHMARK CMD: %s', command)
             # Run benchmark at background and get pid of it.
             result = _run_in_background(runner, command, stdout, stderr,
                                         WAIT_FOR_CMD_TIMEOUT_SECS)
             benchmark_pid = int(result.stdout.rstrip())
 
-            # Use perf on DUT to collect profiles.
-            if profiler_args:
-                perf_command = 'nohup perf %s -o %s/perf.data' \
-                               % (profiler_args, DUT_CHROME_RESULTS_DIR)
-                logging.info('PERF CMD: %s', perf_command)
-                # Wait 3 seconds for benchmark to log in and actually start.
-                time.sleep(3)
-                result = _run_in_background(dut, perf_command, stdout, stderr,
-                                            WAIT_FOR_CMD_TIMEOUT_SECS)
-                perf_pid = int(result.stdout.rstrip())
-
-            # Wait until benchmark run finished to stop perf.
+            # Wait until benchmark run finished
             _wait_for_process(runner, benchmark_pid,
                               TELEMETRY_TIMEOUT_MINS * 60)
-            if profiler_args:
-                _kill_perf(dut)
-                # Wait till perf process finishes
-                _wait_for_process(dut, perf_pid, WAIT_FOR_CMD_TIMEOUT_SECS)
 
             # If no command error happens, set exit_code to 0
             exit_code = 0
@@ -302,11 +291,22 @@ class telemetry_Crosperf(test.test):
         else:
             filepath = os.path.join(self.resultsdir, 'results-chart.json')
             if not os.path.exists(filepath):
+                exit_code = -1
                 raise RuntimeError('Missing results file: %s' % filepath)
 
         # Copy the perf data file into the test_that profiling directory,
         # if necessary. It always comes from DUT.
         if profiler_args:
-            result = self.scp_telemetry_results(client_ip, dut, 'perf.data',
-                                                self.profdir)
+            filepath = os.path.join(self.resultsdir, 'artifacts')
+            perf_exist = False
+            for filename in os.listdir(filepath):
+                if filename.endswith('perf.data'):
+                    perf_exist = True
+                    shutil.copyfile(os.path.join(filepath, filename),
+                                    os.path.join(self.profdir, 'perf.data'))
+            if not perf_exist:
+                exit_code = -1
+                raise error.TestFail('Error: No profiles collected, test may '
+                                     'not run correctly.')
+
         return result
