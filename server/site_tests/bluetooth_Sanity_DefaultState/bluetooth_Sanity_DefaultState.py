@@ -138,13 +138,14 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
         if not current_settings & bluetooth_socket.MGMT_SETTING_PAIRABLE:
             raise error.TestFail('Bluetooth adapter is not pairable')
 
-        # If the kernel supports the BR/EDR whitelist, the adapter should _not_
-        # be generically connectable; if it doesn't, it should be.
-        if supports_add_device:
-            if current_settings & bluetooth_socket.MGMT_SETTING_CONNECTABLE:
-                raise error.TestFail('Bluetooth adapter is connectable')
-        elif not current_settings & bluetooth_socket.MGMT_SETTING_CONNECTABLE:
-            raise error.TestFail('Bluetooth adapter is not connectable')
+        # If the kernel does not supports the BR/EDR whitelist, the adapter
+        # should be generically connectable;
+        # if it doesn't, then it depends on previous settings.
+        if not supports_add_device:
+            if not current_settings & bluetooth_socket.MGMT_SETTING_CONNECTABLE:
+                raise error.TestFail('Bluetooth adapter is not connectable '
+                                     'though kernel does not support '
+                                     'BR/EDR whitelist')
 
         # Verify that the Bluetooth Daemon sees the same state as the kernel
         # and that it's not discovering.
@@ -183,17 +184,13 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
             raise error.TestFail('HCI INQUIRY flag does not match kernel while '
                                  'powered on')
 
-        # If the kernel supports the BR/EDR whitelist, the adapter isn't
-        # supposed to be generically connectable, so should _not_ be in PSCAN
-        # mode yet. If it doesn't, it should be. This matches the management
-        # API "connectable" setting so far.
-        if supports_add_device:
-            if flags & bluetooth_socket.HCI_PSCAN:
-                raise error.TestFail('HCI PSCAN flag does not match kernel '
-                                     'while powered on')
-        elif not flags & bluetooth_socket.HCI_PSCAN:
-            raise error.TestFail('HCI PSCAN flag does not match kernel '
-                                 'while powered on')
+        # If the kernel does not supports the BR/EDR whitelist, the adapter
+        # should generically connectable, so should it should be in PSCAN
+        # mode. This matches the management API "connectable" setting so far.
+        if not supports_add_device:
+            if not flags & bluetooth_socket.HCI_PSCAN:
+                raise error.TestFail('HCI PSCAN flag not set though kernel'
+                                     'does not supports BR/EDR whitelist')
 
         # Now we can examine the differences. Try adding and removing a device
         # from the kernel BR/EDR whitelist. The management API "connectable"
@@ -230,7 +227,7 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
                 raise error.TestFail(
                     'Bluetooth adapter settings changed after remove device')
             if flags & bluetooth_socket.HCI_PSCAN:
-                raise error.TestFail('HCI PSCAN flag set after add device')
+                raise error.TestFail('HCI PSCAN flag set after remove device')
 
         # Finally power off the adapter again, and verify that the adapter has
         # returned to powered down.
