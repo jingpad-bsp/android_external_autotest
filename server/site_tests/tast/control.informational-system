@@ -6,7 +6,7 @@ AUTHOR = 'Chromium OS team'
 NAME = 'tast.informational'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:bvt-perbuild'
+ATTRIBUTES = 'suite:bvt-tast-informational'
 MAX_RESULT_SIZE_KB = 50 * 1024
 
 # tast.py uses binaries installed from autotest_server_package.tar.bz2.
