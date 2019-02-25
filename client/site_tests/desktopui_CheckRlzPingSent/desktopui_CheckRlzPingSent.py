@@ -10,6 +10,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros.input_playback import input_playback
 
 
@@ -64,6 +65,16 @@ class desktopui_CheckRlzPingSent(test.test):
                     time.sleep(10)
 
 
+    def _wait_for_rlz_lock(self):
+        """Waits for the DUT to get into locked state after login."""
+        def get_install_lockbox_finalized_status():
+            status = cryptohome.get_tpm_more_status()
+            return status.get('install_lockbox_finalized')
+
+        utils.poll_for_condition(
+            lambda: get_install_lockbox_finalized_status(), timeout=120)
+
+
     def run_once(self, logged_in=True):
         """
         Main entry to the test.
@@ -76,8 +87,7 @@ class desktopui_CheckRlzPingSent(test.test):
         # 'locked' for rlz. Then logout and enter guest mode.
         if not logged_in:
             with chrome.Chrome(logged_in=True):
-                # Wait some time for the DUT to get locked.
-                time.sleep(20)
+                self._wait_for_rlz_lock()
 
         with chrome.Chrome(logged_in=logged_in) as cr:
             self._check_url_for_rlz(cr)
