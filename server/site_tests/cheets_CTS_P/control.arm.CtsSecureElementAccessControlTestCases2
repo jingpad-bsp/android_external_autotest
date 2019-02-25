@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.CtsSecureElementAccessControlTestCases2',
         test_name='cheets_CTS_P.arm.CtsSecureElementAccessControlTestCases2',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsSecureElementAccessControlTestCases2', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsSecureElementAccessControlTestCases2'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsSecureElementAccessControlTestCases2',
         target_plan=None,

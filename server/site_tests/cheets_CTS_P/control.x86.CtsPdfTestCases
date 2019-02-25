@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='x86.CtsPdfTestCases',
         test_name='cheets_CTS_P.x86.CtsPdfTestCases',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsPdfTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsPdfTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsPdfTestCases',
         target_plan=None,

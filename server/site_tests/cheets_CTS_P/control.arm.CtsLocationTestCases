@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.CtsLocationTestCases',
         test_name='cheets_CTS_P.arm.CtsLocationTestCases',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsLocationTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsLocationTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsLocationTestCases',
         target_plan=None,
