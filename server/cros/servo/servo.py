@@ -913,6 +913,24 @@ class Servo(object):
         return self._usb_state
 
 
+    def set_servo_v4_role(self, role):
+        """Set the power role of servo v4, either 'src' or 'snk'.
+
+        It does nothing if not a servo v4.
+
+        @param role: Power role for DUT port on servo v4, either 'src' or 'snk'.
+        """
+        servo_version = self.get_servo_version()
+        if servo_version.startswith('servo_v4'):
+            value = self.get('servo_v4_role')
+            if value != role:
+                self.set_nocheck('servo_v4_role', role)
+            else:
+                logging.debug('Already in the role: %s.', role)
+        else:
+            logging.debug('Not a servo v4, unable to set role to %s.', role)
+
+
     def dump_uart_streams(self, output_dir):
         """Get buffered UART streams and append to log files.
 
