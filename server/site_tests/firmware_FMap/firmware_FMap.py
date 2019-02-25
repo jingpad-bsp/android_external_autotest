@@ -159,7 +159,7 @@ class firmware_FMap(FirmwareTest):
                 succeed = False
                 logging.error('RW_LEGACY size is < 1M')
         # Check SMMSTORE section.
-        if self.faft_config.smm_store:
+        if self.faft_config.smm_store and 'x86' in self.run_cmd('uname -m')[0]:
             if 'SMMSTORE' not in bios:
                 succeed = False
                 logging.error('Missing SMMSTORE section in FMAP')
