@@ -42,17 +42,18 @@ def run(machine):
             ssid=device_ssid))
 
     # Client network configurations.
-    user_network_config = NetworkConfig(user_ssid, autoconnect=True)
-    device_network_config = NetworkConfig(device_ssid, autoconnect=True)
+    network1_config = NetworkConfig(user_ssid, autoconnect=True)
+    network2_config = NetworkConfig(device_ssid, autoconnect=True)
 
     host = hosts.create_host(machine)
     job.run_test('policy_WiFiPrecedenceServer',
                  raw_cmdline_args=args,
                  host=host,
                  ap_configs=ap_configs,
-                 user_network_config=user_network_config,
-                 device_network_config=device_network_config,
-                 precedence='user')
+                 network1_config=network1_config,
+                 network2_config=network2_config,
+                 precedence=1,
+                 test='device_vs_user')
 
 
 parallel_simple(run, machines)
