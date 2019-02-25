@@ -44,32 +44,6 @@ class ParticipantCountMetric(system_metrics_collector.Metric):
         """
         self.values.append(self.cfm_facade.get_participant_count())
 
-
-class StorageWrittenMetric(system_metrics_collector.Metric):
-    """
-    Metric that collects amount of data written to persistent storage.
-    """
-    def __init__(self, system_facade):
-        super(StorageWrittenMetric, self).__init__(
-                'storage_written', units='kB')
-        self.last_written_kb = None
-        self.system_facade = system_facade
-
-    def collect_metric(self):
-        """
-        Collects total amount of data written to persistent storage in kB.
-
-        This is a cumulative metric, the first call does not append a value. It
-        instead saves it and uses it for calculating subsequent deltas.
-        """
-        statistics = self.system_facade.get_storage_statistics()
-        written_kb = statistics['written_kb']
-        if self.last_written_kb is not None:
-            written_period = written_kb - self.last_written_kb
-            self.values.append(written_period)
-        self.last_written_kb = written_kb
-
-
 class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
     """This is a server test which clears device TPM and runs
     enterprise_RemoraRequisition client test to enroll the device in to hotrod
@@ -99,8 +73,7 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         os.remove(local_path)
         return remote_path
 
-    def initialize(self, host, run_test_only=False, use_bond=True,
-                   include_storage_metrics=False):
+    def initialize(self, host, run_test_only=False, use_bond=True):
         """
         Initializes common test properties.
 
@@ -109,21 +82,19 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
             deprovisioning, enrollment and system reboot. See cfm_base_test.
         @param use_bond: Whether to use BonD to add bots to the meeting. Useful
             for local testing.
-        @param include_storage_metrics: Also log metrics for persistent storage.
         """
         super(enterprise_CFM_Perf, self).initialize(host, run_test_only)
         self._host = host
         self._use_bond = use_bond
         system_facade = self._facade_factory.create_system_facade()
-        additional_metrics = [ParticipantCountMetric(self.cfm_facade)]
-        if include_storage_metrics:
-            additional_metrics.append(StorageWrittenMetric(system_facade))
         self._perf_metrics_collector = (
             perf_metrics_collector.PerfMetricsCollector(
                 system_facade,
                 self.cfm_facade,
                 self.output_perf_value,
-                additional_system_metrics=additional_metrics))
+                additional_system_metrics=[
+                    ParticipantCountMetric(self.cfm_facade),
+                ]))
 
     def setup(self):
         """
