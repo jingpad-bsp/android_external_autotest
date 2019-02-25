@@ -19,6 +19,10 @@ import  common
 from autotest_lib.site_utils.deployment.prepare import dut as preparedut
 
 def main():
+  """Tool to (re)prepare a DUT for lab deployment.
+
+  TODO(this docstring is a stub).
+  """
   opts = _parse_args()
   # Setup tempfile to capture trash dropped by autotest?
   # Setup logging to avoid dumping everything to stdout?
@@ -31,7 +35,7 @@ def main():
   if 'stage-usb' in opts.actions:
     preparedut.download_image_to_servo_usb(host, opts.build)
   if 'install-firmware' in opts.actions:
-    preparedut.install_firmware(host)
+    preparedut.install_firmware(host, opts.force_firmware)
   if 'install-test-image' in opts.actions:
     preparedut.install_test_image(host)
 
@@ -81,6 +85,11 @@ def _parse_args():
   parser.add_argument(
       '--servo-serial',
       help='Serial number of the controlling servo.',
+  )
+  parser.add_argument(
+      '--force-firmware',
+      action='store_true',
+      help='Force firmware installation via chromeos-installfirmware.',
   )
 
   return parser.parse_args()
