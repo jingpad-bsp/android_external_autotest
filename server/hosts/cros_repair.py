@@ -815,8 +815,10 @@ def _is_virtual_machine(host):
     @param host: a hosts.Host object.
     @returns True if the host is a virtual machine, False otherwise.
     """
-    output = host.run('cat /proc/cpuinfo | grep "model name"')
-    return output.stdout and 'qemu' in output.stdout.lower()
+    output = host.run('cat /proc/cpuinfo | grep "model name"',
+                      ignore_status=True)
+    return (output.exit_status == 0 and output.stdout and
+            'qemu' in output.stdout.lower())
 
 
 class CryptohomeStatus(dict):
