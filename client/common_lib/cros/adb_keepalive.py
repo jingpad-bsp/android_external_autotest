@@ -12,10 +12,12 @@ import time
 
 import common
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import logging_config
 
 _ADB_POLLING_INTERVAL_SECONDS = 10
 _ADB_CONNECT_INTERVAL_SECONDS = 1
+_ADB_COMMAND_TIMEOUT_SECONDS = 5
 
 
 def _get_adb_options(target, socket):
@@ -42,7 +44,13 @@ def _run_adb_cmd(cmd, adb_option="", **kwargs):
     @return: the stdout of the command.
     """
     adb_cmd = 'adb %s %s' % (adb_option, cmd)
-    output = utils.system_output(adb_cmd, **kwargs)
+    while True:
+        try:
+            output = utils.system_output(adb_cmd, **kwargs)
+            break
+        except error.CmdTimeoutError as e:
+            logging.warning(e)
+            logging.info('Retrying command %s', adb_cmd)
     logging.debug('%s: %s', adb_cmd, output)
     return output
 
@@ -53,8 +61,9 @@ def _is_adb_connected(target, adb_option=""):
     @param target: Device to connect to.
     @param adb_option: adb global option configuration.
     """
-    output = _run_adb_cmd(
-        'get-state', adb_option=adb_option, ignore_status=True)
+    output = _run_adb_cmd('get-state', adb_option=adb_option,
+                          timeout=_ADB_COMMAND_TIMEOUT_SECONDS,
+                          ignore_status=True)
     return output.strip() == 'device'
 
 
@@ -67,7 +76,8 @@ def _ensure_adb_connected(target, adb_option=""):
     while not _is_adb_connected(target, adb_option):
         logging.info('adb not connected. attempting to reconnect')
         _run_adb_cmd('connect %s' % pipes.quote(target),
-                     adb_option=adb_option, ignore_status=True)
+                     adb_option=adb_option,
+                     timeout=_ADB_COMMAND_TIMEOUT_SECONDS, ignore_status=True)
         time.sleep(_ADB_CONNECT_INTERVAL_SECONDS)
 
 
