@@ -1111,6 +1111,9 @@ class TradefedTest(test.test):
                 graph=bundle
             ))
 
+        if session_id == None:
+            raise error.TestFail('Error: Could not find any tests in module.')
+
         if failed <= waived and all_done:
             if not all(accurate):
                 # Tests count inaccurate, remove perf to avoid false alarm.
@@ -1128,8 +1131,6 @@ class TradefedTest(test.test):
                                        self.summary))
             return
 
-        if session_id == None:
-            raise error.TestFail('Error: Could not find any tests in module.')
         raise error.TestFail(
             'Failed: after %d retries giving up. '
             'passed=%d, failed=%d, waived=%d%s%s. %s' %
