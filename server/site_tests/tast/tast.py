@@ -42,6 +42,9 @@ class tast(test.test):
     # Additional time given to the run command to exit before it's killed.
     _RUN_EXIT_SEC = 5
 
+    # Number of times to retry SSH connection attempts to the DUT.
+    _SSH_CONNECT_RETRIES = 2
+
     # File written by the tast command containing test results, as
     # newline-terminated JSON TestResult objects.
     _STREAMED_RESULTS_FILENAME = 'streamed_results.jsonl'
@@ -224,6 +227,7 @@ class tast(test.test):
             '-remotebundledir=' + self._remote_bundle_dir,
             '-remotedatadir=' + self._remote_data_dir,
             '-remoterunner=' + self._remote_test_runner_path,
+            '-sshretries=%d' % self._SSH_CONNECT_RETRIES,
         ]
         cmd.extend(extra_subcommand_args)
         cmd.append('%s:%d' % (self._host.hostname, self._host.port))
