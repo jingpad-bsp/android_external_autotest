@@ -8,6 +8,7 @@ import re
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
+
 class firmware_RecoveryCacheBootKeys(FirmwareTest):
     """
     This test ensures that when booting to recovery mode the device will use the
@@ -24,8 +25,8 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
     RECOVERY_REASON_REBUILD_CMD = 'crossystem recovery_request=0xC4'
 
     def initialize(self, host, cmdline_args, dev_mode=False):
-        super(firmware_RecoveryCacheBootKeys, self).initialize(host,
-                                                              cmdline_args)
+        super(firmware_RecoveryCacheBootKeys, self).initialize(
+                host, cmdline_args)
         self.client = host
         self.dev_mode = dev_mode
         self.switcher.setup_mode('dev' if dev_mode else 'normal')
@@ -36,14 +37,15 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
         self.switcher.simple_reboot()
 
     def boot_to_recovery(self, rebuild_mrc_cache=False):
-        """Boot device into recovery mode."""
+        """Boots the device into recovery mode."""
         if rebuild_mrc_cache:
             self.switcher.reboot_to_mode(to_mode='rec_force_mrc')
         else:
             self.switcher.reboot_to_mode(to_mode='rec')
 
-        self.check_state((self.checkers.crossystem_checker,
-                          {'mainfw_type': 'recovery'}))
+        self.check_state((self.checkers.crossystem_checker, {
+                'mainfw_type': 'recovery'
+        }))
 
     def run_command(self, command):
         """Runs the specified command and returns the output
@@ -112,9 +114,8 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
         return self.check_command_output(self.FIRMWARE_LOG_CMD,
                                          self.REBUILD_CACHE_MSG)
 
-
-
     def run_once(self):
+        """Runs a single iteration of the test."""
         if not self.cache_exist():
             raise error.TestNAError('No RECOVERY_MRC_CACHE was found on DUT.')
 
@@ -147,4 +148,3 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
 
         logging.info('Reboot out of Recovery')
         self.switcher.simple_reboot()
-
