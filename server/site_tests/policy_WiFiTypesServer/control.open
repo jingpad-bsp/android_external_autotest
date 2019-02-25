@@ -16,17 +16,20 @@ attempts to connect.
 
 """
 
+from autotest_lib.client.cros.enterprise.network_config import NetworkConfig
 from autotest_lib.server.cros.network import hostap_config
 
 def run(machine):
     n_mode = hostap_config.HostapConfig.MODE_11N_MIXED
     ap_config = hostap_config.HostapConfig(channel=6, mode=n_mode)
+    network = NetworkConfig()
 
     host = hosts.create_host(machine)
     job.run_test('policy_WiFiTypesServer',
                  raw_cmdline_args=args,
                  host=host,
-                 ap_config=ap_config)
+                 ap_config=ap_config,
+                 network=network)
 
 
 parallel_simple(run, machines)
