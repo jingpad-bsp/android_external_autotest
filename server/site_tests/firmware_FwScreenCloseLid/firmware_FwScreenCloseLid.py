@@ -71,6 +71,11 @@ class firmware_FwScreenCloseLid(FirmwareTest):
             logging.info('This test does nothing on devices without lid.')
             return
 
+        # Some platforms may not turn on with just lid open
+        power_action = False
+        if not self.faft_config.lid_wake_from_power_off:
+            power_action = True
+
         if (self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser'
           and self.faft_config.fw_bypasser_type != 'tablet_detachable_bypasser'):
             raise error.TestNAError("This test is only valid on devices with "
@@ -91,7 +96,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.switcher.simple_reboot()
         self.run_shutdown_process(self.wait_fw_screen_and_close_lid,
                                   pre_power_action=self.servo.lid_open,
-                                  run_power_action=False,
+                                  run_power_action=power_action,
                                   post_power_action=self.switcher.bypass_dev_mode)
         self.switcher.wait_for_client()
 
@@ -106,7 +111,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.switcher.simple_reboot()
         self.run_shutdown_process(self.wait_second_screen_and_close_lid,
                                   pre_power_action=self.servo.lid_open,
-                                  run_power_action=False,
+                                  run_power_action=power_action,
                                   post_power_action=self.switcher.bypass_dev_mode,
                                   shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
@@ -121,7 +126,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.switcher.simple_reboot()
         self.run_shutdown_process(self.wait_longer_fw_screen_and_close_lid,
                                   pre_power_action=self.servo.lid_open,
-                                  run_power_action=False,
+                                  run_power_action=power_action,
                                   post_power_action=self.switcher.bypass_dev_mode,
                                   shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
@@ -137,7 +142,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.switcher.simple_reboot()
         self.run_shutdown_process(self.wait_yuck_screen_and_close_lid,
                                   pre_power_action=self.servo.lid_open,
-                                  run_power_action=False,
+                                  run_power_action=power_action,
                                   post_power_action=self.switcher.bypass_dev_mode,
                                   shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
@@ -160,7 +165,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.switcher.simple_reboot()
         self.run_shutdown_process(self.wait_longer_fw_screen_and_close_lid,
                                   pre_power_action=self.servo.lid_open,
-                                  run_power_action=False,
+                                  run_power_action=power_action,
                                   shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
         self.check_state((self.checkers.crossystem_checker, {
