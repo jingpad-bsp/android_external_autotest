@@ -416,15 +416,25 @@ class Cr50Test(FirmwareTest):
 
     def _restore_cr50_state(self):
         """Restore cr50 state, so the device can be used for further testing"""
+        # Try to open cr50 and enable testlab mode if it isn't enabled.
+        try:
+            self.fast_open(True)
+        except:
+            # Even if we can't open cr50, do our best to reset the rest of the
+            # system state. Log a warning here.
+            logging.warning('Unable to Open cr50', exc_info=True)
         # Reset the password as the first thing in cleanup. It is important that
         # if some other part of cleanup fails, the password has at least been
         # reset.
-        self.cr50.send_command('ccd testlab open')
         self.cr50.send_command('rddkeepalive disable')
         self.cr50.send_command('ccd reset')
         self.cr50.send_command('wp follow_batt_pres atboot')
 
-        # Reconnect CCD
+        # Reboot cr50 if the console is accessible. This will reset most state.
+        if self.cr50.get_cap('GscFullConsole')[self.cr50.CAP_IS_ACCESSIBLE]:
+            self.cr50.reboot()
+
+        # Reenable servo v4 CCD
         self.cr50.ccd_enable()
 
         # reboot to normal mode if the device is in dev mode.
