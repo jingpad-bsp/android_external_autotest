@@ -16,6 +16,8 @@ from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros.enterprise import enterprise_fake_dmserver
 
+from telemetry.core import exceptions
+
 CROSQA_FLAGS = [
     '--gaia-url=https://gaiastaging.corp.google.com',
     '--lso-url=https://gaiastaging.corp.google.com',
@@ -151,6 +153,23 @@ class EnterprisePolicyTest(test.test):
         logging.info('  Username: %r', self.username)
         logging.info('  Password: %r', self.password)
         logging.info('  Test DMS Name: %r', self.dms_name)
+
+
+    def check_page_readiness(self, tab, command):
+        """
+        Checks to see if page has fully loaded.
+
+        @param tab: chrome tab loading the page.
+        @param command: JS command to be checked in the tab.
+
+        @returns True if loaded and False if not.
+
+        """
+        try:
+            tab.EvaluateJavaScript(command)
+            return True
+        except exceptions.EvaluateException:
+            return False
 
 
     def cleanup(self):

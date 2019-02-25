@@ -8,7 +8,6 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
-from telemetry.core import exceptions
 
 VERIFY_VIDEO_NOT_LOADED_CMD = ("document.getElementById"
     "('error-screen').innerText;")
@@ -49,18 +48,6 @@ class policy_ForceYouTubeRestrict(
         'Disabled': 0,
         'NotSet': None}
 
-    def _check_page_readiness(self, tab, command):
-        """
-        Checks to see if page has fully loaded.
-
-        @returns True if loaded and False if not.
-
-        """
-        try:
-            tab.EvaluateJavaScript(command)
-            return True
-        except exceptions.EvaluateException:
-            return False
 
     def _get_content(self, restriction_type):
         """
@@ -73,12 +60,13 @@ class policy_ForceYouTubeRestrict(
         """
         active_tab = self.navigate_to_url(restriction_type)
         utils.poll_for_condition(
-            lambda: self._check_page_readiness(
+            lambda: self.check_page_readiness(
                 active_tab, VERIFY_VIDEO_NOT_LOADED_CMD),
             exception=error.TestFail('Page is not ready.'),
             timeout=5,
             sleep_interval=1)
         return active_tab.EvaluateJavaScript(VERIFY_VIDEO_NOT_LOADED_CMD)
+
 
     def _check_restricted_mode(self, case):
         """
@@ -92,7 +80,7 @@ class policy_ForceYouTubeRestrict(
         # button.
         search_tab = self.navigate_to_url(SEARCH_QUERY)
         utils.poll_for_condition(
-            lambda: self._check_page_readiness(search_tab, BURGER_MENU),
+            lambda: self.check_page_readiness(search_tab, BURGER_MENU),
             exception=error.TestFail('Page is not ready.'),
             timeout=5,
             sleep_interval=1)
@@ -127,6 +115,7 @@ class policy_ForceYouTubeRestrict(
                     restricted_mode_toggle_status):
                 raise error.TestFail("User is not able to "
                     "toggle restricted mode.")
+
 
     def run_once(self, case):
         """
