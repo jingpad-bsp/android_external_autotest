@@ -12,6 +12,7 @@ import shutil
 import socket
 import sys
 import tempfile
+import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -732,6 +733,10 @@ class ArcTest(test.test):
         # With ARC enabled, Chrome will wait until container to boot up
         # before returning here, see chrome.py.
         self.initialized = True
+
+        # By default on boot the container is alive, and will not close until
+        # a user with ARC disabled logs in. This wait accounts for that.
+        time.sleep(3)
         try:
             if is_android_container_alive():
                 self.arc_setup()
