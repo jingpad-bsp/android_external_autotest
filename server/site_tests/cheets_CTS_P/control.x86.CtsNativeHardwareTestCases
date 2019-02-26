@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='x86.CtsNativeHardwareTestCases',
         test_name='cheets_CTS_P.x86.CtsNativeHardwareTestCases',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsNativeHardwareTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsNativeHardwareTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsNativeHardwareTestCases',
         target_plan=None,
