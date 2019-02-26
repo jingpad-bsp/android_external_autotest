@@ -9,6 +9,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 from autotest_lib.server.cros.faft.firmware_test import ConnectionError
 
+
 class firmware_CorruptRecoveryCache(FirmwareTest):
     """
     This test corrupts RECOVERY_MRC_CACHE and makes sure the DUT recreates the
@@ -25,8 +26,8 @@ class firmware_CorruptRecoveryCache(FirmwareTest):
     FMAP_CMD = 'mosys eeprom map'
 
     def initialize(self, host, cmdline_args, dev_mode=False):
-        super(firmware_CorruptRecoveryCache, self).initialize(host,
-                                                              cmdline_args)
+        super(firmware_CorruptRecoveryCache, self).initialize(
+                host, cmdline_args)
         self.backup_firmware()
         self.switcher.setup_mode('dev' if dev_mode else 'normal')
         self.setup_usbkey(usbkey=True, host=False)
@@ -61,12 +62,13 @@ class firmware_CorruptRecoveryCache(FirmwareTest):
                                          self.REBUILD_CACHE_MSG)
 
     def boot_to_recovery(self):
-        """Boot device into recovery mode."""
+        """Boots the device into recovery mode."""
         logging.info('Reboot into Recovery...')
         self.switcher.reboot_to_mode(to_mode='rec')
 
-        self.check_state((self.checkers.crossystem_checker,
-                          {'mainfw_type': 'recovery'}))
+        self.check_state((self.checkers.crossystem_checker, {
+                'mainfw_type': 'recovery'
+        }))
 
     def check_command_output(self, cmd, pattern):
         """Checks the output of the given command for the given pattern
@@ -104,6 +106,7 @@ class firmware_CorruptRecoveryCache(FirmwareTest):
         return output
 
     def run_once(self):
+        """Runs a single iteration of the test."""
         if not self.cache_exist():
             raise error.TestNAError('No RECOVERY_MRC_CACHE was found on DUT.')
 
