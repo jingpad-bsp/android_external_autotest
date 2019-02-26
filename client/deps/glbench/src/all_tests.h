@@ -6,6 +6,7 @@ namespace glbench {
 class TestBase;
 
 TestBase* GetAttributeFetchShaderTest();
+TestBase* GetBufferUploadTest();
 TestBase* GetClearTest();
 TestBase* GetContextTest();
 TestBase* GetDrawSizeTest();
