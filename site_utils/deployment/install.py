@@ -254,7 +254,11 @@ def _update_build(afe, report_log, arguments):
 
 
 def _create_host(hostname, afe, afe_host):
-    """Create a CrosHost object for a DUT to be installed.
+    """Create a CrosHost object for the DUT.
+
+    This host object is used to update AFE label information for the DUT, but
+    can not be used for installation image on the DUT. In particular, this host
+    object does not have the servo attribute populated.
 
     @param hostname  Hostname of the target DUT.
     @param afe       A frontend.AFE object.
@@ -265,12 +269,7 @@ def _create_host(hostname, afe, afe_host):
             'afe_host': afe_host,
             'host_info_store': afe_store.AfeStore(hostname, afe),
     }
-    host = hosts.create_host(machine_dict)
-    servo = servo_host.ServoHost(
-            **servo_host.get_servo_args_for_host(host))
-    preparedut.prepare_servo(servo)
-    host.set_servo_host(servo)
-    return host
+    return hosts.create_host(machine_dict)
 
 
 def _try_lock_host(afe_host):
@@ -476,6 +475,12 @@ def _ensure_label_in_afe(afe_host, label_name, label_value):
                  afe_host.hostname))
 
 
+def _create_host_for_installation(hostname, arguments, host_attrs):
+  s_host, s_port, s_serial = _extract_servo_attributes(host_attrs)
+  return preparedut.create_host(hostname, arguments.board, arguments.model,
+                                s_host, s_port, s_serial)
+
+
 def _install_test_image(host, arguments):
     """Install a test image to the DUT.
 
@@ -529,8 +534,12 @@ def _install_and_update_afe(afe, hostname, host_attrs, arguments):
                                                 arguments)
     host = None
     try:
+        _install_test_image(
+            _create_host_for_installation(hostname, arguments, host_attrs),
+            arguments,
+        )
+
         host = _create_host(hostname, afe, afe_host)
-        _install_test_image(host, arguments)
         if arguments.install_test_image and not arguments.dry_run:
             host.labels.update_labels(host)
             platform_labels = afe.get_labels(
