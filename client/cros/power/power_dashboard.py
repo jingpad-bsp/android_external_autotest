@@ -537,12 +537,13 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
         """
         # Regex explanation
         # .*?           matches type non-greedily                 (cpuidle)
-        # (?:_\d+_\d+)? matches cpu part, ?: makes it not a group (_0_3)
+        # (?:_\d+)*     matches cpu part, ?: makes it not a group (_0_1_2_3)
         # .*            matches name greedily                     (C0_C1)
-        return re.match(r'(.*?(?:_\d+_\d+)?)_(.*)', domain).groups()
+        return re.match(r'(.*?(?:_\d+)*)_(.*)', domain).groups()
 
     def _convert(self):
         power_dict = super(CPUStatsLoggerDashboard, self)._convert()
+        remove_rail = []
         for rail in power_dict['data']:
             if rail.startswith('wavg_cpu'):
                 power_dict['type'][rail] = 'cpufreq_wavg'
@@ -551,8 +552,15 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
                 power_dict['type'][rail] = 'gpufreq_wavg'
                 power_dict['unit'][rail] = 'megahertz'
             else:
+                # Remove all aggregate stats, only 'non-c0' and 'non-C0_C1' now
+                if self._split_domain(rail)[1].startswith('non'):
+                    remove_rail.append(rail)
+                    continue
                 power_dict['type'][rail] = self._split_domain(rail)[0]
                 power_dict['unit'][rail] = 'percent'
+        for rail in remove_rail:
+            del power_dict['data'][rail]
+            del power_dict['average'][rail]
         return power_dict
 
     def _create_padded_domains(self):
