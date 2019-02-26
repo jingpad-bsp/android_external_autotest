@@ -320,28 +320,35 @@ def _update_host_attributes(afe, hostname, host_attrs):
     @param host_attrs   Dictionary with attributes to be applied to the
                         host.
     """
+    s_hostname, s_port, s_serial = _extract_servo_attributes(host_attrs)
+    afe.set_host_attribute(servo_host.SERVO_HOST_ATTR,
+                           s_hostname,
+                           hostname=hostname)
+    afe.set_host_attribute(servo_host.SERVO_PORT_ATTR,
+                           s_port,
+                           hostname=hostname)
+    if host_attr_servo_serial:
+        afe.set_host_attribute(servo_host.SERVO_SERIAL_ATTR,
+                               s_serial,
+                               hostname=hostname)
+
+
+def _extract_servo_attributes(host_attrs):
+    """Extract servo attributes from the host attribute dict, setting defaults.
+
+    @return (servo_hostname, servo_port, servo_serial)
+    """
     # Grab the servo hostname/port/serial from `host_attrs` if supplied.
     # For new servo V4 deployments, we require the user to supply the
     # attributes (because there are no appropriate defaults).  So, if
     # none are supplied, we assume it can't be V4, and apply the
     # defaults for servo V3.
-    host_attr_servo_host = host_attrs.get(servo_host.SERVO_HOST_ATTR)
-    host_attr_servo_port = host_attrs.get(servo_host.SERVO_PORT_ATTR)
-    host_attr_servo_serial = host_attrs.get(servo_host.SERVO_SERIAL_ATTR)
-    servo_hostname = (host_attr_servo_host or
-                      servo_host.make_servo_hostname(hostname))
-    servo_port = (host_attr_servo_port or
-                  str(servo_host.ServoHost.DEFAULT_PORT))
-    afe.set_host_attribute(servo_host.SERVO_HOST_ATTR,
-                           servo_hostname,
-                           hostname=hostname)
-    afe.set_host_attribute(servo_host.SERVO_PORT_ATTR,
-                           servo_port,
-                           hostname=hostname)
-    if host_attr_servo_serial:
-        afe.set_host_attribute(servo_host.SERVO_SERIAL_ATTR,
-                               host_attr_servo_serial,
-                               hostname=hostname)
+    s_hostname = (host_attrs.get(servo_host.SERVO_HOST_ATTR) or
+                  servo_host.make_servo_hostname(hostname))
+    s_port = (host_attrs.get(servo_host.SERVO_PORT_ATTR) or
+              str(servo_host.ServoHost.DEFAULT_PORT))
+    s_serial = host_attrs.get(servo_host.SERVO_SERIAL_ATTR)
+    return s_hostname, s_port, s_serial
 
 
 def _wait_for_idle(afe, host_id):
