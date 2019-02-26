@@ -44,7 +44,6 @@ class firmware_PDProtocol(FirmwareTest):
         self.current_board = self.servo.get_board();
 
         self.check_if_pd_supported()
-        self.assert_test_image_in_usb_disk()
         self.switcher.setup_mode('dev')
         # The USB disk is used for recovery. But this test wants a fine-grained
         # control, i.e. swapping the role just before booting into recovery,
@@ -73,7 +72,6 @@ class firmware_PDProtocol(FirmwareTest):
     def boot_to_recovery(self):
         """Boot device into recovery mode."""
         logging.info('Reboot into Recovery...')
-        self.assert_test_image_in_usb_disk()
         self.switcher.reboot_to_mode(to_mode='rec')
 
         self.check_state((self.checkers.crossystem_checker,
