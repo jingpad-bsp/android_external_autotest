@@ -13,12 +13,15 @@ import common
 from config import rpm_config
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.site_utils.rpm_control_system import utils as rpm_utils
 
 RPM_FRONTEND_URI = global_config.global_config.get_config_value('CROS',
         'rpm_frontend_uri', type=str, default='')
 RPM_CALL_TIMEOUT_MINS = rpm_config.getint('RPM_INFRASTRUCTURE',
                                           'call_timeout_mins')
+
+POWERUNIT_HOSTNAME_KEY = 'powerunit_hostname'
+POWERUNIT_OUTLET_KEY = 'powerunit_outlet'
+HYDRA_HOSTNAME_KEY = 'hydra_hostname'
 
 
 class RemotePowerException(Exception):
@@ -37,11 +40,16 @@ def set_power(host, new_state, timeout_mins=RPM_CALL_TIMEOUT_MINS):
     if host.hostname.endswith('servo'):
         args_tuple = (host.hostname, new_state)
     else:
-        info = rpm_utils.PowerUnitInfo.get_powerunit_info(host)
-        hydra_hostname = ('' if info.hydra_hostname is None else
-                          info.hydra_hostname)
-        args_tuple = (host.hostname, info.powerunit_hostname, info.outlet,
-                      hydra_hostname, new_state)
+        info = host.host_info_store.get()
+        try:
+            args_tuple = (host.hostname,
+                          info.attributes[POWERUNIT_HOSTNAME_KEY],
+                          info.attributes[POWERUNIT_OUTLET_KEY],
+                          info.attributes.get(HYDRA_HOSTNAME_KEY, ''),
+                          new_state)
+        except KeyError as e:
+            raise RemotePowerException('Powerunit information not found. '
+                                       'Missing: %s in data_info_store.' % e)
     _set_power(args_tuple, timeout_mins)
 
 
