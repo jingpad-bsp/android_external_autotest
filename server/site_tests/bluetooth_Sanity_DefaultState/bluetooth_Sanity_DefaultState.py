@@ -63,7 +63,20 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
             strs.append("RAW")
         logging.debug(msg + ' [HCI]: %s', " ".join(strs))
 
+    def compare_property(self, bluez_property, mgmt_setting, current_settings):
+        """ Compare bluez property value and Kernel property
+
+            @param bluez_property : Bluez property to be compared
+            @param mgmt_setting   : Bit mask of management setting
+            @param current_settings : Current kernel settings
+            @return : True if bluez property and the current settings agree """
+
+        cur_kernel_value = 1 if mgmt_setting & current_settings else 0
+        return bluez_property == cur_kernel_value
+
     def run_once(self):
+        """Test Default state of Bluetooth adapter after power cycling."""
+
         # Reset the adapter to the powered off state.
         if not self.device.reset_off():
             raise error.TestFail('DUT could not be reset to initial state')
@@ -88,10 +101,6 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
         # initial state before the bluetooth daemon adjusts them - we're ok
         # with them being on or off during that brief period.
         #
-        # Except for discoverable - that one should be off.
-        if current_settings & bluetooth_socket.MGMT_SETTING_DISCOVERABLE:
-            raise error.TestFail('Bluetooth adapter would be discoverable '
-                                 'during power on')
 
         # Verify that the Bluetooth Daemon sees that it is also powered down,
         # non-discoverable and not discovering devices.
@@ -100,7 +109,9 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
         if bluez_properties['Powered']:
             raise error.TestFail('Bluetooth daemon Powered property does not '
                                  'match kernel while powered off')
-        if bluez_properties['Discoverable']:
+        if not self.compare_property(bluez_properties['Discoverable'],
+                                     bluetooth_socket.MGMT_SETTING_DISCOVERABLE,
+                                     current_settings):
             raise error.TestFail('Bluetooth daemon Discoverable property '
                                  'does not match kernel while powered off')
         if bluez_properties['Discovering']:
@@ -127,9 +138,6 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
         if not current_settings & bluetooth_socket.MGMT_SETTING_PAIRABLE:
             raise error.TestFail('Bluetooth adapter is not pairable')
 
-        if current_settings & bluetooth_socket.MGMT_SETTING_DISCOVERABLE:
-            raise error.TestFail('Bluetooth adapter is discoverable')
-
         # If the kernel supports the BR/EDR whitelist, the adapter should _not_
         # be generically connectable; if it doesn't, it should be.
         if supports_add_device:
@@ -148,8 +156,9 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
         if not bluez_properties['Pairable']:
             raise error.TestFail('Bluetooth daemon Pairable property does not '
                                  'match kernel while powered on')
-
-        if bluez_properties['Discoverable']:
+        if not self.compare_property(bluez_properties['Discoverable'],
+                                     bluetooth_socket.MGMT_SETTING_DISCOVERABLE,
+                                     current_settings):
             raise error.TestFail('Bluetooth daemon Discoverable property '
                                  'does not match kernel while powered on')
         if bluez_properties['Discovering']:
@@ -183,8 +192,8 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
                 raise error.TestFail('HCI PSCAN flag does not match kernel '
                                      'while powered on')
         elif not flags & bluetooth_socket.HCI_PSCAN:
-                raise error.TestFail('HCI PSCAN flag does not match kernel '
-                                     'while powered on')
+            raise error.TestFail('HCI PSCAN flag does not match kernel '
+                                 'while powered on')
 
         # Now we can examine the differences. Try adding and removing a device
         # from the kernel BR/EDR whitelist. The management API "connectable"
@@ -232,17 +241,15 @@ class bluetooth_Sanity_DefaultState(bluetooth_test.BluetoothTest):
         if current_settings & bluetooth_socket.MGMT_SETTING_POWERED:
             raise error.TestFail('Bluetooth adapter is powered after power off')
 
-        if current_settings & bluetooth_socket.MGMT_SETTING_DISCOVERABLE:
-            raise error.TestFail('Bluetooth adapter would be discoverable '
-                                 'during next power on')
-
         # Verify that the Bluetooth Daemon sees the same state as the kernel.
         bluez_properties = self.device.get_adapter_properties()
 
         if bluez_properties['Powered']:
             raise error.TestFail('Bluetooth daemon Powered property does not '
                                  'match kernel after power off')
-        if bluez_properties['Discoverable']:
+        if not self.compare_property(bluez_properties['Discoverable'],
+                                     bluetooth_socket.MGMT_SETTING_DISCOVERABLE,
+                                     current_settings):
             raise error.TestFail('Bluetooth daemon Discoverable property '
                                  'does not match kernel after off')
         if bluez_properties['Discovering']:
