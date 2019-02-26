@@ -90,3 +90,14 @@ def install_firmware(host):
     host.run('crossystem disable_dev_request=1',
              ignore_status=True)
     host.halt()
+
+
+def install_test_image(host):
+    """Install the test image for the given build to DUT.
+
+    This function assumes that the required image is already downloaded onto the
+    USB key connected to the DUT via servo.
+
+    @param host   servers.host.Host object.
+    """
+    host.servo_install()
