@@ -855,17 +855,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def _cleanup_poweron(self):
         """Special cleanup method to make sure hosts always get power back."""
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        hosts = afe.get_hosts(hostname=self.hostname)
-        if not hosts or not (self._RPM_OUTLET_CHANGED in
-                             hosts[0].attributes):
+        info = self.host_info_store.get()
+        if self._RPM_OUTLET_CHANGED not in info.attributes:
             return
         logging.debug('This host has recently interacted with the RPM'
                       ' Infrastructure. Ensuring power is on.')
         try:
             self.power_on()
-            afe.set_host_attribute(self._RPM_OUTLET_CHANGED, None,
-                                   hostname=self.hostname)
+            self._remove_rpm_changed_tag()
         except rpm_client.RemotePowerException:
             logging.error('Failed to turn Power On for this host after '
                           'cleanup through the RPM Infrastructure.')
@@ -877,11 +874,23 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 logging.info('The device has power adapter connected and '
                              'charging. No need to try to turn RPM on '
                              'again.')
-                afe.set_host_attribute(self._RPM_OUTLET_CHANGED, None,
-                                       hostname=self.hostname)
+                self._remove_rpm_changed_tag()
             logging.info('Battery level is now at %s%%. The device may '
                          'still have enough power to run test, so no '
                          'exception will be raised.', battery_percentage)
+
+
+    def _remove_rpm_changed_tag(self):
+        info = self.host_info_store.get()
+        del info.attributes[self._RPM_OUTLET_CHANGED]
+        self.host_info_store.set(info)
+
+
+    def _add_rpm_changed_tag(self):
+        info = self.host_info_store.get()
+        info.attributes[self._RPM_OUTLET_CHANGED] = True
+        self.host_info_store.set(info)
+
 
 
     def _is_factory_image(self):
@@ -1533,10 +1542,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         else:
             if not self.has_power():
                 raise error.TestFail('DUT does not have RPM connected.')
-            afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-            afe.set_host_attribute(self._RPM_OUTLET_CHANGED, True,
-                                   hostname=self.hostname)
-            rpm_client.set_power(self.hostname, state.upper(), timeout_mins=5)
+            self._add_rpm_changed_tag()
+            rpm_client.set_power(self, state.upper(), timeout_mins=5)
 
 
     def power_off(self, power_method=POWER_CONTROL_RPM):
@@ -1575,7 +1582,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             time.sleep(self._POWER_CYCLE_TIMEOUT)
             self.power_on(power_method=power_method)
         else:
-            rpm_client.set_power(self.hostname, 'CYCLE')
+            self._add_rpm_changed_tag()
+            rpm_client.set_power(self, 'CYCLE')
 
 
     def get_platform(self):
