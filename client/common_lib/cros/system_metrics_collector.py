@@ -100,6 +100,30 @@ class AllocatedFileHandlesMetric(Metric):
     def collect_metric(self):
         self.values.append(self.system_facade.get_num_allocated_file_handles())
 
+class StorageWrittenMetric(Metric):
+    """
+    Metric that collects amount of data written to persistent storage.
+    """
+    def __init__(self, system_facade):
+        super(StorageWrittenMetric, self).__init__(
+                'storage_written', units='kB')
+        self.last_written_kb = None
+        self.system_facade = system_facade
+
+    def collect_metric(self):
+        """
+        Collects total amount of data written to persistent storage in kB.
+
+        This is a cumulative metric, the first call does not append a value. It
+        instead saves it and uses it for calculating subsequent deltas.
+        """
+        statistics = self.system_facade.get_storage_statistics()
+        written_kb = statistics['written_kb']
+        if self.last_written_kb is not None:
+            written_period = written_kb - self.last_written_kb
+            self.values.append(written_period)
+        self.last_written_kb = written_kb
+
 class TemperatureMetric(Metric):
     """
     Metric that collects the max of the temperatures measured on all sensors.
@@ -121,6 +145,7 @@ def create_default_metric_set(system_facade):
     cpu = CpuUsageMetric(system_facade)
     mem = MemUsageMetric(system_facade)
     file_handles = AllocatedFileHandlesMetric(system_facade)
+    storage_written = StorageWrittenMetric(system_facade)
     temperature = TemperatureMetric(system_facade)
     peak_cpu = PeakMetric(cpu)
     peak_mem = PeakMetric(mem)
@@ -128,6 +153,7 @@ def create_default_metric_set(system_facade):
     return [cpu,
             mem,
             file_handles,
+            storage_written,
             temperature,
             peak_cpu,
             peak_mem,
