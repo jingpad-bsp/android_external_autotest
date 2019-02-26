@@ -43,12 +43,20 @@ class ChartFixture:
 
 
 def get_chart_address(host_address, args):
+    """Get address of chart tablet from commandline args or mapping logic in
+    test lab.
+
+    @param host_address: a list of hostname strings.
+    @param args: a dict parse from commandline args.
+    @return:
+        A list of strings for chart tablet addresses.
+    """
     address = utils.args_to_dict(args).get('chart')
     if address is not None:
         return address.split(',')
     elif utils.is_in_container():
         return [
-                utils.get_lab_chart_address(host.hostname)
+                utils.get_lab_chart_address(host)
                 for host in host_address
         ]
     else:
