@@ -28,7 +28,7 @@ The machine should reboot after finishing the suite or timing out.
 import common
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
-args_dict['max_runtime_mins'] = 360
+args_dict['max_runtime_mins'] = 720
 args_dict['add_experimental'] = True
 args_dict['name'] = 'graphics_per-day'
 args_dict['job'] = job
