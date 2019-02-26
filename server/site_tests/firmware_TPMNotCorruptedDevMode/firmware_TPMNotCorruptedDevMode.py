@@ -45,7 +45,6 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
         super(firmware_TPMNotCorruptedDevMode, self).initialize(
                 host, cmdline_args, ec_wp=ec_wp)
 
-        self.assert_test_image_in_usb_disk()
         self.switcher.setup_mode('dev')
         # Use the USB key for Ctrl-U dev boot, not recovery.
         self.setup_usbkey(usbkey=True, host=False, used_for_recovery=False)
