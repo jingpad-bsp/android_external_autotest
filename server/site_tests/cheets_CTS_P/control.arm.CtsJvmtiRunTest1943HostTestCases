@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.CtsJvmtiRunTest1943HostTestCases',
         test_name='cheets_CTS_P.arm.CtsJvmtiRunTest1943HostTestCases',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsJvmtiRunTest1943HostTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsJvmtiRunTest1943HostTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsJvmtiRunTest1943HostTestCases',
         target_plan=None,

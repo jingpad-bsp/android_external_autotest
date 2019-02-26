@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.CtsFragmentTestCases',
         test_name='cheets_CTS_P.arm.CtsFragmentTestCases',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsFragmentTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsFragmentTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsFragmentTestCases',
         target_plan=None,

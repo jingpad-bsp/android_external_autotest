@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.CtsHiddenApiKillswitchDebugClassTestCases',
         test_name='cheets_CTS_P.arm.CtsHiddenApiKillswitchDebugClassTestCases',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsHiddenApiKillswitchDebugClassTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsHiddenApiKillswitchDebugClassTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsHiddenApiKillswitchDebugClassTestCases',
         target_plan=None,

@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.CtsLiblogTestCases',
         test_name='cheets_CTS_P.arm.CtsLiblogTestCases',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsLiblogTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsLiblogTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsLiblogTestCases',
         target_plan=None,

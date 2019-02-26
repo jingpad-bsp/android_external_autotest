@@ -23,7 +23,7 @@ def run_CTS(machine):
         needs_push_media=False,
         tag='arm.CtsAdminTestCases',
         test_name='cheets_CTS_P.arm.CtsAdminTestCases',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsAdminTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsAdminTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsAdminTestCases',
         target_plan=None,
