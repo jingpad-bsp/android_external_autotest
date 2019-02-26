@@ -64,18 +64,20 @@ class firmware_FAFTSetup(FirmwareTest):
         """Press 'd', Ctrl, ENTER by servo and check from DUT."""
 
         def keypress():
+            """Press 'd', Ctrl, ENTER"""
             self.servo.ctrl_d()
             self.servo.enter_key()
 
         return self.base_keyboard_checker(keypress)
 
     def run_once(self):
+        """Main test logic"""
         logging.info("Check EC console is available and test warm reboot")
         self.console_checker()
         self.switcher.mode_aware_reboot()
 
         logging.info("Check test image is on USB stick and run recovery boot")
-        self.assert_test_image_in_usb_disk()
+        self.setup_usbkey(usbkey=True, host=False)
         self.switcher.reboot_to_mode(to_mode='rec')
 
         self.check_state((self.checkers.crossystem_checker,
