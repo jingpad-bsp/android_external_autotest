@@ -15,6 +15,24 @@ from __future__ import print_function
 import time
 
 
+def reset_servo(servo):
+    """Reset servod on servohost for given host.
+
+    @param servo  A server.hosts.ServoHost object.
+    """
+    # Stopping `servod` on the servo host will force `repair()` to
+    # restart it.  We want that restart for a few reasons:
+    #   + `servod` caches knowledge about the image on the USB stick.
+    #     We want to clear the cache to force the USB stick to be
+    #     re-imaged unconditionally.
+    #   + If there's a problem with servod that verify and repair
+    #     can't find, this provides a UI through which `servod` can
+    #     be restarted.
+    servo.run('stop servod PORT=%d' % servo.servo_port,
+              ignore_status=True)
+    servo.repair()
+
+
 def install_firmware(host):
     """Install dev-signed firmware after removing write-protect.
 
