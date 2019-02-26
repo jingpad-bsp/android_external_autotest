@@ -567,7 +567,7 @@ class ServoHost(ssh_host.SSHHost):
         """
         if self.has_power():
             try:
-                rpm_client.set_power(self, 'CYCLE')
+                rpm_client.set_power(self.hostname, 'CYCLE')
             except (socket.error, xmlrpclib.Error,
                     httplib.BadStatusLine,
                     rpm_client.RemotePowerException) as e:
