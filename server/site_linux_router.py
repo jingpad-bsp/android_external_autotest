@@ -186,6 +186,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.dhcpd_conf = '/tmp/dhcpd.%s.conf'
         self.dhcpd_leases = '/tmp/dhcpd.leases'
 
+        # TODO(crbug.com/839164): some routers fill their stateful partition
+        # with uncollected metrics.
+        self.host.run('rm -f /var/lib/metrics/uma-events', ignore_status=True)
+
         # Log the most recent message on the router so that we can rebuild the
         # suffix relevant to us when debugging failures.
         last_log_line = self.host.run('tail -1 /var/log/messages',
