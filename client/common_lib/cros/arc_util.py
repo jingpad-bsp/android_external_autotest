@@ -27,6 +27,7 @@ _USERNAME = 'crosarcplusplustest@gmail.com'
 _ARCP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
                 '/testing/arcplusplus-testing/arcp'
 _OPT_IN_BEGIN = 'Initializing ARC opt-in flow.'
+_OPT_IN_SKIP = 'Skip waiting provisioning completed.'
 _OPT_IN_FINISH = 'ARC opt-in flow complete.'
 
 _SIGN_IN_TIMEOUT = 120
@@ -338,7 +339,10 @@ def opt_in_and_wait_for_completion(extension_main_page):
     extension_main_page.ExecuteJavaScript('termsPage = null')
 
 
-def opt_in(browser, autotest_ext, enable_managed_policy=True):
+def opt_in(browser,
+           autotest_ext,
+           enable_managed_policy=True,
+           wait_for_provisioning=True):
     """
     Step through opt in and wait for it to complete.
 
@@ -348,6 +352,8 @@ def opt_in(browser, autotest_ext, enable_managed_policy=True):
     @param autotest_ext: autotest extension object.
     @param enable_managed_policy: If False then policy check is ignored for
             managed user case and ARC++ is forced enabled.
+    @param wait_for_provisioning: True in case we have to wait for provisioning
+                                       to complete.
 
     @raises: error.TestFail if opt in fails.
 
@@ -366,6 +372,10 @@ def opt_in(browser, autotest_ext, enable_managed_policy=True):
     tos_needed = get_arc_session_state(autotest_ext).tos_needed
 
     if not enable_play_store(autotest_ext, True, enable_managed_policy):
+        return
+
+    if not wait_for_provisioning:
+        logging.info(_OPT_IN_SKIP)
         return
 
     if tos_needed:
