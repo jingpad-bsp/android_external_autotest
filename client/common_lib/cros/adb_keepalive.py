@@ -6,8 +6,11 @@
 
 import argparse
 import logging
+import os
 import pipes
 import re
+import signal
+import sys
 import time
 
 import common
@@ -18,6 +21,15 @@ from autotest_lib.client.common_lib import logging_config
 _ADB_POLLING_INTERVAL_SECONDS = 10
 _ADB_CONNECT_INTERVAL_SECONDS = 1
 _ADB_COMMAND_TIMEOUT_SECONDS = 5
+
+_signum_to_name = {}
+
+
+def _signal_handler(signum, frame):
+    logging.info('Received %s, shutting down', _signum_to_name[signum])
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
 
 
 def _get_adb_options(target, socket):
@@ -90,12 +102,18 @@ if __name__ == '__main__':
     args = parser.parse_args()
     adb_option = _get_adb_options(args.target, args.socket)
 
+    # Setup signal handler for logging on exit
+    for attr in dir(signal):
+        if not attr.startswith('SIG') or attr.startswith('SIG_'):
+            continue
+        if attr in ('SIGCHLD', 'SIGCLD', 'SIGKILL', 'SIGSTOP'):
+            continue
+        signum = getattr(signal, attr)
+        _signum_to_name[signum] = attr
+        signal.signal(signum, _signal_handler)
+
     logging.info('Starting adb_keepalive for target %s on socket %s',
                  args.target, args.socket)
     while True:
-        try:
-            time.sleep(_ADB_POLLING_INTERVAL_SECONDS)
-            _ensure_adb_connected(args.target, adb_option=adb_option)
-        except KeyboardInterrupt:
-            logging.info('Shutting down')
-            break
+        time.sleep(_ADB_POLLING_INTERVAL_SECONDS)
+        _ensure_adb_connected(args.target, adb_option=adb_option)
