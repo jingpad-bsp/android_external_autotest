@@ -268,7 +268,7 @@ class GsCacheClient(object):
         test_suites = '%s/test_suites.tar.bz2' % build
         map_file_name = 'autotest/test_suites/suite_to_control_file_map'
         content_dict = self._api.extract(_CROS_IMAGE_ARCHIVE_BUCKET,
-                                         test_suites, map_file_name)
+                                         test_suites, [map_file_name])
         try:
             map_file_content = content_dict[map_file_name]
         except KeyError:

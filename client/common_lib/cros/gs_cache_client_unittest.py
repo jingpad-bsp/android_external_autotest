@@ -124,7 +124,7 @@ class ClientTest(unittest.TestCase):
 
         expected_calls = [
                 mock.call(gs_cache_client._CROS_IMAGE_ARCHIVE_BUCKET,
-                          build + '/test_suites.tar.bz2', map_file_name),
+                          build + '/test_suites.tar.bz2', [map_file_name]),
                 mock.call(gs_cache_client._CROS_IMAGE_ARCHIVE_BUCKET,
                           build + '/control_files.tar',
                           ['autotest/' + c for c in control_files])
@@ -142,7 +142,7 @@ class ClientTest(unittest.TestCase):
 
         expected_calls = [
                 mock.call(gs_cache_client._CROS_IMAGE_ARCHIVE_BUCKET,
-                          build + '/test_suites.tar.bz2', map_file_name),
+                          build + '/test_suites.tar.bz2', [map_file_name]),
                 mock.call(gs_cache_client._CROS_IMAGE_ARCHIVE_BUCKET,
                           build + '/control_files.tar',
                           ['*/control', '*/control.*'])
