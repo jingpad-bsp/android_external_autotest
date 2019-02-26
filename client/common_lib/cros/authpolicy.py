@@ -69,7 +69,8 @@ class AuthPolicy(object):
         logging.info('restarting authpolicyd')
         upstart.restart_job('authpolicyd')
         bus = dbus.SystemBus(self._bus_loop)
-        proxy = bus.get_object(self._DBUS_SERVICE_NAME, self._DBUS_SERVICE_PATH)
+        proxy = bus.get_object(self._DBUS_SERVICE_NAME,
+                               self._DBUS_SERVICE_PATH)
         self._authpolicyd = dbus.Interface(proxy, self._DBUS_INTERFACE_NAME)
 
     def stop(self):
@@ -239,7 +240,7 @@ class AuthPolicy(object):
         """
 
         # Exit code 253 is minijail's marker for seccomp failures.
-        cmd = 'grep -q "failed: exit code 253" %s' % self._LOG_FILE
+        cmd = 'grep -q "exit code 253" %s' % self._LOG_FILE
         if utils.run(cmd, ignore_status=True).exit_status == 0:
             logging.error('Seccomp failure detected!')
             cmd = 'grep -oE "blocked syscall: \\w+" %s | tail -1' % \
