@@ -4,6 +4,7 @@
 
 AUTHOR = "wzang"
 NAME = "enterprise_OnlineDemoMode"
+ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Enterprise"
 TEST_CLASS = "enterprise"
