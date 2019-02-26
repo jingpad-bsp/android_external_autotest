@@ -326,7 +326,7 @@ def _update_host_attributes(afe, hostname, host_attrs):
     afe.set_host_attribute(servo_host.SERVO_PORT_ATTR,
                            s_port,
                            hostname=hostname)
-    if host_attr_servo_serial:
+    if s_serial:
         afe.set_host_attribute(servo_host.SERVO_SERIAL_ATTR,
                                s_serial,
                                hostname=hostname)
