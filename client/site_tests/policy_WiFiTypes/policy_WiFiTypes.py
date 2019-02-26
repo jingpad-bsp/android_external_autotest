@@ -47,9 +47,9 @@ class policy_WiFiTypes(enterprise_policy_base.EnterprisePolicyTest):
             self.net_api.disable_network_device('Ethernet')
 
             if not autoconnect:
-                self.net_api.connect_to_network(ssid)
+                self.net_api.connect_to_network(network.ssid)
 
-            if not self.net_api.is_network_connected(ssid):
+            if not self.net_api.is_network_connected(network.ssid):
                 raise error.TestFail(
                         'No connection to network (%s) when autoconnect is %s.'
-                        % (ssid, autoconnect))
+                        % (network.ssid, autoconnect))
