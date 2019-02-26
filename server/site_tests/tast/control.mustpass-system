@@ -9,6 +9,7 @@ TEST_TYPE = 'Server'
 # System tests can't be broken by Android or Chrome changes, so these tests
 # don't run in the PFQs.
 ATTRIBUTES = 'suite:bvt-tast-cq'
+MAX_RESULT_SIZE_KB = 50 * 1024
 
 # tast.py uses binaries installed from autotest_server_package.tar.bz2.
 REQUIRE_SSP = True
