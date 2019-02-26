@@ -409,10 +409,12 @@ class Suite(object):
 
     def _get_available_bots(self):
         """Get available bots for suites."""
-        bots = swarming_lib.query_bots_list({
-                'pool': swarming_lib.SKYLAB_DRONE_POOL,
-                'label-pool': swarming_lib.to_swarming_pool_label(self.pool),
-                'label-board': self.board})
+        dimensions = {'pool': swarming_lib.SKYLAB_DRONE_POOL,
+                      'label-board': self.board}
+        swarming_pool_deps = swarming_lib.task_dependencies_from_labels(
+            ['pool:%s' % self.pool])
+        dimensions.update(swarming_pool_deps)
+        bots = swarming_lib.query_bots_list(dimensions)
         return [bot for bot in bots if swarming_lib.bot_available(bot)]
 
 
