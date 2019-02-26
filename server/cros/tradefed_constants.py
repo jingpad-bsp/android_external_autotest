@@ -46,5 +46,5 @@ TRADEFED_MEDIA_PATH = '/tmp/android-cts-media'
 
 # It looks like the GCE builder can be very slow and login on VMs take much
 # longer than on hardware or bare metal.
-LOGIN_BOARD_TIMEOUT = {'betty': 300}
+LOGIN_BOARD_TIMEOUT = {'betty': 300, 'betty-arcnext': 300}
 LOGIN_DEFAULT_TIMEOUT = 90
