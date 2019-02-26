@@ -18,6 +18,7 @@ policy and attempts to connect to the AP.
 
 from autotest_lib.client.common_lib.cros import site_eap_certs
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
+from autotest_lib.client.cros.enterprise.network_config import NetworkConfig
 from autotest_lib.server.cros.network import hostap_config
 
 def run(machine):
@@ -33,16 +34,18 @@ def run(machine):
             mode=hostap_config.HostapConfig.MODE_11G,
             security_config=eap_config)
 
+    network = NetworkConfig(security='WPA-EAP',
+                            eap='EAP-TLS',
+                            identity='chromeos',
+                            ca_cert=site_eap_certs.ca_cert_1,
+                            client_cert=site_eap_certs.client_cert_1_pkcs12)
+
     host = hosts.create_host(machine)
     job.run_test('policy_WiFiTypesServer',
                  raw_cmdline_args=args,
                  host=host,
                  ap_config=ap_config,
-                 security='WPA-EAP',
-                 eap='EAP-TLS',
-                 identity='chromeos',
-                 ca_cert=site_eap_certs.ca_cert_1,
-                 client_cert=site_eap_certs.client_cert_1_pkcs12)
+                 network=network)
 
 
 parallel_simple(run, machines)
