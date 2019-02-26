@@ -119,3 +119,6 @@ class Values(object):
     usb_image_boot_timeout = 180
 
     smm_store = True
+
+    # True if the lid can wake the system from a powered off state
+    lid_wake_from_power_off = True
