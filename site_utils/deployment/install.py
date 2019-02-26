@@ -482,8 +482,8 @@ def _install_test_image(host, arguments):
         return
     if arguments.stageusb:
         try:
-            host.servo.image_to_servo_usb(
-                    host.stage_image_for_servo())
+            preparedut.download_image_to_servo_usb(
+                    host.get_cros_repair_image_name())
         except Exception as e:
             logging.exception('Failed to stage image on USB: %s', e)
             raise Exception('USB staging failed')
