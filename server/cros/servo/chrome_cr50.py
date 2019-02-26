@@ -335,10 +335,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
                 return self.send_command_get_output(command, regexp_list)
             except error.TestFail, e:
                 logging.info('Failed to get %r output: %r', command, str(e))
-        # Raise the last error, if we never successfully returned the command
-        # output
-        logging.info('Could not get %r output after %d tries', command, tries)
-        raise
+                if i == tries - 1:
+                    # Raise the last error, if we never successfully returned
+                    # the command output
+                    logging.info('Could not get %r output after %d tries',
+                                 command, tries)
+                    raise
 
 
     def get_deep_sleep_count(self):
