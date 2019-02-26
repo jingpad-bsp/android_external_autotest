@@ -166,6 +166,7 @@ class platform_PrintJob(test.test):
                            init_network_controller=True) as self.cr:
             self.navigate_to_pdf()
             usb_printer.Plug()
+            time.sleep(_SHORT_WAIT)
             self.execute_print_job()
             usb_printer.StartCapturingPrinterData()
             self.check_notification('Now printing')
