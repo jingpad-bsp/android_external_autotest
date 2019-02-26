@@ -188,6 +188,7 @@ class FirmwareTest(FAFTBase):
             self._restore_routine_from_timeout()
         self.switcher.restore_mode()
         self._restore_ec_write_protect()
+        self._restore_servo_v4_role()
         self._restore_gbb_flags()
         self.faft_client.updater.start_daemon()
         self.faft_client.updater.cleanup()
@@ -408,7 +409,7 @@ class FirmwareTest(FAFTBase):
 
         self.mark_setup_done('usb_check')
 
-    def setup_usbkey(self, usbkey, host=None):
+    def setup_usbkey(self, usbkey, host=None, used_for_recovery=None):
         """Setup the USB disk for the test.
 
         It checks the setup of USB disk and a valid ChromeOS test image inside.
@@ -418,6 +419,9 @@ class FirmwareTest(FAFTBase):
                        not required.
         @param host: Optional, True to mux the USB disk to host, False to mux it
                     to DUT, default to do nothing.
+        @param used_for_recovery: Optional, True if the USB disk is used for
+                                  recovery boot; False if the USB disk is not
+                                  used for recovery boot, like Ctrl-U USB boot.
         """
         if usbkey:
             self.assert_test_image_in_usb_disk()
@@ -429,6 +433,38 @@ class FirmwareTest(FAFTBase):
             self.servo.switch_usbkey('host')
         elif host is False:
             self.servo.switch_usbkey('dut')
+
+        if used_for_recovery is None:
+            # Default value is True if usbkey == True.
+            # As the common usecase of USB disk is for recovery boot. Tests
+            # can define it explicitly if not.
+            used_for_recovery = usbkey
+
+        if used_for_recovery:
+            # In recovery boot, the locked EC RO doesn't support PD for most
+            # of the CrOS devices. The default servo v4 power role is a SRC.
+            # The DUT becomes a SNK. Lack of PD makes CrOS unable to do the
+            # data role swap from UFP to DFP; as a result, DUT can't see the
+            # USB disk and the Ethernet dongle on servo v4.
+            #
+            # This is a workaround to set servo v4 as a SNK, for every FAFT
+            # test which boots into the USB disk in the recovery mode.
+            #
+            # TODO(waihong): Add a check to see if the battery level is too
+            # low and sleep for a while for charging.
+            self.set_servo_v4_role_to_snk()
+
+    def set_servo_v4_role_to_snk(self):
+        """Set the servo v4 role to SNK."""
+        self._needed_restore_servo_v4_role = True
+        self.servo.set_servo_v4_role('snk')
+
+    def _restore_servo_v4_role(self):
+        """Restore the servo v4 role to default SRC."""
+        if not hasattr(self, '_needed_restore_servo_v4_role'):
+            return
+        if self._needed_restore_servo_v4_role:
+            self.servo.set_servo_v4_role('src')
 
     def get_usbdisk_path_on_dut(self):
         """Get the path of the USB disk device plugged-in the servo on DUT.
