@@ -138,10 +138,8 @@ class performance_InboxInputLatency(test.test):
         data_file = os.path.join(current_dir, _KEYIN_TEST_DATA)
         self.keyboard.playback(data_file)
 
-        # The result is the first element in the tuple.
-        results = tracing_controller.StopTracing()[0]
-
         # Iterate recorded events and output target latency events
+        results = tracing_controller.StopTracing()
         timeline_model = model_module.TimelineModel(results)
         event_iter = timeline_model.IterAllEvents(
                 event_type_predicate=timeline_model.IsSliceOrAsyncSlice)
