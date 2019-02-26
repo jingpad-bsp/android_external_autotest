@@ -305,7 +305,11 @@ class WebRtcPeerConnectionPerformanceTest(WebRtcPeerConnectionTest):
                       ';sleep %d;done'
                       % (delay, self.debugdir, iterations))
 
+    def start_test(self, cr, html_file):
+        super(WebRtcPeerConnectionPerformanceTest, self).start_test(
+                cr, html_file)
+        self.collector.pre_collect()
+
     def do_in_wait_loop(self):
         self.collector.collect_snapshot()
         time.sleep(1)
-
