@@ -59,6 +59,7 @@ GAIA_ID = 'fake-gaia-id'
 DEVICE_POLICY_DICT = {
     'DeviceAutoUpdateDisabled': 'update_disabled',
     'DeviceEphemeralUsersEnabled': 'ephemeral_users_enabled',
+    'DeviceOpenNetworkConfiguration': 'open_network_configuration',
     'DeviceRollbackToTargetVersion': 'rollback_to_target_version',
     'DeviceTargetVersionPrefix': 'target_version_prefix'
 }
@@ -698,6 +699,7 @@ class EnterprisePolicyTest(test.test):
             self.cr = chrome.Chrome(
                     auto_login=False,
                     extra_browser_args=extra_flags,
+                    extension_paths=extension_paths,
                     expect_policy_fetch=True)
             if self.dms_is_fake:
                 enrollment.EnterpriseFakeEnrollment(
