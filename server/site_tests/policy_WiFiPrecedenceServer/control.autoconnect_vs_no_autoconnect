@@ -11,8 +11,8 @@ DEPENDENCIES = 'wificell'
 
 DOC = """
 'policy_WiFiPrecedenceServer.autoconnect_vs_no_autoconnect' sets up an AP.
-The client test is given a network policy for the same network with
-AutoConnect=True for the device policy and False for the user policy.
+The client test is given two network policies for the same network, one with
+AutoConnect=True and one with AutoConnect=False.
 
 The DUT should autoconnect to the network.
 
@@ -40,16 +40,16 @@ def run(machine):
             ssid=ssid))
 
     # Client network configurations.
-    user_network_config = NetworkConfig(ssid, autoconnect=False)
-    device_network_config = NetworkConfig(ssid, autoconnect=True)
+    network1_config = NetworkConfig(ssid, autoconnect=False)
+    network2_config = NetworkConfig(ssid, autoconnect=True)
 
     host = hosts.create_host(machine)
     job.run_test('policy_WiFiPrecedenceServer',
                  raw_cmdline_args=args,
                  host=host,
                  ap_configs=ap_configs,
-                 user_network_config=user_network_config,
-                 device_network_config=device_network_config)
+                 network1_config=network1_config,
+                 network2_config=network2_config)
 
 
 parallel_simple(run, machines)

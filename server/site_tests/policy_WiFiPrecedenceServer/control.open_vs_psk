@@ -26,15 +26,15 @@ from autotest_lib.server.cros.network import hostap_config
 
 def run(machine):
     password = 'chromeos'
-    user_ssid = 'User Network'
-    device_ssid = 'Device Network'
+    ssid1 = 'Network1'
+    ssid2 = 'Network2'
     n_mode = hostap_config.HostapConfig.MODE_11N_MIXED
 
     ap_configs = []
     ap_configs.append(hostap_config.HostapConfig(
             channel=5,
             mode=n_mode,
-            ssid=user_ssid))
+            ssid=ssid1))
 
     wpa_config = xmlrpc_security_types.WPAConfig(
             psk=password,
@@ -43,24 +43,24 @@ def run(machine):
     ap_configs.append(hostap_config.HostapConfig(
             channel=149,
             mode=n_mode,
-            ssid=device_ssid,
+            ssid=ssid2,
             security_config=wpa_config))
 
     # Client network configurations.
-    user_network_config = NetworkConfig(user_ssid, autoconnect=True)
-    device_network_config = NetworkConfig(device_ssid,
-                                          security='WPA-PSK',
-                                          password=password,
-                                          autoconnect=True)
+    network1_config = NetworkConfig(ssid1, autoconnect=True)
+    network2_config = NetworkConfig(ssid2,
+                                    security='WPA-PSK',
+                                    password=password,
+                                    autoconnect=True)
 
     host = hosts.create_host(machine)
     job.run_test('policy_WiFiPrecedenceServer',
                  raw_cmdline_args=args,
                  host=host,
                  ap_configs=ap_configs,
-                 user_network_config=user_network_config,
-                 device_network_config=device_network_config,
-                 precedence='device')
+                 network1_config=network1_config,
+                 network2_config=network2_config,
+                 precedence=2)
 
 
 parallel_simple(run, machines)
