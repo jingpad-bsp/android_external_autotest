@@ -19,12 +19,12 @@ class TestSystemMetricsCollector(unittest.TestCase):
         self.assertEqual(11, metric.values[0])
 
     def test_cpu_usage_metric(self):
-        metric = system_metrics_collector.CpuUsageMetric(FakeSystemFacade())
-        # Collect twice since the first collection only sets the baseline for
-        # the following diff calculations.
+        system_facade = FakeSystemFacade()
+        metric = system_metrics_collector.CpuUsageMetric(system_facade)
+        metric.pre_collect()
+        system_facade.active_cpu_time += 0.1
         metric.collect_metric()
-        metric.collect_metric()
-        self.assertAlmostEqual(40, metric.values[0])
+        self.assertAlmostEqual(50, metric.values[0])
 
     def test_tempature_metric(self):
         metric = system_metrics_collector.TemperatureMetric(FakeSystemFacade())
@@ -34,7 +34,7 @@ class TestSystemMetricsCollector(unittest.TestCase):
     def test_storage_written_metric(self):
         system_facade = FakeSystemFacade()
         metric = system_metrics_collector.StorageWrittenMetric(system_facade)
-        metric.collect_metric()
+        metric.pre_collect()
         system_facade.storage_statistics['written_kb'] += 1337
         metric.collect_metric()
         self.assertEqual(1337, metric.values[0])
@@ -57,6 +57,7 @@ class TestSystemMetricsCollector(unittest.TestCase):
         # the default metric set.
         collector = system_metrics_collector.SystemMetricsCollector(
                 FakeSystemFacade())
+        collector.pre_collect()
         collector.collect_snapshot()
         collector.collect_snapshot()
         collector.write_metrics(lambda **kwargs: None)
