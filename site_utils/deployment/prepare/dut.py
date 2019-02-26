@@ -76,6 +76,16 @@ def download_image_to_servo_usb(host, build):
     host.servo.image_to_servo_usb(host.stage_image_for_servo(build))
 
 
+def flash_firmware_using_servo(host):
+    """Flash DUT firmware directly using servo.
+
+    Rather than running `chromeos-firmwareupdate` on DUT, we can flash DUT
+    firmware directly using servo (run command `flashrom`, etc. on servo). In
+    this way, we don't require DUT to be in dev mode and with dev_boot_usb
+    enabled."""
+    host.firmware_install(build=host.get_cros_repair_image_name())
+
+
 def install_firmware(host):
     """Install dev-signed firmware after removing write-protect.
 
