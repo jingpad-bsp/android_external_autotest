@@ -42,6 +42,7 @@ class PerfMetricsCollector(object):
         """
         Starts metrics collection.
         """
+        self._system_metrics_collector.pre_collect()
         self._collector_thread.start()
 
     def stop(self):
