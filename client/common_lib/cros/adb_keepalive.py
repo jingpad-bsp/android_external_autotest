@@ -94,7 +94,7 @@ def _ensure_adb_connected(target, adb_option=""):
 
 
 if __name__ == '__main__':
-    logging_config.LoggingConfig().configure_logging(verbose=True)
+    logging_config.LoggingConfig().configure_logging()
     parser = argparse.ArgumentParser(description='ensure adb is connected')
     parser.add_argument('target', help='Device to connect to')
     parser.add_argument('--socket', help='ADB server socket.',
