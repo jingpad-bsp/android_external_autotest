@@ -8,7 +8,6 @@ cd ${SCRIPT_DIR}/..
 
 LOGDIR=logs/stable-version
 ASSIGN_STABLE=site_utils/stable_images/assign_stable_images.py
-OPTIONS=()
 
 mkdir -p ${LOGDIR}
 NOTIFY=(
@@ -29,7 +28,7 @@ trap 'rm -f ${TMPFILE}' EXIT
 TMPFILE=$(mktemp)
 
 date
-$ASSIGN_STABLE "${OPTIONS[@]}" 2>&1 | tee ${TMPFILE}
+$ASSIGN_STABLE --web localhost 2>&1 | tee ${TMPFILE}
 echo
 
 # If we have a log directory, clean it up, and send e-mail notification.
