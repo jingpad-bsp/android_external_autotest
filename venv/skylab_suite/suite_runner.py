@@ -271,21 +271,21 @@ def _schedule_test(test_spec, suite_id=None,
         test_spec.test.name = 'Echo ' + test_spec.test.name
 
     dimensions = {'pool': swarming_lib.SKYLAB_DRONE_POOL,
-                  'label-pool': swarming_lib.to_swarming_pool_label(
-                          test_spec.pool),
                   'label-board': test_spec.board,
                   'dut_state': swarming_lib.SWARMING_DUT_READY_STATUS}
     if test_spec.model is not None:
         dimensions['label-model'] = test_spec.model
 
+    deps = []
     for dep in test_spec.test.dependencies:
         if dep in _NOT_SUPPORTED_DEPENDENCIES:
             logging.warning('Dependency %s is not supported in skylab', dep)
             continue
 
-        # label-tag hasn't been an official label for skylab bots.
-        # TODO(crbug.com/883066, crbug.com/873886): Support test dependencies.
-        # dimensions['label-tag'] = dep
+        deps.append(dep)
+
+    deps.append('pool:%s' % test_spec.pool)
+    dimensions.update(swarming_lib.task_dependencies_from_labels(deps))
 
     return _run_swarming_cmd_with_fallback(
             [cmd, cmd_with_fallback], dimensions, test_spec,
