@@ -114,3 +114,77 @@ class NetworkConfig(object):
             wifi_conf['EAP'] = eap_conf
 
         return conf
+
+
+class ProxyConfig(object):
+    """
+    ProxyConfig is a client-side representation of a proxy network.
+
+    Its primary purpose is to generate open network configurations.
+
+    """
+    def __init__(self, type=None, pac_url=None, host=None, port=None,
+                 exclude_urls=None):
+        """
+        @param type: Proxy type. Direct, Manual, PAC.
+        @param pac_url: URL of PAC file.
+        @param host: Host URL of proxy.
+        @param port: Port of proxy.
+        @param exclude_urls: URLs that should not be handled by the proxy.
+
+        """
+        self.type = type
+        self.pac_url = pac_url
+        self.host = host
+        self.port = port
+        self.exclude_urls = exclude_urls
+        self.guid = generate_random_guid()
+
+
+    def policy(self):
+        """
+        Generate a network configuration policy dictionary.
+
+        @returns conf: A dictionary in the format suitable to setting as a
+            network policy.
+
+        """
+        conf = {
+            'NetworkConfigurations': [
+                {'GUID': self.guid,
+                 'Name': 'Managed_Ethernet',
+                 'Ethernet': {
+                     'Authentication': 'None'},
+                 'Type': 'Ethernet',
+                 'ProxySettings': {
+                     'Type': self.type}
+                }
+            ]
+        }
+
+        proxy = conf['NetworkConfigurations'][0]['ProxySettings']
+
+        if self.pac_url is not None:
+            proxy['PAC'] = self.pac_url
+
+        if self.host is not None and self.port is not None:
+            proxy['Manual'] = {
+                'HTTPProxy': {
+                    'Host': self.host,
+                    'Port': self.port
+                }
+            }
+
+        if self.exclude_urls is not None:
+            proxy['ExcludeDomains'] = self.exclude_urls
+
+        return conf
+
+
+    def mode(self):
+        """Return ProxyMode consistent with the ProxySettings policy."""
+        return {
+            'Direct': 'direct',
+            'Manual': 'fixed_servers',
+            'PAC': 'pac_script'
+        }[self.type]

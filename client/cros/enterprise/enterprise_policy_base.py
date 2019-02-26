@@ -565,8 +565,8 @@ class EnterprisePolicyTest(test.test):
         # field needs to be converted to asterisks to be compared.
         SANITIZED_PASSWORD = '*' * 8
         if policy_name.endswith('OpenNetworkConfiguration'):
-            for network in expected_value['NetworkConfigurations']:
-                wifi = network['WiFi']
+            for network in expected_value.get('NetworkConfigurations', []):
+                wifi = network.get('WiFi', {})
                 if 'Passphrase' in wifi:
                     wifi['Passphrase'] = SANITIZED_PASSWORD
                 if 'EAP' in wifi and 'Password' in wifi['EAP']:
