@@ -25,7 +25,7 @@ class network_ShillInitScripts(test.test):
                          '/run/state/logged-in',
                          '/run/dhcpcd',
                          '/var/lib/dhcpcd',
-                         '/home/chronos/.disable_shill' ]
+                         ]
     fake_user = 'not-a-real-user@chromium.org'
     saved_config = '/tmp/network_ShillInitScripts_saved_config.tgz'
     cryptohome_path_command = 'cryptohome-path'
@@ -409,7 +409,6 @@ class network_ShillInitScripts(test.test):
         Also ensure the push argument is not provided by default.
 
         """
-        self.touch('/home/chronos/.disable_shill')
         self.start_shill()
         self.assure_is_dir('/run/shill', 'Shill run directory')
         self.assure_is_dir('/var/lib/dhcpcd', 'dhcpcd lib directory')
@@ -418,8 +417,6 @@ class network_ShillInitScripts(test.test):
         self.assure_is_dir('/run/dhcpcd', 'dhcpcd run directory')
         self.assure_path_owner('/run/dhcpcd', 'dhcp')
         self.assure_path_group('/run/dhcpcd', 'dhcp')
-        self.assure(not os.path.exists('/home/chronos/.disable_shill'),
-                    'Shill disable file does not exist')
         self.assure('--push=~chronos/shill' not in self.get_commandline(),
                     'Shill command line does not contain push argument')
 
