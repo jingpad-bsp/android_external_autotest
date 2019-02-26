@@ -221,7 +221,7 @@ class _PowerButtonVerifier(hosts.Verifier):
     """
     # TODO (crbug.com/646593) - Remove list below once servo has been updated
     # with a dummy pwr_button signal.
-    _BOARDS_WO_PWR_BUTTON = ['arkham', 'storm', 'whirlwind', 'gale']
+    _BOARDS_WO_PWR_BUTTON = ['arkham', 'gale', 'mistral', 'storm', 'whirlwind']
 
     def verify(self, host):
         if host.servo_board in self._BOARDS_WO_PWR_BUTTON:
