@@ -43,6 +43,9 @@ class power_BootUpTime(FirmwareTest):
                     timeout=self._WAIT_TIME_CLOSE_LID)
             logging.info('Opening lid')
             self.host.servo.lid_open()
+            if not self.faft_config.lid_wake_from_power_off:
+                logging.info('Pressing power button')
+                self.host.servo.power_normal_press()
             self.switcher.wait_for_client(timeout=self._WAIT_TIME_OPEN_LID)
         else:
             raise error.TestError("Invalid boot_type, check the boot_type"
