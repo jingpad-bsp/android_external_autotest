@@ -11,7 +11,6 @@ import select
 import tempfile
 import time
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import arc_common
@@ -29,68 +28,6 @@ _ARCP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
 _OPT_IN_BEGIN = 'Initializing ARC opt-in flow.'
 _OPT_IN_SKIP = 'Skip waiting provisioning completed.'
 _OPT_IN_FINISH = 'ARC opt-in flow complete.'
-
-_SIGN_IN_TIMEOUT = 120
-_SIGN_IN_CHECK_INTERVAL = 1
-
-class ArcSessionState:
-    """Describes ARC session state.
-
-    provisioned is set to True once ARC is provisioned.
-    tos_needed is set to True in case ARC Terms of Service need to be shown.
-              This depends on ARC Terms of Service acceptance and policy for
-              ARC preferences, such as backup and restore and use of location
-              services.
-    """
-
-    def __init__(self):
-        self.provisioned = False
-        self.tos_needed = False
-
-
-def get_arc_session_state(autotest_ext):
-    """Returns the runtime state of ARC session.
-
-    @param autotest_ext private autotest API.
-
-    @raises error.TestFail in case autotest API failure or if ARC is not
-                           allowed for the device.
-
-    @return ArcSessionState that describes the state of current ARC session.
-
-    """
-
-    try:
-        autotest_ext.ExecuteJavaScript('''
-            chrome.autotestPrivate.getArcState(function(state) {
-              window.__arc_provisioned = state.provisioned;
-              window.__arc_tosNeeded = state.tosNeeded;
-            });
-        ''')
-        state = ArcSessionState()
-        state.provisioned = \
-                autotest_ext.EvaluateJavaScript('window.__arc_provisioned')
-        state.tos_needed = \
-                autotest_ext.EvaluateJavaScript('window.__arc_tosNeeded')
-        return state
-    except exceptions.EvaluateException as e:
-        raise error.TestFail('Could not get ARC session state "%s".' % e)
-
-
-def _wait_arc_provisioned(autotest_ext):
-    """Waits until ARC provisioning is completed.
-
-    @param autotest_ext private autotest API.
-
-    @raises: error.TimeoutException if provisioning is not complete.
-
-    """
-    utils.poll_for_condition(
-            condition=lambda: get_arc_session_state(autotest_ext).provisioned,
-            desc='Wait for ARC is provisioned',
-            timeout=_SIGN_IN_TIMEOUT,
-            sleep_interval=_SIGN_IN_CHECK_INTERVAL)
-
 
 def should_start_arc(arc_mode):
     """
@@ -315,9 +252,10 @@ def opt_in_and_wait_for_completion(extension_main_page):
     """
     extension_main_page.ExecuteJavaScript('termsPage.onAgree()')
 
+    SIGN_IN_TIMEOUT = 120
     try:
         extension_main_page.WaitForJavaScriptCondition('!appWindow',
-                                                       timeout=_SIGN_IN_TIMEOUT)
+                                                       timeout=SIGN_IN_TIMEOUT)
     except Exception, e:
         js_read_error_message = """
             err = appWindow.contentWindow.document.getElementById(
@@ -333,7 +271,7 @@ def opt_in_and_wait_for_completion(extension_main_page):
             raise error.TestFail('Opt-in app error: %r' % err_msg)
         else:
             raise error.TestFail('Opt-in app did not finish running after %s '
-                                 'seconds!' % _SIGN_IN_TIMEOUT)
+                                 'seconds!' % SIGN_IN_TIMEOUT)
     # Reset termsPage to be able to reuse OptIn page and wait condition for ToS
     # are loaded.
     extension_main_page.ExecuteJavaScript('termsPage = null')
@@ -360,17 +298,6 @@ def opt_in(browser,
     """
 
     logging.info(_OPT_IN_BEGIN)
-
-    # TODO(b/124391451): Enterprise tests have race, when ARC policy appears
-    # after profile prefs sync completed. That means they may appear as
-    # non-managed first, treated like this but finally turns as managed. This
-    # leads to test crash. Solution is to wait until prefs are synced or, if
-    # possible tune test accounts to wait sync is completed before starting the
-    # Chrome session.
-
-    # Enabling Play Store may affect this flag, capture it before.
-    tos_needed = get_arc_session_state(autotest_ext).tos_needed
-
     if not enable_play_store(autotest_ext, True, enable_managed_policy):
         return
 
@@ -378,10 +305,7 @@ def opt_in(browser,
         logging.info(_OPT_IN_SKIP)
         return
 
-    if tos_needed:
-        extension_main_page = find_opt_in_extension_page(browser)
-        opt_in_and_wait_for_completion(extension_main_page)
-    else:
-        _wait_arc_provisioned(autotest_ext)
+    extension_main_page = find_opt_in_extension_page(browser)
+    opt_in_and_wait_for_completion(extension_main_page)
 
     logging.info(_OPT_IN_FINISH)
