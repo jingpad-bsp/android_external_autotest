@@ -254,7 +254,6 @@ class FirmwareUpdater(object):
                 self._work_path, 'models', model, 'setvars.sh')
             if self.os_if.path_exists(setvars_path):
                 ro_fwid, rw_fwid = self.retrieve_fwid()
-                ecid = self.retrieve_ecid()
                 args = ['-i']
                 args.append(
                     '"s/TARGET_FWID=\\".*\\"/TARGET_FWID=\\"%s\\"/g"'
@@ -271,13 +270,16 @@ class FirmwareUpdater(object):
                 cmd = 'sed %s' % ' '.join(args)
                 self.os_if.run_shell_command(cmd)
 
-                args = ['-i']
-                args.append(
-                    '"s/TARGET_ECID=\\".*\\"/TARGET_ECID=\\"%s\\"/g"'
-                    % ecid)
-                args.append(setvars_path)
-                cmd = 'sed %s' % ' '.join(args)
-                self.os_if.run_shell_command(cmd)
+                # Only update ECID if an EC image is found
+                if self.get_ec_relative_path():
+                    ecid = self.retrieve_ecid()
+                    args = ['-i']
+                    args.append(
+                        '"s/TARGET_ECID=\\".*\\"/TARGET_ECID=\\"%s\\"/g"'
+                        % ecid)
+                    args.append(setvars_path)
+                    cmd = 'sed %s' % ' '.join(args)
+                    self.os_if.run_shell_command(cmd)
 
     def extract_shellball(self, append=None):
         """Extract the working shellball.
