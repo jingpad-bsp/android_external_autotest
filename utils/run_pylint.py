@@ -294,13 +294,8 @@ def get_cmdline_options(args_list, pylint_base_opts, rcfile):
     for args in args_list:
         if args.startswith('--'):
             opt_name = args[2:].split('=')[0]
-            if opt_name in rcfile and pylint_version >= 0.21:
-                raise run_pylint_error('The rcfile already contains the %s '
-                                        'option. Please edit pylintrc instead.'
-                                        % opt_name)
-            else:
-                extend_baseopts(pylint_base_opts, args)
-                args_list.remove(args)
+            extend_baseopts(pylint_base_opts, args)
+            args_list.remove(args)
 
 
 def git_show_to_temp_file(commit, original_file, new_temp_file):
