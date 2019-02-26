@@ -2384,6 +2384,10 @@ class PCHPowergatingStats(object):
                 'HDA-PGD0', 'HDA-PGD1', 'HDA-PGD2', 'HDA-PGD3', 'LPSS',
                 'AVSPGD1', 'AVSPGD4'])
 
+        # CNV device has 0x31dc as devid .
+        if len(utils.system_output('lspci -d :31dc')) > 0:
+            S0IX_WHITELIST.add('CNV')
+
         on_ip = set(ip['name'] for ip in self._stat if ip['state'])
         on_ip -= S0IX_WHITELIST
 
