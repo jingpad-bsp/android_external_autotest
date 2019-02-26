@@ -52,7 +52,8 @@ class policy_WiFiAutoconnect(
 
         """
         net_policy = enterprise_network_api.\
-                         create_network_policy(ssid, autoconnect)
+                         create_network_policy(ssid,
+                                               autoconnect=autoconnect)
 
         self.setup_case(
             user_policies={
