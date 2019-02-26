@@ -19,3 +19,4 @@ class Values(object):
     has_keyboard = False
     # Temporary until switch to power button
     rec_button_dev_switch = True
+    smm_store = False
