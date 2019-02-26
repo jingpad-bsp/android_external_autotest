@@ -330,8 +330,8 @@ def get_sdcard_pid():
     return utils.read_one_line(_SDCARD_PID_PATH)
 
 
-def _get_removable_media_pid_internal(job_name):
-    """Returns the PID of the arc-removable-media* FUSE daemon."""
+def _get_mount_passthrough_pid_internal(job_name):
+    """Returns the PID of the mount-passthrough daemon job."""
     job_pid = get_job_pid(job_name)
     # |job_pid| is the minijail process, obtain the PID of the process running
     # inside the mount namespace.
@@ -339,24 +339,22 @@ def _get_removable_media_pid_internal(job_name):
     return utils.system_output('pgrep -u chronos -s %s' % job_pid)
 
 
-def get_removable_media_pid():
-    """Returns the PID of the arc-removable-media FUSE daemon."""
-    return _get_removable_media_pid_internal('arc-removable-media')
+def get_mount_passthrough_pid_list():
+    """Returns PIDs of ARC mount-passthrough daemon jobs."""
+    JOB_NAMES = [ 'arc-myfiles', 'arc-myfiles-default',
+                  'arc-myfiles-read', 'arc-myfiles-write',
+                  'arc-removable-media', 'arc-removable-media-default',
+                  'arc-removable-media-read', 'arc-removable-media-write' ]
+    pid_list = []
+    for job_name in JOB_NAMES:
+        try:
+            pid = _get_mount_passthrough_pid_internal(job_name)
+            pid_list.append(pid)
+        except Exception, e:
+            logging.warning('Failed to find PID for %s : %s', job_name, e)
+            continue
 
-
-def get_removable_media_default_pid():
-    """Returns the PID of the arc-removable-media-default FUSE daemon."""
-    return _get_removable_media_pid_internal('arc-removable-media-default')
-
-
-def get_removable_media_read_pid():
-    """Returns the PID of the arc-removable-media-read FUSE daemon."""
-    return _get_removable_media_pid_internal('arc-removable-media-read')
-
-
-def get_removable_media_write_pid():
-    """Returns the PID of the arc-removable-media-write FUSE daemon."""
-    return _get_removable_media_pid_internal('arc-removable-media-write')
+    return pid_list
 
 
 def get_obb_mounter_pid():
