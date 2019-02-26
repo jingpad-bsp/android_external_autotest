@@ -88,6 +88,7 @@ class graphics_MultipleDisplays(test.test):
                 tar.extractall(temp_bundle_dir)
 
         # Send bundle to client. The extra slash is to send directory contents.
+        self._host.run('mkdir -p {}'.format(self.CLIENT_TEST_ROOT))
         self._host.send_file(temp_bundle_dir + '/', self.CLIENT_TEST_ROOT,
                              delete_dest=True)
 
