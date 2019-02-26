@@ -20,9 +20,12 @@
 #define LIST_PROC_FUNCTIONS(F)                                     \
   F(glAttachShader, PFNGLATTACHSHADERPROC)                         \
   F(glBindBuffer, PFNGLBINDBUFFERPROC)                             \
+  F(glBindBufferARB, PFNGLBINDBUFFERARBPROC)                       \
   F(glBindFramebuffer, PFNGLBINDFRAMEBUFFERPROC)                   \
   F(glBindRenderbuffer, PFNGLBINDRENDERBUFFERPROC)                 \
   F(glBufferData, PFNGLBUFFERDATAPROC)                             \
+  F(glBufferDataARB, PFNGLBUFFERDATAARBPROC)                       \
+  F(glBufferSubData, PFNGLBUFFERSUBDATAPROC)                       \
   F(glCheckFramebufferStatus, PFNGLCHECKFRAMEBUFFERSTATUSPROC)     \
   F(glCompileShader, PFNGLCOMPILESHADERPROC)                       \
   F(glCreateProgram, PFNGLCREATEPROGRAMPROC)                       \
