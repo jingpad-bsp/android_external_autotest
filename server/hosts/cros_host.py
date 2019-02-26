@@ -847,7 +847,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def _add_rpm_changed_tag(self):
         info = self.host_info_store.get()
-        info.attributes[self._RPM_OUTLET_CHANGED] = True
+        info.attributes[self._RPM_OUTLET_CHANGED] = 'true'
         self.host_info_store.commit(info)
 
 
