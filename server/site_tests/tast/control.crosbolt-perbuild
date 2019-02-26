@@ -7,6 +7,7 @@ NAME = 'tast.crosbolt-perbuild'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:crosbolt_perf_perbuild'
+MAX_RESULT_SIZE_KB = 50 * 1024
 
 # tast.py uses binaries installed from autotest_server_package.tar.bz2.
 REQUIRE_SSP = True
