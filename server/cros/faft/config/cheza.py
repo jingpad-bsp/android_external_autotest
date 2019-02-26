@@ -14,4 +14,3 @@ class Values(object):
     has_keyboard = False
     chrome_ec = True
     ec_capability = ['arm', 'battery', 'charging', 'lid']
-    smm_store = False
