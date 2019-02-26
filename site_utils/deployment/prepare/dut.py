@@ -14,29 +14,57 @@ from __future__ import print_function
 
 import time
 
+import common
+from autotest_lib.server import hosts
+from autotest_lib.server import site_utils as server_utils
+from autotest_lib.server.hosts import host_info
+from autotest_lib.server.hosts import servo_host
 
-def prepare_servo(servo):
-    """Prepare servo connected to host for installation steps.
 
-    @param servo  A server.hosts.ServoHost object.
+def create_host(hostname, board, model, servo_hostname, servo_port,
+                servo_serial=None):
+    """Create a server.hosts.CrosHost object to use for DUT preparation.
+
+    This object contains just enough inventory data to be able to prepare the
+    DUT for lab deployment. It does not contain any reference to AFE / Skylab so
+    that DUT preparation is guaranteed to be isolated from the scheduling
+    infrastructure.
+
+    @param hostname:        FQDN of the host to prepare.
+    @param board:           The autotest board label for the DUT.
+    @param model:           The autotest model label for the DUT.
+    @param servo_hostname:  FQDN of the servo host controlling the DUT.
+    @param servo_port:      Servo host port used for the controlling servo.
+    @param servo_serial:    (Optional) Serial number of the controlling servo.
+
+    @return a server.hosts.Host object.
     """
-    # Stopping `servod` on the servo host will force `repair()` to
-    # restart it.  We want that restart for a few reasons:
-    #   + `servod` caches knowledge about the image on the USB stick.
-    #     We want to clear the cache to force the USB stick to be
-    #     re-imaged unconditionally.
-    #   + If there's a problem with servod that verify and repair
-    #     can't find, this provides a UI through which `servod` can
-    #     be restarted.
-    servo.run('stop servod PORT=%d' % servo.servo_port,
-              ignore_status=True)
-    servo.repair()
+    labels = [
+            'board:%s' % board,
+            'model:%s' % model,
+    ]
+    attributes = {
+            servo_host.SERVO_HOST_ATTR: servo_hostname,
+            servo_host.SERVO_PORT_ATTR: servo_port,
+    }
+    if servo_serial is not None:
+        attributes[servo_host.SERVO_SERIAL_ATTR] = servo_serial
 
-    # Don't timeout probing for the host usb device, there could be a bunch
-    # of servos probing at the same time on the same servo host.  And
-    # since we can't pass None through the xml rpcs, use 0 to indicate None.
-    if not servo.get_servo().probe_host_usb_dev(timeout=0):
-        raise Exception('No USB stick detected on Servo host')
+    store = host_info.InMemoryHostInfoStore(info=host_info.HostInfo(
+            labels=labels,
+            attributes=attributes,
+    ))
+    machine_dict = {
+            'hostname': hostname,
+            'host_info_store': store,
+            'afe_host': server_utils.EmptyAFEHost(),
+    }
+    host = hosts.create_host(machine_dict)
+    servo = servo_host.ServoHost(
+            **servo_host.get_servo_args_for_host(host))
+    _prepare_servo(servo)
+    host.set_servo_host(servo)
+    return host
 
 
 def download_image_to_servo_usb(host, build):
@@ -101,3 +129,27 @@ def install_test_image(host):
     @param host   servers.host.Host object.
     """
     host.servo_install()
+
+
+def _prepare_servo(servo):
+    """Prepare servo connected to host for installation steps.
+
+    @param servo  A server.hosts.ServoHost object.
+    """
+    # Stopping `servod` on the servo host will force `repair()` to
+    # restart it.  We want that restart for a few reasons:
+    #   + `servod` caches knowledge about the image on the USB stick.
+    #     We want to clear the cache to force the USB stick to be
+    #     re-imaged unconditionally.
+    #   + If there's a problem with servod that verify and repair
+    #     can't find, this provides a UI through which `servod` can
+    #     be restarted.
+    servo.run('stop servod PORT=%d' % servo.servo_port,
+              ignore_status=True)
+    servo.repair()
+
+    # Don't timeout probing for the host usb device, there could be a bunch
+    # of servos probing at the same time on the same servo host.  And
+    # since we can't pass None through the xml rpcs, use 0 to indicate None.
+    if not servo.get_servo().probe_host_usb_dev(timeout=0):
+        raise Exception('No USB stick detected on Servo host')
