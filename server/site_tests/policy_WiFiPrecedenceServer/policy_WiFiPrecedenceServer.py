@@ -35,24 +35,25 @@ class policy_WiFiPrecedenceServer(wifi_cell_test_base.WiFiCellTestBase):
             # again.
             logging.info(e)
 
-        self.clear_tpm_if_owned()
-        self.host.reboot()
+        if self.test == 'device_vs_user':
+            self.clear_tpm_if_owned()
+            self.host.reboot()
 
-    def run_once(self, host=None, ap_configs=None, user_network_config=None,
-                 device_network_config=None, precedence=None, test=None):
+
+    def run_once(self, host=None, ap_configs=None, network1_config=None,
+                 network2_config=None, precedence=None, test=None):
         """
         Set up the APs then run the client side tests.
 
         Clears the TPM because because the client test needs to enroll.
 
         @param host: A host object representing the DUT.
-        @param ap_configs: List containing HostapConfig objects to setup
-            APs.
-        @param user_network_config: NetworkConfig object for the client-side
-            configuration of the user network.
-        @param user_network_config: NetworkConfig object for the client-side
-            configuration of the device network.
-        @param precedence: One of 'user' or 'device': which of the APs the
+        @param ap_configs: List containing HostapConfig objects to setup APs.
+        @param network1_config: NetworkConfig object for the client-side
+            configuration of network1.
+        @param network1_config: NetworkConfig object for the client-side
+            configuration of network2.
+        @param precedence: One of 1 or 2: which of the APs the
             DUT should connect to.
 
         """
@@ -63,9 +64,11 @@ class policy_WiFiPrecedenceServer(wifi_cell_test_base.WiFiCellTestBase):
             self.context.configure(ap_config, multi_interface=True)
 
         self.host = host
+        self.test = test
 
         # Clear TPM to ensure that client test can enroll device.
-        self.clear_tpm_if_owned()
+        if self.test == 'device_vs_user':
+            self.clear_tpm_if_owned()
 
         client_at = autotest.Autotest(self.host)
 
@@ -73,10 +76,10 @@ class policy_WiFiPrecedenceServer(wifi_cell_test_base.WiFiCellTestBase):
                 'policy_WiFiPrecedence',
                 # The config objects must be pickled before they can be
                 # passed to the client test.
-                user_network_pickle=pickle.dumps(user_network_config),
-                device_network_pickle=pickle.dumps(device_network_config),
+                network1_pickle=pickle.dumps(network1_config),
+                network2_pickle=pickle.dumps(network2_config),
                 precedence=precedence,
-                test=test,
+                test=self.test,
                 check_client_result=True)
 
         self.context.router.deconfig()
