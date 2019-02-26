@@ -14,6 +14,7 @@ from autotest_lib.client.common_lib.cros import enrollment
 from autotest_lib.client.common_lib.cros import policy
 from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import httpd
+from autotest_lib.client.cros.input_playback import keyboard
 from autotest_lib.client.cros.enterprise import enterprise_fake_dmserver
 
 from telemetry.core import exceptions
@@ -63,7 +64,8 @@ DEVICE_POLICY_DICT = {
     'DeviceEphemeralUsersEnabled': 'ephemeral_users_enabled',
     'DeviceOpenNetworkConfiguration': 'open_network_configuration',
     'DeviceRollbackToTargetVersion': 'rollback_to_target_version',
-    'DeviceTargetVersionPrefix': 'target_version_prefix'
+    'DeviceTargetVersionPrefix': 'target_version_prefix',
+    'SystemTimezone': 'timezone'
 }
 # Default settings for managed user policies
 DEFAULT_POLICY = {
@@ -787,6 +789,15 @@ class EnterprisePolicyTest(test.test):
                                  'the test page: %s\n %r' %(tab.url, err))
         return elements
 
+    def log_out_via_keyboard(self):
+        """
+        Logs out of the device using the keyboard shortcut
+
+        """
+        _keyboard = keyboard.Keyboard()
+        _keyboard.press_key('ctrl+shift+q')
+        _keyboard.press_key('ctrl+shift+q')
+        _keyboard.close()
 
 def encode_json_string(object_value):
     """Convert given value to JSON format string.
