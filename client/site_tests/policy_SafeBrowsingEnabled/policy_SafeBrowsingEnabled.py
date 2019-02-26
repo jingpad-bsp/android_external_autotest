@@ -6,8 +6,6 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
-from telemetry.core import exceptions
-
 
 class policy_SafeBrowsingEnabled(
         enterprise_policy_base.EnterprisePolicyTest):
@@ -25,21 +23,6 @@ class policy_SafeBrowsingEnabled(
     safety_browsing_disabled = "Disabled: safebrowsing.enabled"
 
 
-    # TODO(rzakarian): move this function to enterprise_policy_base.
-    def _check_page_readiness(self, tab, command):
-        """
-        Checks to see if page has fully loaded.
-
-        @returns True if loaded and False if not.
-
-        """
-        try:
-            tab.EvaluateJavaScript(command)
-            return True
-        except exceptions.EvaluateException:
-            return False
-
-
     def _check_safety_browsing_page(self, case):
         """
         Opens a new chrome://safe-browsing/ page and checks the settings for
@@ -53,7 +36,7 @@ class policy_SafeBrowsingEnabled(
             'document.getElementById("preferences-list").'
             'children[0].innerText;')
         utils.poll_for_condition(
-            lambda: self._check_page_readiness(
+            lambda: self.check_page_readiness(
                 active_tab, page_scrape_cmd),
             exception=error.TestFail('Page is not ready.'),
             timeout=5,
@@ -68,6 +51,7 @@ class policy_SafeBrowsingEnabled(
             if safety_status != self.safety_browsing_disabled:
                 raise error.TestFail('Safety Browsing is enabled'
                                      ' but should be disabled.')
+
 
     def run_once(self, case):
         """
