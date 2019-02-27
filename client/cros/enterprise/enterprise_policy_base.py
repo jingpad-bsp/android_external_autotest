@@ -6,6 +6,10 @@ import copy
 import json
 import logging
 import os
+import time
+
+from autotest_lib.client.common_lib.cros import arc
+from autotest_lib.client.common_lib.cros.arc import is_android_container_alive
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -86,7 +90,8 @@ DEFAULT_POLICY = {
     'SmsMessagesAllowed': False
 }
 
-class EnterprisePolicyTest(test.test):
+
+class EnterprisePolicyTest(arc.ArcTest, test.test):
     """Base class for Enterprise Policy Tests."""
 
     WEB_PORT = 8080
@@ -130,6 +135,7 @@ class EnterprisePolicyTest(test.test):
         self.gaia_id = gaia_id
         self.dms_name = dms_name
         self.dms_is_fake = (env == 'dm-fake')
+        self.arc_enabled = False
         self._enforce_variable_restrictions()
 
         # Install protobufs and add import path.
@@ -188,6 +194,10 @@ class EnterprisePolicyTest(test.test):
         if self.cr and self._auto_logout:
             self.cr.close()
 
+        # Cleanup the ARC test if needed.
+        if self.arc_enabled:
+            super(EnterprisePolicyTest, self).cleanup()
+
 
     def start_webserver(self):
         """Set up HTTP Server to serve pages from enterprise directory."""
@@ -215,11 +225,20 @@ class EnterprisePolicyTest(test.test):
                                   'env=dm-test.')
 
 
-    def setup_case(self, user_policies={}, suggested_user_policies={},
-                   device_policies={}, extension_policies={},
+    def setup_case(self,
+                   user_policies={},
+                   suggested_user_policies={},
+                   device_policies={},
+                   extension_policies={},
                    skip_policy_value_verification=False,
-                   enroll=False, auto_login=True, auto_logout=True,
-                   init_network_controller=False, extension_paths=[],
+                   enroll=False,
+                   auto_login=True,
+                   auto_logout=True,
+                   init_network_controller=False,
+                   arc_mode=False,
+                   setup_arc=True,
+                   use_clouddpc_test=None,
+                   extension_paths=[],
                    extra_chrome_flags=[]):
         """Set up DMS, log in, and verify policy values.
 
@@ -242,6 +261,9 @@ class EnterprisePolicyTest(test.test):
         @param auto_login: Sign in to chromeos.
         @param auto_logout: Sign out of chromeos when test is complete.
         @param init_network_controller: whether to init network controller.
+        @param arc_mode: whether to enable arc_mode on chrome.chrome().
+        @param setup_arc: whether to run setup_arc in arc.Arctest.
+        @param use_clouddpc_test: whether to run the cloud dpc test.
         @param extension_paths: list of extensions to install.
         @param extra_chrome_flags: list of flags to add to Chrome.
 
@@ -249,6 +271,13 @@ class EnterprisePolicyTest(test.test):
         @raises error.TestFail if |policy_name| and |policy_value| are not
                 shown on the Policies page.
         """
+
+        # Need a real account, for now. Note: Even though the account is 'real'
+        # you can still use a fake DM server.
+        if arc_mode and self.username == USERNAME:
+            self.username = 'tester50@managedchrome.com'
+            self.password = 'Test0000'
+
         self._auto_logout = auto_logout
 
         if self.dms_is_fake:
@@ -256,10 +285,13 @@ class EnterprisePolicyTest(test.test):
                 user_policies, suggested_user_policies, device_policies,
                 extension_policies))
 
-        self._create_chrome(enroll=enroll, auto_login=auto_login,
+        self._create_chrome(enroll=enroll,
+                            auto_login=auto_login,
                             init_network_controller=init_network_controller,
                             extension_paths=extension_paths,
+                            arc_mode=arc_mode,
                             extra_chrome_flags=extra_chrome_flags)
+
         # Skip policy check upon request or if we enroll but don't log in.
         skip_policy_value_verification = (
                 skip_policy_value_verification or not auto_login)
@@ -268,6 +300,145 @@ class EnterprisePolicyTest(test.test):
                                      device_policies)
             self.verify_extension_stats(extension_policies)
 
+        if arc_mode:
+            self.start_arc(use_clouddpc_test, setup_arc)
+
+    def start_arc(self, use_clouddpc_test, setup_arc):
+        '''
+        Starts ARC when creating the chrome object. Specifically will create
+        the ADB shell container for testing use.
+
+        We are NOT going to use the arc class initialize, it overwrites the
+        creation of chrome.chrome() in a way which cannot support the DM sever.
+
+        Instead we check for the android container, and run arc_setup if
+        needed. Note: To use the cloud dpc test, you MUST also run setup_arc
+
+        @param setup_arc: whether to run setup_arc in arc.Arctest.
+        @param use_clouddpc_test: bool, run_clouddpc_test() or not.
+        '''
+        _APP_FILENAME = 'arc_test_release_signed.apk'
+        _DEP_PACKAGE = 'CloudDPCTest-apks'
+        _PKG_NAME = 'com.google.android.apps.work.clouddpc.e2etests'
+
+        # By default on boot the container is alive, and will not close until
+        # a user with ARC disabled logs in. This wait accounts for that.
+        time.sleep(3)
+
+        if use_clouddpc_test and not setup_arc:
+            raise error.TestFail('For cloud DPC setup_arc cannot be disabled')
+
+        if is_android_container_alive():
+            logging.info('Android Container is alive!')
+        else:
+            logging.error('Android Container is not alive!')
+
+        # Install the clouddpc test.
+        if use_clouddpc_test:
+            self.arc_setup(dep_packages=_DEP_PACKAGE,
+                           apks=[_APP_FILENAME],
+                           full_pkg_names=[_PKG_NAME])
+            self.run_clouddpc_test()
+        else:
+            if setup_arc:
+                self.arc_setup()
+
+        self.arc_enabled = True
+
+    def run_clouddpc_test(self):
+        """
+        Run clouddpc end-to-end test and fail this test if it fails.
+
+        Assumes start_arc() was run with use_clouddpc_test.
+
+        Determines the policy values to pass to the test from those set in
+        Chrome OS.
+
+        @raises error.TestFail if the test does not pass.
+
+        """
+        policy_blob = self._get_clouddpc_policies()
+        policy_blob_str = json.dumps(policy_blob, separators=(',',':'))
+        cmd = ('am instrument -w -e policy "%s" '
+               'com.google.android.apps.work.clouddpc.e2etests/'
+               '.ArcInstrumentationTestRunner') % policy_blob_str
+
+        # Run the command as a shell script so that its length is not capped.
+        temp_shell_script_path = '/sdcard/tmp.sh'
+        arc.write_android_file(temp_shell_script_path, cmd)
+
+        logging.info('Running clouddpc test with policy: %s', policy_blob_str)
+        results = arc.adb_shell('sh ' + temp_shell_script_path).strip()
+        arc.remove_android_file(temp_shell_script_path)
+        if results.find('FAILURES!!!') >= 0:
+            logging.info('CloudDPC E2E Results:\n%s', results)
+            err_msg = results.splitlines()[-1]
+            raise error.TestFail('CloudDPC E2E failure: %s' % err_msg)
+
+        logging.debug(results)
+        logging.info('CloudDPC E2E test passed!')
+
+    def _get_clouddpc_policies(self):
+        """
+        Return the relevant CloudDPC policies and their values for e2e testing.
+
+        The CloudDPC end-to-end test takes in a string of the policies which
+        are set.  These policies don't have the same names in Chrome OS, or
+        they don't map 1:1 with Chrome OS's policies.
+
+        Figuring out the values from chrome://policy (rather than creating a
+        dict of the policies under test) will prevent the test from failing on
+        accounts which happen to have unrelated policies set.
+
+        Constructs a json object of the CloudDPC policy names and values.
+        Finds the values which map 1:1 to Chrome OS and handles the exceptions.
+
+        @returns a dict where the keys are CloudDPC policy names and the values
+                 are as shown on chrome://policy.
+
+        """
+
+        # CloudDPC policy -> value
+        policy_map = {}
+
+        # The policies which are a 1:1 rename between Chrome OS and CloudDPC.
+        chromeos_to_clouddpc = {
+            'AudioCaptureAllowed': 'unmuteMicrophoneDisabled',
+            'DefaultGeolocationSetting': 'shareLocationDisabled',
+            'DeviceBlockDevmode': 'debuggingFeaturesDisabled',
+            'DisableScreenshots': 'screenCaptureDisabled',
+            'ExternalStorageDisabled': 'usbFileTransferDisabled',
+            'VideoCaptureAllowed': 'cameraDisabled',
+        }
+
+        # Only check caCerts if the value is allowed to be passed to Android.
+        caCerts_passed = self._get_policy_value_from_new_tab(
+            'ArcCertificatesSyncMode')
+        if caCerts_passed:
+            chromeos_to_clouddpc['OpenNetworkConfiguration'] = 'caCerts'
+
+        # The policies which take some special handling to convert.
+        exception_policies = ['URLBlacklist', 'URLWhitelist', 'ArcPolicy']
+
+        values = self._get_policy_values_from_new_tab(
+            chromeos_to_clouddpc.keys() + exception_policies)
+
+        # Map the 1:1 policies: Android policy name to ChromeOS policy value.
+        for chromeos_policy in chromeos_to_clouddpc:
+            clouddpc_policy = chromeos_to_clouddpc[chromeos_policy]
+            value = values[chromeos_policy]
+            if value is not None:
+                policy_map[clouddpc_policy] = value
+
+        # ArcPolicy value contains some stand-alone CloudDPC policies.
+        arc_policy_value = values['ArcPolicy']
+
+        if arc_policy_value:
+            for key in ['applications', 'accountTypesWithManagementDisabled']:
+                if key in arc_policy_value:
+                    policy_map[key] = arc_policy_value[key]
+
+        return policy_map
 
     def _make_json_blob(self, user_policies={}, suggested_user_policies={},
                         device_policies={}, extension_policies={}):
@@ -335,7 +506,6 @@ class EnterprisePolicyTest(test.test):
 
         if extension_p:
             management_dict['google/chrome/extension'] = extension_p
-
         logging.info('Created policy blob: %s', management_dict)
         return encode_json_string(management_dict)
 
@@ -694,9 +864,13 @@ class EnterprisePolicyTest(test.test):
         return env_flag_list
 
 
-    def _create_chrome(self, enroll=False, auto_login=True,
+    def _create_chrome(self,
+                       enroll=False,
+                       auto_login=True,
+                       arc_mode=False,
                        init_network_controller=False,
-                       extension_paths=[], extra_chrome_flags=[]):
+                       extension_paths=[],
+                       extra_chrome_flags=[]):
         """
         Create a Chrome object. Enroll and/or sign in.
 
@@ -704,6 +878,7 @@ class EnterprisePolicyTest(test.test):
 
         @param enroll: enroll the device.
         @param auto_login: sign in to chromeos.
+        @param arc_mode: enable arc mode.
         @param extension_paths: list of extensions to install.
         @param init_network_controller: whether to init network controller.
         @param extra_chrome_flags: list of flags to add.
@@ -732,16 +907,27 @@ class EnterprisePolicyTest(test.test):
                         auto_login=auto_login)
 
         elif auto_login:
-            self.cr = chrome.Chrome(
-                    extra_browser_args=extra_flags,
-                    username=self.username,
-                    password=self.password,
-                    gaia_login=not self.dms_is_fake,
-                    disable_gaia_services=self.dms_is_fake,
-                    autotest_ext=True,
-                    init_network_controller=init_network_controller,
-                    expect_policy_fetch=True,
-                    extension_paths=extension_paths)
+            if arc_mode:
+                self.cr = chrome.Chrome(extension_paths=extension_paths,
+                                        username=self.username,
+                                        password=self.password,
+                                        arc_mode=arc_mode,
+                                        disable_gaia_services=False,
+                                        disable_arc_opt_in=False,
+                                        enterprise_arc_test=True,
+                                        extra_browser_args=extra_flags)
+
+            else:
+                self.cr = chrome.Chrome(
+                        extra_browser_args=extra_flags,
+                        username=self.username,
+                        password=self.password,
+                        gaia_login=not self.dms_is_fake,
+                        disable_gaia_services=self.dms_is_fake,
+                        autotest_ext=True,
+                        init_network_controller=init_network_controller,
+                        expect_policy_fetch=True,
+                        extension_paths=extension_paths)
         else:
             self.cr = chrome.Chrome(
                     auto_login=False,
@@ -750,6 +936,8 @@ class EnterprisePolicyTest(test.test):
                     autotest_ext=True,
                     expect_policy_fetch=True)
 
+        # Used by arc.py to determine the state of the chrome obj
+        self.initialized = True
         if auto_login:
             if not cryptohome.is_vault_mounted(user=self.username,
                                                allow_fail=True):
