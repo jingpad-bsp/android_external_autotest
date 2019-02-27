@@ -20,6 +20,7 @@ from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros.input_playback import keyboard
 from autotest_lib.client.cros.enterprise import enterprise_fake_dmserver
+from py_utils import TimeoutException
 
 from telemetry.core import exceptions
 
@@ -70,8 +71,11 @@ DEVICE_POLICY_DICT = {
     'DeviceRollbackToTargetVersion': 'rollback_to_target_version',
     'DeviceTargetVersionPrefix': 'target_version_prefix',
     'SystemTimezone': 'timezone',
-    'ReportUploadFrequency': 'device_status_frequency'
+    'ReportUploadFrequency': 'device_status_frequency',
+    'DeviceLocalAccounts': 'account',
+    'DeviceLocalAccountAutoLoginId': 'auto_login_id'
 }
+
 # Default settings for managed user policies
 DEFAULT_POLICY = {
     'AllowDinosaurEasterEgg': False,
@@ -232,6 +236,7 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
                    device_policies={},
                    extension_policies={},
                    skip_policy_value_verification=False,
+                   kiosk_mode=False,
                    enroll=False,
                    auto_login=True,
                    auto_logout=True,
@@ -280,6 +285,7 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
             self.password = 'Test0000'
 
         self._auto_logout = auto_logout
+        self._kiosk_mode = kiosk_mode
 
         if self.dms_is_fake:
             self.fake_dm_server.setup_policy(self._make_json_blob(
@@ -480,7 +486,8 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
                     policies_to_pop.append(policy)
                 elif isinstance(value, dict):
                     policies_dict[policy] = encode_json_string(value)
-                elif isinstance(value, list):
+                elif isinstance(value, list) and not (
+                    policies_dict in [fixed_device_p]):
                     if value and isinstance(value[0], dict):
                         policies_dict[policy] = encode_json_string(value)
             for policy in policies_to_pop:
@@ -899,7 +906,21 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
                     extension_paths=extension_paths,
                     expect_policy_fetch=True)
             if self.dms_is_fake:
-                enrollment.EnterpriseFakeEnrollment(
+                if self._kiosk_mode:
+                    # This try is needed for kiosk; without it the test fails
+                    # in telemtry code in _WaitForEnterpriseWebview. Webview
+                    # never loads since it's kiosk.
+                    # TODO(rzakarian): Try to modify telemetry code to not
+                    # wait for Webview when in kiosk mode.
+                    # http://crbug.com/934876.
+                    try:
+                        enrollment.EnterpriseFakeEnrollment(
+                            self.cr.browser, self.username, self.password,
+                            self.gaia_id, auto_login=auto_login)
+                    except TimeoutException:
+                        pass
+                else:
+                    enrollment.EnterpriseFakeEnrollment(
                         self.cr.browser, self.username, self.password,
                         self.gaia_id, auto_login=auto_login)
             else:
