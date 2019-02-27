@@ -41,6 +41,13 @@ class display_Resolution(test.test):
     # These boards are unable to work with servo - crosbug.com/p/27591.
     INCOMPATIBLE_SERVO_BOARDS = ['daisy', 'falco']
 
+    # These boards and EDID resolutions are not compatible -crbug.com/905415
+    INCOMPATIBLE_EDID_RESOLUTION_LIST =  [
+           ('EDIDv1', 1280, 800),
+           ('EDIDv1', 1600, 900),
+    ]
+    INCOMPATIBLE_EDID_BOARDS = [ 'coral', 'eve', 'grunt', 'nami']
+
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False,
                  test_reboot=False, test_lid_close_open=False,
                  resolution_list=None):
@@ -71,6 +78,13 @@ class display_Resolution(test.test):
         errors = []
         if resolution_list is None:
             resolution_list = self.DEFAULT_RESOLUTION_LIST
+
+        # Remove board specific incompatible EDIDs.
+        if board_name in self.INCOMPATIBLE_EDID_BOARDS:
+            for edid_value in self.INCOMPATIBLE_EDID_RESOLUTION_LIST:
+                if edid_value in resolution_list:
+                    resolution_list.remove(edid_value)
+
         chameleon_supported = True
         for chameleon_port in finder.iterate_all_ports():
             screen_test = chameleon_screen_test.ChameleonScreenTest(
