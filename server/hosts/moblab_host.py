@@ -59,7 +59,11 @@ class UpstartServiceNotRunning(error.AutoservError):
                 state.
         """
         super(UpstartServiceNotRunning, self).__init__(
-                'Upstart service %s not in running state.' % service_name)
+                'Upstart service %s not in running state. Most likely this '
+                'means moblab did not boot correctly, check the boot logs '
+                'for detailed error messages as to see why this service was '
+                'not started.' %
+                service_name)
 
 
 class MoblabHost(cros_host.CrosHost):
