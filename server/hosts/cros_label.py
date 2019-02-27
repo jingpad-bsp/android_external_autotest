@@ -25,16 +25,16 @@ from autotest_lib.site_utils import hwid_lib
 LsbOutput = collections.namedtuple('LsbOutput', ['unibuild', 'board'])
 
 def _parse_lsb_output(host):
-  """Parses the LSB output and returns key data points for labeling.
+    """Parses the LSB output and returns key data points for labeling.
 
-  @param host: Host that the command will be executed against
-  @returns: LsbOutput with the result of parsing the /etc/lsb-release output
-  """
-  release_info = utils.parse_cmd_output('cat /etc/lsb-release',
-                                        run_method=host.run)
+    @param host: Host that the command will be executed against
+    @returns: LsbOutput with the result of parsing the /etc/lsb-release output
+    """
+    release_info = utils.parse_cmd_output('cat /etc/lsb-release',
+                                          run_method=host.run)
 
-  unibuild = release_info.get('CHROMEOS_RELEASE_UNIBUILD') == '1'
-  return LsbOutput(unibuild, release_info['CHROMEOS_RELEASE_BOARD'])
+    unibuild = release_info.get('CHROMEOS_RELEASE_UNIBUILD') == '1'
+    return LsbOutput(unibuild, release_info['CHROMEOS_RELEASE_BOARD'])
 
 
 class BoardLabel(base_label.StringPrefixLabel):
@@ -48,6 +48,9 @@ class BoardLabel(base_label.StringPrefixLabel):
         # label switching on us if the wrong builds get put on the devices.
         # crbug.com/624207 records one event of the board label switching
         # unexpectedly on us.
+        board = host.host_info_store.get().board
+        if board:
+            return [board]
         for label in host._afe_host.labels:
             if label.startswith(self._NAME + ':'):
                 return [label.split(':')[-1]]
@@ -63,6 +66,9 @@ class ModelLabel(base_label.StringPrefixLabel):
     def generate_labels(self, host):
         # Based on the issue explained in BoardLabel, return the existing
         # label if it has already been set once.
+        model = host.host_info_store.get().model
+        if model:
+            return [model]
         for label in host._afe_host.labels:
             if label.startswith(self._NAME + ':'):
                 return [label.split(':')[-1]]
