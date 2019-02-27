@@ -61,8 +61,10 @@ class Chrome(object):
                  disable_app_sync=False,
                  disable_play_auto_install=False,
                  disable_locale_sync=True,
-                 init_network_controller=False, login_delay=0,
-                 enable_assistant=False):
+                 enable_assistant=False,
+                 enterprise_arc_test=False,
+                 init_network_controller=False,
+                 login_delay=0):
         """
         Constructor of telemetry wrapper.
 
@@ -105,6 +107,7 @@ class Chrome(object):
         @param disable_play_auto_install:
             Adds --arc-disable-play-auto-install to browser args and this
             disables ARC Play Auto Install flow. By default it is enabled.
+        @param enterprise_arc_test: Skips opt_in causing enterprise tests to fail
         @param disable_locale_sync:
             Adds --arc-disable-locale-sync to browser args and this
             disables locale sync between Chrome and Android container. In case
@@ -215,12 +218,13 @@ class Chrome(object):
                         if arc_util.should_start_arc(arc_mode):
                             arc_util.enable_play_store(self.autotest_ext, True)
                     else:
-                        wait_for_provisioning = \
-                                arc_mode != arc_common.ARC_MODE_ENABLED_ASYNC
-                        arc_util.opt_in(
-                                browser = self.browser,
-                                autotest_ext = self.autotest_ext,
-                                wait_for_provisioning = wait_for_provisioning)
+                        if not enterprise_arc_test:
+                            wait_for_provisioning = \
+                                    arc_mode != arc_common.ARC_MODE_ENABLED_ASYNC
+                            arc_util.opt_in(
+                                    browser = self.browser,
+                                    autotest_ext = self.autotest_ext,
+                                    wait_for_provisioning = wait_for_provisioning)
                     arc_util.post_processing_after_browser(self)
                 if enable_assistant:
                     assistant_util.enable_assistant(self.autotest_ext)
