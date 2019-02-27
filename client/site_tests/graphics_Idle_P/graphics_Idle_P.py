@@ -223,7 +223,7 @@ class graphics_Idle_P(graphics_utils.GraphicsTest):
         rk3288_node = '/sys/devices/ffa30000.gpu/'
         rk3399_node = '/sys/devices/platform/ff9a0000.gpu/'
         mt8173_node = '/sys/devices/soc/13000000.mfgsys-gpu/'
-        mt8183_node = '/sys/devices/platform/13040000.mali/'
+        mt8183_node = '/sys/devices/platform/soc/13040000.mali/'
 
         if self._cpu_type == 'exynos5':
             if os.path.isdir(exynos_node):
