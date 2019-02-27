@@ -45,7 +45,7 @@ def set_power(host, new_state, timeout_mins=RPM_CALL_TIMEOUT_MINS):
             args_tuple = (host.hostname,
                           info.attributes[POWERUNIT_HOSTNAME_KEY],
                           info.attributes[POWERUNIT_OUTLET_KEY],
-                          info.attributes.get(HYDRA_HOSTNAME_KEY, ''),
+                          info.attributes.get(HYDRA_HOSTNAME_KEY),
                           new_state)
         except KeyError as e:
             raise RemotePowerException('Powerunit information not found. '
@@ -59,7 +59,9 @@ def _set_power(args_tuple, timeout_mins=RPM_CALL_TIMEOUT_MINS):
     @param args_tuple: A args tuple for rpc call. See example below:
         (hostname, powerunit_hostname, outlet, hydra_hostname, new_state)
     """
-    client = xmlrpclib.ServerProxy(RPM_FRONTEND_URI, verbose=False)
+    client = xmlrpclib.ServerProxy(RPM_FRONTEND_URI,
+                                   verbose=False,
+                                   allow_none=True)
     timeout = None
     result = None
     endpoint = (client.set_power_via_poe if len(args_tuple) == 2
