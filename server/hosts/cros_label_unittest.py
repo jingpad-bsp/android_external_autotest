@@ -11,6 +11,7 @@ from autotest_lib.server import utils
 from autotest_lib.server.hosts.cros_label import BoardLabel
 from autotest_lib.server.hosts.cros_label import ModelLabel
 from autotest_lib.server.hosts.cros_label import SparseCoverageLabel
+from autotest_lib.server.hosts import host_info
 
 # pylint: disable=missing-docstring
 
@@ -83,10 +84,19 @@ class MockHost(object):
     def __init__(self, labels, *args):
         self._afe_host = MockAFEHost(labels)
         self.mock_cmds = {c.cmd: c for c in args}
+        info = host_info.HostInfo(labels=labels)
+        self.host_info_store = host_info.InMemoryHostInfoStore(info)
 
     def run(self, command, **kwargs):
         """Finds the matching result by command value"""
         return self.mock_cmds[command]
+
+
+class MockHostWithoutAFE(MockHost):
+
+    def __init__(self, labels, *args):
+        super(MockHostWithoutAFE, self).__init__(labels, *args)
+        self._afe_host = utils.EmptyAFEHost()
 
 
 class ModelLabelTests(unittest.TestCase):
@@ -140,6 +150,10 @@ CHROMEOS_RELEASE_BOARD=pyro
         host = MockHost(['model:existing'])
         self.assertEqual(ModelLabel().generate_labels(host), ['existing'])
 
+    def test_existing_label_in_host_info_store(self):
+        host = MockHostWithoutAFE(['model:existing'])
+        self.assertEqual(ModelLabel().generate_labels(host), ['existing'])
+
 
 class BoardLabelTests(unittest.TestCase):
     """Unit tests for BoardLabel"""
@@ -151,6 +165,10 @@ class BoardLabelTests(unittest.TestCase):
 
     def test_existing_label(self):
         host = MockHost(['board:existing'])
+        self.assertEqual(BoardLabel().generate_labels(host), ['existing'])
+
+    def test_existing_label_in_host_info_store(self):
+        host = MockHostWithoutAFE(['board:existing'])
         self.assertEqual(BoardLabel().generate_labels(host), ['existing'])
 
 
