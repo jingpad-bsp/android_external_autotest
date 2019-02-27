@@ -85,12 +85,17 @@ def _ensure_adb_connected(target, adb_option=""):
     @param target: Device to connect to.
     @param adb_option: adb global options configuration.
     """
+    did_reconnect = False
     while not _is_adb_connected(target, adb_option):
-        logging.info('adb not connected. attempting to reconnect')
+        if not did_reconnect:
+            logging.info('adb not connected. attempting to reconnect')
+            did_reconnect = True
         _run_adb_cmd('connect %s' % pipes.quote(target),
                      adb_option=adb_option,
                      timeout=_ADB_COMMAND_TIMEOUT_SECONDS, ignore_status=True)
         time.sleep(_ADB_CONNECT_INTERVAL_SECONDS)
+    if did_reconnect:
+        logging.info('Reconnection succeeded')
 
 
 if __name__ == '__main__':
