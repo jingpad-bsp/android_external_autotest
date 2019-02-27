@@ -118,4 +118,8 @@ class Values(object):
     # Timeout of confirming DUT doesn't boot on USB image in Recovery screen
     usb_image_boot_timeout = 180
 
+    # Check SMMSTORE exists in FMap for x86 boards
     smm_store = True
+
+    # True if the lid can wake the system from a powered off state
+    lid_wake_from_power_off = True

@@ -13,4 +13,3 @@ class Values(object):
     ec_has_powerbtn_cmd = False
     use_u_boot = True
     has_eventlog = False
-    smm_store = False

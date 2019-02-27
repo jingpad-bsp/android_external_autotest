@@ -19,17 +19,25 @@ class TestSystemMetricsCollector(unittest.TestCase):
         self.assertEqual(11, metric.values[0])
 
     def test_cpu_usage_metric(self):
-        metric = system_metrics_collector.CpuUsageMetric(FakeSystemFacade())
-        # Collect twice since the first collection only sets the baseline for
-        # the following diff calculations.
+        system_facade = FakeSystemFacade()
+        metric = system_metrics_collector.CpuUsageMetric(system_facade)
+        metric.pre_collect()
+        system_facade.active_cpu_time += 0.1
         metric.collect_metric()
-        metric.collect_metric()
-        self.assertAlmostEqual(40, metric.values[0])
+        self.assertAlmostEqual(50, metric.values[0])
 
     def test_tempature_metric(self):
         metric = system_metrics_collector.TemperatureMetric(FakeSystemFacade())
         metric.collect_metric()
         self.assertAlmostEqual(43, metric.values[0])
+
+    def test_storage_written_metric(self):
+        system_facade = FakeSystemFacade()
+        metric = system_metrics_collector.StorageWrittenMetric(system_facade)
+        metric.pre_collect()
+        system_facade.storage_statistics['written_kb'] += 1337
+        metric.collect_metric()
+        self.assertEqual(1337, metric.values[0])
 
     def test_collector(self):
         collector = system_metrics_collector.SystemMetricsCollector(
@@ -49,6 +57,7 @@ class TestSystemMetricsCollector(unittest.TestCase):
         # the default metric set.
         collector = system_metrics_collector.SystemMetricsCollector(
                 FakeSystemFacade())
+        collector.pre_collect()
         collector.collect_snapshot()
         collector.collect_snapshot()
         collector.write_metrics(lambda **kwargs: None)
@@ -83,6 +92,13 @@ class FakeSystemFacade(object):
         self.file_handles = 11
         self.active_cpu_time = 0.4
         self.current_temperature_max = 43
+        self.storage_statistics = {
+            'transfers_per_s': 4.45,
+            'read_kb_per_s': 10.33,
+            'written_kb_per_s':  292.40,
+            'read_kb': 665582,
+            'written_kb': 188458,
+        }
 
     def get_mem_total(self):
         return self.mem_total_mb
@@ -101,6 +117,9 @@ class FakeSystemFacade(object):
 
     def get_current_temperature_max(self):
         return self.current_temperature_max
+
+    def get_storage_statistics(self, device=None):
+        return self.storage_statistics
 
 class TestMetric(system_metrics_collector.Metric):
     def __init__(self):

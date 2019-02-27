@@ -13,8 +13,6 @@ from autotest_lib.client.cros.chameleon import chameleon
 from autotest_lib.client.cros.input_playback import input_playback
 
 _CHECK_TIMEOUT = 20
-_GO_TO_CHANGE_BUTTON = 1
-_GO_TO_USB_PRINTER = 2
 _NOTIF_TITLE = "Successfully printed"
 _NOW_PRINTING_STATUS = "Now printing"
 _PRINTER_NAME = "HP OfficeJet g55"
@@ -100,15 +98,13 @@ class platform_PrintJob(test.test):
     def execute_print_job(self):
         """Using keyboard imput navigate to print dialog and execute a job."""
 
-        # Open dialog and press 'Change...' button
+        # Open dialog and select 'See more'
         self._open_print_dialog()
-        for x in range(_GO_TO_CHANGE_BUTTON):
-            self._press_tab()
-        self._press_enter()
+        self._press_tab()
+        self._press_down()
 
         # Navigate to and select the emulated printer
-        for x in range(_GO_TO_USB_PRINTER):
-            self._press_tab()
+        self._press_tab()
         self._press_down()
         self._press_enter()
 
@@ -166,6 +162,7 @@ class platform_PrintJob(test.test):
                            init_network_controller=True) as self.cr:
             self.navigate_to_pdf()
             usb_printer.Plug()
+            time.sleep(_SHORT_WAIT)
             self.execute_print_job()
             usb_printer.StartCapturingPrinterData()
             self.check_notification('Now printing')

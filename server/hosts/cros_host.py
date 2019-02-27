@@ -24,7 +24,6 @@ from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
-from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros.servo import plankton
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import base_label
@@ -40,7 +39,7 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 try:
     from chromite.lib import metrics
 except ImportError:
-    metrics =  utils.metrics_mock
+    metrics = utils.metrics_mock
 
 
 CONFIG = global_config.global_config
@@ -583,25 +582,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     exceptions that could be raised.
 
         """
-        def extract_from_tarball(tarball, dest_dir, image_candidates):
-            """Try extracting the image_candidates from the tarball.
-
-            @param tarball: The path of the tarball.
-            @param dest_path: The path of the destination.
-            @param image_candidates: A tuple of the paths of image candidates.
-
-            @return: The first path from the image candidates, which succeeds.
-            @raise: TestError if all the image candidates fail.
-            """
-            for image in image_candidates:
-                status = server_utils.system(
-                        ('tar xf %s -C %s %s' % (tarball, dest_dir, image)),
-                        timeout=60, ignore_status=True)
-                if status == 0:
-                    return image
-            raise error.TestError('Failed to extract the image from tarball')
-
-
         if not self.servo:
             raise error.TestError('Host %s does not have servo.' %
                                   self.hostname)
@@ -622,10 +602,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         self.hostname)
             logging.info('Will install firmware from build %s.', build)
 
-        ap_image_without_board = 'image.bin'
-        ap_image_with_board = 'image-%s.bin' % board
-        ec_image_without_board = 'ec.bin'
-        ec_image_with_board = '%s/ec.bin' % board
         ds = dev_server.ImageServer.resolve(build, self.hostname)
         ds.stage_artifacts(build, ['firmware'])
 
@@ -636,24 +612,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             ds.download_file(fwurl, local_tarball)
 
             self._clear_fw_version_labels(rw_only)
-            config = FAFTConfig(board)
-            if config.chrome_ec:
-                logging.info('Will re-program EC %snow', 'RW ' if rw_only else '')
-                ec_image = extract_from_tarball(
-                        local_tarball,
-                        tmpd.name,
-                        (ec_image_without_board, ec_image_with_board))
-                self.servo.program_ec(os.path.join(tmpd.name, ec_image), rw_only)
-            else:
-                logging.info('Not a Chrome EC, ignore re-programing it')
-            logging.info('Will re-program BIOS %snow', 'RW ' if rw_only else '')
-            ap_image = extract_from_tarball(
-                    local_tarball,
-                    tmpd.name,
-                    (ap_image_without_board, ap_image_with_board))
-            self.servo.program_bios(os.path.join(tmpd.name, ap_image), rw_only)
-            self.servo.get_power_state_controller().reset()
-            time.sleep(self.servo.BOOT_DELAY)
+            self.servo.program_firmware(board, local_tarball, rw_only)
             if utils.host_is_in_lab_zone(self.hostname):
                 self._add_fw_version_label(build, rw_only)
         finally:
@@ -855,17 +814,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def _cleanup_poweron(self):
         """Special cleanup method to make sure hosts always get power back."""
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        hosts = afe.get_hosts(hostname=self.hostname)
-        if not hosts or not (self._RPM_OUTLET_CHANGED in
-                             hosts[0].attributes):
+        info = self.host_info_store.get()
+        if self._RPM_OUTLET_CHANGED not in info.attributes:
             return
         logging.debug('This host has recently interacted with the RPM'
                       ' Infrastructure. Ensuring power is on.')
         try:
             self.power_on()
-            afe.set_host_attribute(self._RPM_OUTLET_CHANGED, None,
-                                   hostname=self.hostname)
+            self._remove_rpm_changed_tag()
         except rpm_client.RemotePowerException:
             logging.error('Failed to turn Power On for this host after '
                           'cleanup through the RPM Infrastructure.')
@@ -877,11 +833,23 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 logging.info('The device has power adapter connected and '
                              'charging. No need to try to turn RPM on '
                              'again.')
-                afe.set_host_attribute(self._RPM_OUTLET_CHANGED, None,
-                                       hostname=self.hostname)
+                self._remove_rpm_changed_tag()
             logging.info('Battery level is now at %s%%. The device may '
                          'still have enough power to run test, so no '
                          'exception will be raised.', battery_percentage)
+
+
+    def _remove_rpm_changed_tag(self):
+        info = self.host_info_store.get()
+        del info.attributes[self._RPM_OUTLET_CHANGED]
+        self.host_info_store.commit(info)
+
+
+    def _add_rpm_changed_tag(self):
+        info = self.host_info_store.get()
+        info.attributes[self._RPM_OUTLET_CHANGED] = 'true'
+        self.host_info_store.commit(info)
+
 
 
     def _is_factory_image(self):
@@ -1533,10 +1501,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         else:
             if not self.has_power():
                 raise error.TestFail('DUT does not have RPM connected.')
-            afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-            afe.set_host_attribute(self._RPM_OUTLET_CHANGED, True,
-                                   hostname=self.hostname)
-            rpm_client.set_power(self.hostname, state.upper(), timeout_mins=5)
+            self._add_rpm_changed_tag()
+            rpm_client.set_power(self, state.upper(), timeout_mins=5)
 
 
     def power_off(self, power_method=POWER_CONTROL_RPM):
@@ -1575,7 +1541,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             time.sleep(self._POWER_CYCLE_TIMEOUT)
             self.power_on(power_method=power_method)
         else:
-            rpm_client.set_power(self.hostname, 'CYCLE')
+            self._add_rpm_changed_tag()
+            rpm_client.set_power(self, 'CYCLE')
 
 
     def get_platform(self):

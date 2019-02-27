@@ -38,12 +38,6 @@ from autotest_lib.server.cros import tradefed_chromelogin as login
 from autotest_lib.server.cros import tradefed_constants as constants
 from autotest_lib.server.cros import tradefed_utils
 
-# TODO(ihf): If akeshet doesn't fix crbug.com/691046 delete metrics again.
-try:
-    from chromite.lib import metrics
-except ImportError:
-    metrics = utils.metrics_mock
-
 # For convenience, add to our scope.
 parse_tradefed_result = tradefed_utils.parse_tradefed_result
 adb_keepalive = tradefed_utils.adb_keepalive
@@ -1117,6 +1111,9 @@ class TradefedTest(test.test):
                 graph=bundle
             ))
 
+        if session_id == None:
+            raise error.TestFail('Error: Could not find any tests in module.')
+
         if failed <= waived and all_done:
             if not all(accurate):
                 # Tests count inaccurate, remove perf to avoid false alarm.
@@ -1134,8 +1131,6 @@ class TradefedTest(test.test):
                                        self.summary))
             return
 
-        if session_id == None:
-            raise error.TestFail('Error: Could not find any tests in module.')
         raise error.TestFail(
             'Failed: after %d retries giving up. '
             'passed=%d, failed=%d, waived=%d%s%s. %s' %

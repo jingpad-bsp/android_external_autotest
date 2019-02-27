@@ -40,7 +40,7 @@ uint64_t TimeTest(TestBase* test, uint64_t iterations) {
 // Notice as of March 2014 the BVT suite has a hard limit per job of 20 minutes.
 #define MIN_ITERATION_DURATION_US 1000000
 
-#define MAX_TESTNAME 45
+#define MAX_TESTNAME 46
 
 // Benchmark some draw commands, by running it many times. We want to measure
 // the marginal cost, so we try more and more iterations until we reach the

@@ -71,32 +71,6 @@ DEFAULT_NUM_DUTS = (
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
                               'tab_id=view_job&object_id=(\d+)$')
 
-# Dictionary of test results keyed by test name regular expression.
-EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
-                         # This is related to dummy_Fail/control.dependency.
-                         'dummy_Fail.dependency$':       'TEST_NA',
-                         'login_LoginSuccess.*':         'GOOD',
-                         'provision_AutoUpdate.double':  'GOOD',
-                         'dummy_Pass.*':                 'GOOD',
-                         'dummy_Fail.Fail$':             'FAIL',
-                         'dummy_Fail.Error$':            'ERROR',
-                         'dummy_Fail.Warn$':             'WARN',
-                         'dummy_Fail.NAError$':          'TEST_NA',
-                         'dummy_Fail.Crash$':            'GOOD',
-                         'autotest_SyncCount$':          'GOOD',
-                         }
-
-EXPECTED_TEST_RESULTS_DUMMY = {'^SERVER_JOB$':       'GOOD',
-                               'dummy_Pass.*':       'GOOD',
-                               'dummy_Fail.Fail':    'FAIL',
-                               'dummy_Fail.Warn':    'WARN',
-                               'dummy_Fail.Crash':   'GOOD',
-                               'dummy_Fail.Error':   'ERROR',
-                               'dummy_Fail.NAError': 'TEST_NA',}
-
-EXPECTED_TEST_RESULTS_POWERWASH = {'platform_Powerwash': 'GOOD',
-                                   'SERVER_JOB':         'GOOD'}
-
 URL_HOST = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
 

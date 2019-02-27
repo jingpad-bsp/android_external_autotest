@@ -5,8 +5,6 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
-from telemetry.core import exceptions
-
 PAGE_SCRAPE_CMD = (
     "document.querySelector('* /deep/ #no-results').outerHTML;")
 
@@ -29,18 +27,6 @@ class policy_SavingBrowserHistoryDisabled(
         'Disabled': False,
         'NotSet': None}
 
-    def _check_page_readiness(self, tab):
-        """
-        Checks to see if page has fully loaded.
-
-        @returns True if loaded and False if not.
-
-        """
-        try:
-            tab.EvaluateJavaScript(PAGE_SCRAPE_CMD)
-            return True
-        except exceptions.EvaluateException:
-            return False
 
     def _check_browser_history(self, case_value):
         """
@@ -55,7 +41,7 @@ class policy_SavingBrowserHistoryDisabled(
         active_tab = self.navigate_to_url("chrome://history")
 
         utils.poll_for_condition(
-            lambda: self._check_page_readiness(active_tab),
+            lambda: self.check_page_readiness(active_tab, PAGE_SCRAPE_CMD),
             exception=error.TestFail('Page is not ready.'),
             timeout=5,
             sleep_interval=1)
@@ -67,6 +53,7 @@ class policy_SavingBrowserHistoryDisabled(
         else:
             if "hidden" not in content:
                 raise error.TestFail("History is empty and it should not be.")
+
 
     def run_once(self, case):
         """

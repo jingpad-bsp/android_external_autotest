@@ -40,19 +40,21 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
     ])
 
     def initialize(self, host, cmdline_args, ec_wp=None):
+        """Initialize the test"""
         dict_args = utils.args_to_dict(cmdline_args)
         super(firmware_TPMNotCorruptedDevMode, self).initialize(
                 host, cmdline_args, ec_wp=ec_wp)
 
-        self.assert_test_image_in_usb_disk()
         self.switcher.setup_mode('dev')
-        self.setup_usbkey(usbkey=True, host=False)
+        # Use the USB key for Ctrl-U dev boot, not recovery.
+        self.setup_usbkey(usbkey=True, host=False, used_for_recovery=False)
 
         self.original_dev_boot_usb = self.faft_client.system.get_dev_boot_usb()
         logging.info('Original dev_boot_usb value: %s',
                      str(self.original_dev_boot_usb))
 
     def cleanup(self):
+        """Cleanup the test"""
         try:
             self.ensure_dev_internal_boot(self.original_dev_boot_usb)
         except Exception as e:

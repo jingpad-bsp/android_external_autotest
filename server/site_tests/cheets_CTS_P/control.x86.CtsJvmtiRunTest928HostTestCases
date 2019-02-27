@@ -20,17 +20,16 @@ def run_CTS(machine):
         'cheets_CTS_P',
         hosts=host_list,
         iterations=1,
-        max_retry=3,
         needs_push_media=False,
         tag='x86.CtsJvmtiRunTest928HostTestCases',
         test_name='cheets_CTS_P.x86.CtsJvmtiRunTest928HostTestCases',
-        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsJvmtiRunTest928HostTestCases', '--logcat-on-failure'],
+        run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsJvmtiRunTest928HostTestCases'],
         retry_template=['run', 'commandAndExit', 'retry', '--retry', '{session_id}'],
         target_module='CtsJvmtiRunTest928HostTestCases',
         target_plan=None,
         bundle='x86',
-        warn_on_test_retry=False,
         retry_manual_tests=True,
-        timeout=3600)
+        warn_on_test_retry=False,
+        timeout=300)
 
 parallel_simple(run_CTS, machines)

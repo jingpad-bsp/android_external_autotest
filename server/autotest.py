@@ -807,12 +807,12 @@ class _Run(object):
 
     @staticmethod
     def is_client_job_finished(last_line):
-        return bool(re.match(r'^END .*\t----\t----\t.*$', last_line))
+        return bool(re.match(r'^\t*END .*\t[\w.-]+\t[\w.-]+\t.*$', last_line))
 
 
     @staticmethod
     def is_client_job_rebooting(last_line):
-        return bool(re.match(r'^\t*GOOD\t----\treboot\.start.*$', last_line))
+        return bool(re.match(r'^\t*GOOD\t[\w.-]+\treboot\.start.*$', last_line))
 
 
     def _diagnose_dut(self, old_boot_id=None):

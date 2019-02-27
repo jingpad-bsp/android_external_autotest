@@ -192,12 +192,12 @@ class AP(object):
 
     def power_off(self):
         """call rpm_client to power off AP"""
-        rpm_client.set_power(self.get_wan_host(), 'OFF')
+        rpm_client.set_power_afe(self.get_wan_host(), 'OFF')
 
 
     def power_on(self):
         """call rpm_client to power on AP"""
-        rpm_client.set_power(self.get_wan_host(), 'ON')
+        rpm_client.set_power_afe(self.get_wan_host(), 'ON')
 
         # Hard coded timer for now to wait for the AP to come alive
         # before trying to use it.  We need scanning code

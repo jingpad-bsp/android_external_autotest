@@ -7,6 +7,7 @@ import logging
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
 from autotest_lib.client.cros.enterprise import enterprise_network_api
+from autotest_lib.client.cros.enterprise import network_config
 
 
 class policy_WiFiAutoconnect(
@@ -51,14 +52,16 @@ class policy_WiFiAutoconnect(
                             False, or None
 
         """
-        net_policy = enterprise_network_api.\
-                         create_network_policy(ssid, autoconnect)
+        network = network_config.NetworkConfig(ssid,
+                                               autoconnect=autoconnect)
 
         self.setup_case(
             user_policies={
-                'OpenNetworkConfiguration': net_policy
+                'OpenNetworkConfiguration': network.policy()
             },
-            extension_paths=[enterprise_network_api.NETWORK_TEST_EXTENSION_PATH]
+            extension_paths=[
+                enterprise_network_api.NETWORK_TEST_EXTENSION_PATH
+            ]
         )
 
         self.net_api = enterprise_network_api.\

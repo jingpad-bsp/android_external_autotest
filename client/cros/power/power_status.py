@@ -803,7 +803,27 @@ class CPUFreqStats(AbstractStats):
         return 1.0
 
 
-class CPUIdleStats(AbstractStats):
+class CPUCStateStats(AbstractStats):
+    """
+    Base class for C-state residency statistics
+    """
+    def __init__(self, name, non_c0_stat=''):
+        self._non_c0_stat = non_c0_stat
+        super(CPUCStateStats, self).__init__(name=name)
+
+
+    def to_percent(self, stats):
+        """
+        Turns a dict with absolute time values into a dict with percentages.
+        Ignore the |non_c0_stat_name| which is aggegate stat in the total count.
+        """
+        total = sum(v for k, v in stats.iteritems() if k != self._non_c0_stat)
+        if total == 0:
+            return {k: 0 for k in stats}
+        return {k: v * 100.0 / total for k, v in stats.iteritems()}
+
+
+class CPUIdleStats(CPUCStateStats):
     """
     CPU Idle statistics (refresh() will not work with incremental=False!)
     """
@@ -820,7 +840,7 @@ class CPUIdleStats(AbstractStats):
         cpus, self._cpus = get_cpus_filepaths_for_suffix(cpus, cpuidle_suffix)
         if len(cpus) and len(cpus) < len(all_cpus):
             name = '%s_%s' % (name, '_'.join([str(c) for c in cpus]))
-        super(CPUIdleStats, self).__init__(name=name)
+        super(CPUIdleStats, self).__init__(name=name, non_c0_stat='non-C0')
 
 
     def _read_stats(self):
@@ -859,7 +879,7 @@ class CPUIdleStats(AbstractStats):
         return cpuidle_stats
 
 
-class CPUPackageStats(AbstractStats):
+class CPUPackageStats(CPUCStateStats):
     """
     Package C-state residency statistics for modern Intel CPUs.
     """
@@ -904,7 +924,8 @@ class CPUPackageStats(AbstractStats):
                 }.get(cpu_uarch, None)
 
         self._platform_states = _get_platform_states()
-        super(CPUPackageStats, self).__init__(name='cpupkg')
+        super(CPUPackageStats, self).__init__(name='cpupkg',
+                                              non_c0_stat='non-C0_C1')
 
 
     def _read_stats(self):
@@ -2383,6 +2404,10 @@ class PCHPowergatingStats(object):
         S0IX_WARNLIST = set([
                 'HDA-PGD0', 'HDA-PGD1', 'HDA-PGD2', 'HDA-PGD3', 'LPSS',
                 'AVSPGD1', 'AVSPGD4'])
+
+        # CNV device has 0x31dc as devid .
+        if len(utils.system_output('lspci -d :31dc')) > 0:
+            S0IX_WHITELIST.add('CNV')
 
         on_ip = set(ip['name'] for ip in self._stat if ip['state'])
         on_ip -= S0IX_WHITELIST

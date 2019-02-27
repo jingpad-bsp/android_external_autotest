@@ -17,6 +17,12 @@ class Metric(object):
         self.units = units
         self.higher_is_better = higher_is_better
 
+    def pre_collect(self):
+        """
+        Hook called before metrics are being collected.
+        """
+        pass
+
     def collect_metric(self):
         """
         Collects one metric.
@@ -71,21 +77,19 @@ class CpuUsageMetric(Metric):
         self.last_usage = None
         self.system_facade = system_facade
 
+    def pre_collect(self):
+        self.last_usage = self.system_facade.get_cpu_usage()
+
     def collect_metric(self):
         """
         Collects CPU usage in percent.
-
-        Since the CPU active time we query is a cumulative metric, the first
-        collection does not actually save a value. It saves the first value to
-        be used for subsequent deltas.
         """
         current_usage = self.system_facade.get_cpu_usage()
-        if self.last_usage is not None:
-            # Compute the percent of active time since the last update to
-            # current_usage.
-            usage_percent = 100 * self.system_facade.compute_active_cpu_time(
-                    self.last_usage, current_usage)
-            self.values.append(usage_percent)
+        # Compute the percent of active time since the last update to
+        # current_usage.
+        usage_percent = 100 * self.system_facade.compute_active_cpu_time(
+                self.last_usage, current_usage)
+        self.values.append(usage_percent)
         self.last_usage = current_usage
 
 class AllocatedFileHandlesMetric(Metric):
@@ -99,6 +103,30 @@ class AllocatedFileHandlesMetric(Metric):
 
     def collect_metric(self):
         self.values.append(self.system_facade.get_num_allocated_file_handles())
+
+class StorageWrittenMetric(Metric):
+    """
+    Metric that collects amount of data written to persistent storage.
+    """
+    def __init__(self, system_facade):
+        super(StorageWrittenMetric, self).__init__(
+                'storage_written', units='kB')
+        self.last_written_kb = None
+        self.system_facade = system_facade
+
+    def pre_collect(self):
+        statistics = self.system_facade.get_storage_statistics()
+        self.last_written_kb = statistics['written_kb']
+
+    def collect_metric(self):
+        """
+        Collects total amount of data written to persistent storage in kB.
+        """
+        statistics = self.system_facade.get_storage_statistics()
+        written_kb = statistics['written_kb']
+        written_period = written_kb - self.last_written_kb
+        self.values.append(written_period)
+        self.last_written_kb = written_kb
 
 class TemperatureMetric(Metric):
     """
@@ -121,6 +149,7 @@ def create_default_metric_set(system_facade):
     cpu = CpuUsageMetric(system_facade)
     mem = MemUsageMetric(system_facade)
     file_handles = AllocatedFileHandlesMetric(system_facade)
+    storage_written = StorageWrittenMetric(system_facade)
     temperature = TemperatureMetric(system_facade)
     peak_cpu = PeakMetric(cpu)
     peak_mem = PeakMetric(mem)
@@ -128,6 +157,7 @@ def create_default_metric_set(system_facade):
     return [cpu,
             mem,
             file_handles,
+            storage_written,
             temperature,
             peak_cpu,
             peak_mem,
@@ -148,6 +178,13 @@ class SystemMetricsCollector(object):
         """
         self.metrics = (create_default_metric_set(system_facade)
                         if metrics is None else metrics)
+
+    def pre_collect(self):
+        """
+        Calls pre hook of metrics.
+        """
+        for metric in self.metrics:
+            metric.pre_collect()
 
     def collect_snapshot(self):
         """

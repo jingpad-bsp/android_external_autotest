@@ -10,6 +10,7 @@ class Values(object):
     delay_reboot_to_ping = 40
     hold_pwr_button_poweron = 1.2
     has_lid = True
+    lid_wake_from_power_off = False
     spi_voltage = 'pp3300'
     wp_voltage = 'pp3300'
     # Not a Chrome EC, do not expect keyboard via EC
@@ -18,3 +19,4 @@ class Values(object):
     has_keyboard = False
     # Temporary until switch to power button
     rec_button_dev_switch = True
+    smm_store = False

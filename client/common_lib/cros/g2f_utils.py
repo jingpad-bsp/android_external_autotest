@@ -13,7 +13,8 @@ def StartU2fd(client):
     @param client: client object to run commands on.
     """
     client.run('stop u2fd', ignore_status=True)
-    old_dev = client.run('ls /dev/hidraw*').stdout.strip().split('\n')
+    old_dev = client.run('ls /dev/hidraw*',
+                          ignore_status=True).stdout.strip().split('\n')
     client.run_background('u2fd --force_g2f')
 
     # TODO(louiscollard): Replace this with something less fragile.
@@ -22,7 +23,8 @@ def StartU2fd(client):
     while (len(cr50_dev) == 0 and timeout_count < 5):
       time.sleep(1)
       timeout_count += 1
-      new_dev = client.run('ls /dev/hidraw*').stdout.strip().split('\n')
+      new_dev = client.run('ls /dev/hidraw*',
+                            ignore_status=True).stdout.strip().split('\n')
       cr50_dev = set(new_dev) - set(old_dev)
 
     return cr50_dev.pop()

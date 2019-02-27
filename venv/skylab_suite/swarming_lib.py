@@ -24,6 +24,8 @@ SERVICE_ACCOUNT = '/creds/skylab_swarming_bot/skylab_bot_service_account.json'
 SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
 SKYLAB_SUITE_POOL = 'ChromeOSSkylab-suite'
 
+SKYLAB_TOOL = '/opt/infra-tools/skylab'
+
 TASK_COMPLETED = 'COMPLETED'
 TASK_COMPLETED_SUCCESS = 'COMPLETED (SUCCESS)'
 TASK_COMPLETED_FAILURE = 'COMPLETED (FAILURE)'
@@ -69,15 +71,6 @@ SORTED_SKYLAB_HWTEST_PRIORITY = sorted(
         SKYLAB_HWTEST_PRIORITIES_MAP.items(),
         key=operator.itemgetter(1))
 
-# TODO (xixuan): Use proto library or some future APIs instead of hardcoding.
-SWARMING_DUT_POOL_MAP = {
-        'arc-presubmit': 'DUT_POOL_CTS_PERBUILD',
-        'bvt': 'DUT_POOL_BVT',
-        'cq': 'DUT_POOL_CQ',
-        'cts': 'DUT_POOL_CTS',
-        'quota-metered': 'DUT_POOL_QUOTA_METERED',
-        'suites': 'DUT_POOL_SUITES',
-}
 SWARMING_DUT_READY_STATUS = 'ready'
 
 # The structure of fallback swarming task request is:
@@ -122,15 +115,45 @@ def _get_client():
             'chromiumos/chromite/third_party/swarming.client/swarming.py')
 
 
-def to_swarming_pool_label(pool):
-    """Transfer passed-in suite pool label to swarming-recognized pool label."""
-    return SWARMING_DUT_POOL_MAP.get(pool, pool)
+def task_dependencies_from_labels(labels):
+    """Parse dependencies from autotest labels.
+
+    @param labels: A list of label string.
+
+    @return a dict [key: value] to represent dependencies.
+    """
+    translation_autotest = autotest.deps_load(
+            'skylab_inventory.translation.autotest')
+    translation_swarming = autotest.deps_load(
+            'skylab_inventory.translation.swarming')
+    dimensions = translation_swarming.labels_to_dimensions(
+            translation_autotest.from_autotest_labels(labels))
+    dependencies = {}
+    for k, v in dimensions.iteritems():
+      if isinstance(v, list):
+        if len(v) > 1:
+          raise ValueError(
+              'Invalid dependencies: Multiple value %r for key %s' % (k, v))
+
+        dependencies[k] = v[0]
+
+    return dependencies
 
 
 def get_basic_swarming_cmd(command):
     return [_get_client(), command,
             '--auth-service-account-json', SERVICE_ACCOUNT,
             '--swarming', get_swarming_server()]
+
+
+def get_retry_cmd(task_id):
+    """ Get a retry command for a given task.
+
+    @param task_id: A Swarming task ID string.
+
+    @return the task retry command as a list of strings.
+    """
+    return [SKYLAB_TOOL, 'rerun-tasks', '-output-json', task_id]
 
 
 def make_logdog_annotation_url():

@@ -14,7 +14,10 @@ from autotest_lib.client.common_lib.cros import enrollment
 from autotest_lib.client.common_lib.cros import policy
 from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import httpd
+from autotest_lib.client.cros.input_playback import keyboard
 from autotest_lib.client.cros.enterprise import enterprise_fake_dmserver
+
+from telemetry.core import exceptions
 
 CROSQA_FLAGS = [
     '--gaia-url=https://gaiastaging.corp.google.com',
@@ -59,8 +62,10 @@ GAIA_ID = 'fake-gaia-id'
 DEVICE_POLICY_DICT = {
     'DeviceAutoUpdateDisabled': 'update_disabled',
     'DeviceEphemeralUsersEnabled': 'ephemeral_users_enabled',
+    'DeviceOpenNetworkConfiguration': 'open_network_configuration',
     'DeviceRollbackToTargetVersion': 'rollback_to_target_version',
-    'DeviceTargetVersionPrefix': 'target_version_prefix'
+    'DeviceTargetVersionPrefix': 'target_version_prefix',
+    'SystemTimezone': 'timezone'
 }
 # Default settings for managed user policies
 DEFAULT_POLICY = {
@@ -150,6 +155,23 @@ class EnterprisePolicyTest(test.test):
         logging.info('  Username: %r', self.username)
         logging.info('  Password: %r', self.password)
         logging.info('  Test DMS Name: %r', self.dms_name)
+
+
+    def check_page_readiness(self, tab, command):
+        """
+        Checks to see if page has fully loaded.
+
+        @param tab: chrome tab loading the page.
+        @param command: JS command to be checked in the tab.
+
+        @returns True if loaded and False if not.
+
+        """
+        try:
+            tab.EvaluateJavaScript(command)
+            return True
+        except exceptions.EvaluateException:
+            return False
 
 
     def cleanup(self):
@@ -564,8 +586,8 @@ class EnterprisePolicyTest(test.test):
         # field needs to be converted to asterisks to be compared.
         SANITIZED_PASSWORD = '*' * 8
         if policy_name.endswith('OpenNetworkConfiguration'):
-            for network in expected_value['NetworkConfigurations']:
-                wifi = network['WiFi']
+            for network in expected_value.get('NetworkConfigurations', []):
+                wifi = network.get('WiFi', {})
                 if 'Passphrase' in wifi:
                     wifi['Passphrase'] = SANITIZED_PASSWORD
                 if 'EAP' in wifi and 'Password' in wifi['EAP']:
@@ -698,6 +720,7 @@ class EnterprisePolicyTest(test.test):
             self.cr = chrome.Chrome(
                     auto_login=False,
                     extra_browser_args=extra_flags,
+                    extension_paths=extension_paths,
                     expect_policy_fetch=True)
             if self.dms_is_fake:
                 enrollment.EnterpriseFakeEnrollment(
@@ -766,6 +789,15 @@ class EnterprisePolicyTest(test.test):
                                  'the test page: %s\n %r' %(tab.url, err))
         return elements
 
+    def log_out_via_keyboard(self):
+        """
+        Logs out of the device using the keyboard shortcut
+
+        """
+        _keyboard = keyboard.Keyboard()
+        _keyboard.press_key('ctrl+shift+q')
+        _keyboard.press_key('ctrl+shift+q')
+        _keyboard.close()
 
 def encode_json_string(object_value):
     """Convert given value to JSON format string.
