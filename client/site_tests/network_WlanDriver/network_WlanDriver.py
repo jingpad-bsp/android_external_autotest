@@ -35,7 +35,7 @@ class network_WlanDriver(test.test):
                     '3.14': 'wireless-3.8/iwl7000/iwlwifi/iwlwifi.ko',
                     '4.4': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
                     '4.14': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
-                    '4.19': 'wireless/intel/iwlwifi/iwlwifi.ko',
+                    '4.19': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
             },
             'Intel 7265': {
                     '3.8': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
@@ -44,16 +44,16 @@ class network_WlanDriver(test.test):
                     '3.18': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
                     '4.4': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
                     '4.14': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
-                    '4.19': 'wireless/intel/iwlwifi/iwlwifi.ko',
+                    '4.19': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
             },
             'Intel 9000': {
                     '4.14': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
-                    '4.19': 'wireless/intel/iwlwifi/iwlwifi.ko',
+                    '4.19': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
             },
             'Intel 9260': {
                     '4.4': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
                     '4.14': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
-                    '4.19': 'wireless/intel/iwlwifi/iwlwifi.ko',
+                    '4.19': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
             },
             'Atheros AR9462': {
                     '3.4': 'wireless/ath/ath9k_btcoex/ath9k_btcoex.ko',
