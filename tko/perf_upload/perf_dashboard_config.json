@@ -595,8 +595,8 @@
     "master_name": "ChromeOSPower"
   },
   {
-    "autotest_name": "tast.informational-chrome",
-    "master_name": "ChromeOSTastInformationalChrome"
+    "autotest_name": "tast.*",
+    "master_name": "ChromeOSTast"
   },
   {
     "autotest_name": "telemetry_Benchmarks.backdrop_filter.rendering.desktop",
