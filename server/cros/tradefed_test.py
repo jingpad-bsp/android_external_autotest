@@ -47,14 +47,22 @@ class TradefedTest(test.test):
     """Base class to prepare DUT to run tests via tradefed."""
     version = 1
 
-    # Default max_retry based on board and channel.
-    _BOARD_RETRY = {}
-    _CHANNEL_RETRY = {'dev': 5}
+    # Default and upperbounds of max_retry, based on board and revision
+    # after branching (that is, 'y' of R74-12345.y.z).
+    #
+    # By default, 0<=y<1 does 5 retries and 1<=y does 10. The |max_retry|
+    # parameter in control files can override the count, within the
+    # _BRANCH_MAX_RETRY limit below.
+    _BRANCH_DEFAULT_RETRY = [(0, 5), (1, 10)]  # dev=5, beta=stable=10
+    _BRANCH_MAX_RETRY = [(0, 5), (1, 10),      # dev=5, beta=10, stable=99
+        (constants.APPROXIMATE_STABLE_BRANCH_NUMBER, 99)]
+    # TODO(kinaba): betty-arcnext
+    _BOARD_MAX_RETRY = {'betty': 0}
 
     _SHARD_CMD = None
     _board_arch = None
     _board_name = None
-    _release_channel = None
+    _release_branch_number = None  # The 'y' of OS version Rxx-xxxxx.y.z
     _android_version = None
     _num_media_bundles = 0
     _perf_results = []
@@ -778,11 +786,12 @@ class TradefedTest(test.test):
                       'ro.product.cpu.abilist')).stdout.split(',')
         return self._abilist
 
-    def _get_release_channel(self):
-        """Returns the DUT channel of the image ('dev', 'beta', 'stable')."""
-        if not self._release_channel:
-            self._release_channel = self._hosts[0].get_channel() or 'dev'
-        return self._release_channel
+    def _get_release_branch_number(self):
+        """Returns the DUT branch number (z of Rxx-yyyyy.z.w) or 0 on error."""
+        if not self._release_branch_number:
+            ver = (self._hosts[0].get_release_version() or '').split('.')
+            self._release_branch_number = (int(ver[1]) if len(ver) >= 3 else 0)
+        return self._release_branch_number
 
     def _get_board_arch(self):
         """Return target DUT arch name."""
@@ -812,9 +821,11 @@ class TradefedTest(test.test):
         @param max_retry: max_retry specified in the control file.
         @return: number of retries for this specific host.
         """
+        if max_retry is None:
+            max_retry = self._get_branch_retry(self._BRANCH_DEFAULT_RETRY)
         candidate = [max_retry]
         candidate.append(self._get_board_retry())
-        candidate.append(self._get_channel_retry())
+        candidate.append(self._get_branch_retry(self._BRANCH_MAX_RETRY))
         return min(x for x in candidate if x is not None)
 
     def _get_board_retry(self):
@@ -823,19 +834,19 @@ class TradefedTest(test.test):
         @return: number of max_retry or None.
         """
         board = self._get_board_name()
-        if board in self._BOARD_RETRY:
-            return self._BOARD_RETRY[board]
+        if board in self._BOARD_MAX_RETRY:
+            return self._BOARD_MAX_RETRY[board]
         logging.info('No board retry specified for board: %s', board)
         return None
 
-    def _get_channel_retry(self):
-        """Returns the maximum number of retries for DUT image channel."""
-        channel = self._get_release_channel()
-        if channel in self._CHANNEL_RETRY:
-            return self._CHANNEL_RETRY[channel]
-        retry = self._CHANNEL_RETRY['dev']
-        logging.warning('Could not establish channel. Using retry=%d.', retry)
-        return retry
+    def _get_branch_retry(self, table):
+        """Returns the retry count for DUT branch number defined in |table|."""
+        number = self._get_release_branch_number()
+        for lowerbound, retry in reversed(table):
+            if lowerbound <= number:
+                return retry
+        logging.warning('Could not establish channel. Using retry=0.')
+        return 0
 
     def _run_precondition_scripts(self, commands, steps):
         """Run precondition scripts on all the hosts."""
@@ -990,6 +1001,7 @@ class TradefedTest(test.test):
                                    test_name,
                                    run_template,
                                    retry_template,
+                                   timeout,
                                    needs_push_media=False,
                                    target_module=None,
                                    target_plan=None,
@@ -1003,6 +1015,12 @@ class TradefedTest(test.test):
         We first kick off the specified module. Then rerun just the failures
         on the next MAX_RETRY iterations.
         """
+        # On dev and beta channels timeouts are sharp, lenient on stable.
+        self._timeout = timeout
+        if (self._get_release_branch_number() >=
+                constants.APPROXIMATE_STABLE_BRANCH_NUMBER):
+            self._timeout += 3600
+
         if self._should_skip_test(bundle):
             logging.warning('Skipped test %s', ' '.join(test_name))
             return
