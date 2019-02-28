@@ -19,6 +19,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import hosts
 from autotest_lib.server import utils
 from autotest_lib.server.cros import camerabox_utils
+from autotest_lib.server.cros import tradefed_constants as constants
 from autotest_lib.server.cros import tradefed_test
 
 # Maximum default time allowed for each individual CTS module.
@@ -37,8 +38,9 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
     """Sets up tradefed to run CTS tests."""
     version = 1
 
-    _BOARD_RETRY = {'betty': 0}
-    _CHANNEL_RETRY = {'dev': 9, 'beta': 9, 'stable': 9}
+    _BRANCH_DEFAULT_RETRY = [(0, 10)]  # dev=beta=stable=10
+    _BRANCH_MAX_RETRY = [(0, 10),      # dev=beta=10, stable=99
+        (constants.APPROXIMATE_STABLE_BRANCH_NUMBER, 99)]
     _SHARD_CMD = '--shards'
     # TODO(pwang): b/110966363, remove it once scarlet is fixed.
     _NEED_DEVICE_INFO_BOARDS = ['scarlet', 'veyron_tiger']
@@ -196,16 +198,11 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         dut before the log-in for the test is performed.
         @param timeout: time after which tradefed can be interrupted.
         """
-
-        # On dev and beta channels timeouts are sharp, lenient on stable.
-        self._timeout = timeout
-        if self._get_release_channel() == 'stable':
-            self._timeout += 3600
-
         self._run_tradefed_with_retries(
             test_name=test_name,
             run_template=run_template,
             retry_template=retry_template,
+            timeout=timeout,
             target_module=target_module,
             target_plan=target_plan,
             needs_push_media=needs_push_media,

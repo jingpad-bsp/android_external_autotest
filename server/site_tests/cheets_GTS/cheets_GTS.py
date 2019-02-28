@@ -31,8 +31,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
     """Sets up tradefed to run GTS tests."""
     version = 1
 
-    _BOARD_RETRY = {'betty': 0}
-    _CHANNEL_RETRY = {'dev': 5, 'beta': 5, 'stable': 5}
     _SHARD_CMD = '--shard-count'
 
     def _tradefed_retry_command(self, template, session_id):
@@ -128,12 +126,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
         @param login_precondition_commands: a list of scripts to be run on the
         dut before the log-in for the test is performed.
         """
-
-        # On dev and beta channels timeouts are sharp, lenient on stable.
-        self._timeout = timeout
-        if self._get_release_channel() == 'stable':
-            self._timeout += 3600
-
         # Download the GTS auth key to the local temp directory.
         tmpdir = tempfile.mkdtemp()
         try:
@@ -144,6 +136,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
                 test_name=test_name,
                 run_template=run_template,
                 retry_template=retry_template,
+                timeout=timeout,
                 target_module=target_module,
                 target_plan=target_plan,
                 needs_push_media=needs_push_media,
