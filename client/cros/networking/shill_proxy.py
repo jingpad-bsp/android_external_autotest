@@ -100,6 +100,7 @@ class ShillProxy(object):
     SERVICE_PROPERTY_SSID = 'SSID'
     SERVICE_PROPERTY_STRENGTH = 'Strength'
     SERVICE_PROPERTY_STATE = 'State'
+    SERVICE_PROPERTY_STATIC_IP_NAMESERVERS = 'StaticIP.NameServers'
     SERVICE_PROPERTY_TYPE = 'Type'
 
     # EAP related properties.
@@ -159,6 +160,7 @@ class ShillProxy(object):
         SERVICE_PROPERTY_STATE: dbus.String,
         SERVICE_PROPERTY_TYPE: dbus.String,
         SERVICE_PROPERTY_FT_ENABLED: dbus.Boolean,
+        SERVICE_PROPERTY_STATIC_IP_NAMESERVERS: dbus.String,
 
         SERVICE_PROPERTY_EAP_EAP: dbus.String,
         SERVICE_PROPERTY_EAP_INNER_EAP: dbus.String,
@@ -431,6 +433,20 @@ class ShillProxy(object):
         # Convert configuration values to dbus variant typed values.
         dbus_config = ShillProxy.service_properties_to_dbus_types(config)
         self.manager.ConfigureService(dbus_config)
+
+
+    def configure_service_for_profile(self, path, config):
+        """Configure a service in the given profile with given properties.
+
+        @param path string path of profile for which service should be
+            configured.
+        @param config dictionary of service property:value pairs.
+
+        """
+        # Convert configuration values to dbus variant typed values.
+        dbus_config = ShillProxy.service_properties_to_dbus_types(config)
+        self.manager.ConfigureServiceForProfile(dbus.ObjectPath(path),
+                                                dbus_config)
 
 
     def set_logging(self, level, scopes):
