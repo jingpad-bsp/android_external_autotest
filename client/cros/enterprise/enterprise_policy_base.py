@@ -69,7 +69,8 @@ DEVICE_POLICY_DICT = {
     'DeviceOpenNetworkConfiguration': 'open_network_configuration',
     'DeviceRollbackToTargetVersion': 'rollback_to_target_version',
     'DeviceTargetVersionPrefix': 'target_version_prefix',
-    'SystemTimezone': 'timezone'
+    'SystemTimezone': 'timezone',
+    'ReportUploadFrequency': 'device_status_frequency'
 }
 # Default settings for managed user policies
 DEFAULT_POLICY = {
