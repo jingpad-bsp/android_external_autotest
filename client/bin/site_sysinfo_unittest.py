@@ -207,6 +207,8 @@ class LogdirTestCase(unittest.TestCase):
 
     def test_run_excludes_common_patterns(self):
         os.mkdir(os.path.join(self.from_dir, 'autoserv2344'))
+        # Create empty file.
+        open(os.path.join(self.from_dir, 'system.journal'), 'w').close()
         deeper_subdir = os.path.join('prefix', 'autoserv', 'suffix')
         os.makedirs(os.path.join(self.from_dir, deeper_subdir))
 
@@ -217,6 +219,9 @@ class LogdirTestCase(unittest.TestCase):
         self.assertFalse(os.path.exists(destination_path),
                          msg='Copied banned file to %s' % destination_path)
         destination_path = self._destination_path(deeper_subdir)
+        self.assertFalse(os.path.exists(destination_path),
+                         msg='Copied banned file to %s' % destination_path)
+        destination_path = self._destination_path('system.journal')
         self.assertFalse(os.path.exists(destination_path),
                          msg='Copied banned file to %s' % destination_path)
 
