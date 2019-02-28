@@ -23,7 +23,7 @@ command = base_sysinfo.command
 class logdir(base_sysinfo.loggable):
     """Represents a log directory."""
 
-    DEFAULT_EXCLUDES = ("**autoserv*",)
+    DEFAULT_EXCLUDES = ("**autoserv*", "**.journal",)
 
     def __init__(self, directory, excludes=DEFAULT_EXCLUDES):
         super(logdir, self).__init__(directory, log_in_keyval=False)
@@ -191,6 +191,8 @@ class diffable_logdir(logdir):
         for root, dirs, files in os.walk(path):
             for f in files:
                 if f.startswith('autoserv'):
+                    continue
+                if f.endswith('.journal'):
                     continue
                 full_path = os.path.join(root, f)
                 # Only list regular files or symlinks to those (os.stat follows
