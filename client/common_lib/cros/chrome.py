@@ -61,6 +61,7 @@ class Chrome(object):
                  disable_app_sync=False,
                  disable_play_auto_install=False,
                  disable_locale_sync=True,
+                 disable_play_store_auto_update=True,
                  enable_assistant=False,
                  enterprise_arc_test=False,
                  init_network_controller=False,
@@ -116,6 +117,10 @@ class Chrome(object):
             full instance. Used to prevent random app restarts caused by racy
             locale change, coming from profile sync. By default locale sync is
             disabled.
+        @param disable_play_store_auto_update:
+            Adds --arc-play-store-auto-update=off to browser args and this
+            disables Play Store, GMS Core and third-party apps auto-update.
+            By default auto-update is off to have stable autotest environment.
         @param login_delay: Time for idle in login screen to simulate the time
                             required for password typing.
         @param enable_assistant: For tests that require to enable Google
@@ -150,6 +155,9 @@ class Chrome(object):
             if disable_locale_sync:
                 finder_options.browser_options.AppendExtraBrowserArgs(
                         ['--arc-disable-locale-sync'])
+            if disable_play_store_auto_update:
+                finder_options.browser_options.AppendExtraBrowserArgs(
+                        ['--arc-play-store-auto-update=off'])
             logged_in = True
 
         self._browser_type = (self.BROWSER_TYPE_LOGIN
