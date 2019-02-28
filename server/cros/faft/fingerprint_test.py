@@ -8,6 +8,7 @@ import os
 from autotest_lib.server import test
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.server.cros import gsutil_wrapper
+from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 
 
 class FingerprintTest(test.test):
@@ -243,7 +244,7 @@ class FingerprintTest(test.test):
 
     def get_fp_board(self):
         """Returns name of fingerprint EC."""
-        board = self.servo.get_board()
+        board = self.host.get_board().replace(ds_constants.BOARD_PREFIX, '')
         return board + self._FINGERPRINT_BOARD_NAME_SUFFIX
 
     def get_build_fw_file(self):
