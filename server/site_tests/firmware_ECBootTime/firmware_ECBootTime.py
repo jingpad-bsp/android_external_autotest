@@ -17,6 +17,9 @@ class firmware_ECBootTime(FirmwareTest):
 
     def initialize(self, host, cmdline_args):
         super(firmware_ECBootTime, self).initialize(host, cmdline_args)
+        # Don't bother if there is no Chrome EC.
+        if not self.check_ec_capability():
+            raise error.TestNAError("Nothing needs to be tested on this device")
         # Only run in normal mode
         self.switcher.setup_mode('normal')
         self.host = host
@@ -98,13 +101,20 @@ class firmware_ECBootTime(FirmwareTest):
             raise error.TestFail("Boot time longer than 1 second.")
 
     def is_arm_legacy_board(self):
+        """Detect whether the board is a legacy ARM board.
+
+        This group of boards prints specific strings on the EC console when the
+        EC and AP come out of reset.
+        """
+
         arm_legacy = ('Snow', 'Spring', 'Pit', 'Pi', 'Big', 'Blaze', 'Kitty')
         output = self.faft_client.system.get_platform_name()
         return output in arm_legacy
 
     def run_once(self):
-        if not self.check_ec_capability():
-            raise error.TestNAError("Nothing needs to be tested on this device")
+        """Execute the main body of the test.
+        """
+
         self._x86 = ('x86' in self.faft_config.ec_capability)
         self._doubleboot = ('doubleboot' in self.faft_config.ec_capability)
         self._arm_legacy = self.is_arm_legacy_board()
