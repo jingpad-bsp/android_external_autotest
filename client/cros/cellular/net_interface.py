@@ -30,7 +30,7 @@ class PseudoNetInterface(object):
     NETWORK_CHROOT_CONFIG = {
             'etc/passwd' :
                     'root:x:0:0:root:/root:/bin/bash\n'
-                    'nobody:x:65534:65534:nobody:/var/empty:/bin/false\n',
+                    'nobody:x:65534:65534:nobody:/dev/null:/bin/false\n',
             'etc/group' :
                     'nobody::65534:\n'}
     SHILL_PORTAL_DETECTION_SERVER = 'www.gstatic.com'
