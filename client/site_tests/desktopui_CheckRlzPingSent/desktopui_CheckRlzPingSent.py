@@ -71,8 +71,13 @@ class desktopui_CheckRlzPingSent(test.test):
             status = cryptohome.get_tpm_more_status()
             return status.get('install_lockbox_finalized')
 
-        utils.poll_for_condition(
-            lambda: get_install_lockbox_finalized_status(), timeout=120)
+        try:
+            utils.poll_for_condition(
+                lambda: get_install_lockbox_finalized_status(),
+                exception=utils.TimeoutError(),
+                timeout=120)
+        except utils.TimeoutError:
+            raise error.TestFail('Timed out trying to lock the device')
 
 
     def run_once(self, logged_in=True):
