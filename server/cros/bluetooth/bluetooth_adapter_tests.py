@@ -26,7 +26,8 @@ Event = recorder.Event
 # Delay binding the methods since host is only available at run time.
 SUPPORTED_DEVICE_TYPES = {
     'MOUSE': lambda host: host.chameleon.get_bluetooth_hid_mouse,
-    'LE_MOUSE': lambda host: host.chameleon.get_bluetooth_hog_mouse
+    'LE_MOUSE': lambda host: host.chameleon.get_bluetooth_hog_mouse,
+    'BLE_MOUSE': lambda host: host.chameleon.get_ble_mouse,
 }
 
 
@@ -175,8 +176,10 @@ def get_bluetooth_emulated_device(host, device_type):
     device.device_type = _retry_device_method('GetHIDDeviceType')
     logging.info('device type: %s', device.device_type)
 
-    device.authenticaiton_mode = _retry_device_method('GetAuthenticationMode')
-    logging.info('authentication mode: %s', device.authenticaiton_mode)
+    device.authentication_mode = None
+    if not device._is_le_only:
+      device.authentication_mode = _retry_device_method('GetAuthenticationMode')
+      logging.info('authentication mode: %s', device.authentication_mode)
 
     device.port = _retry_device_method('GetPort')
     logging.info('serial port: %s\n', device.port)
