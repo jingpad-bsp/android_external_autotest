@@ -393,11 +393,18 @@ class ChameleonBoard(object):
 
 
     def get_bluetooth_a2dp_sink(self):
-        """Gets the Bluetooth A2DP sink on Fizz.
+        """Gets the Bluetooth A2DP sink on chameleon host.
 
         @return: A BluetoothA2DPSinkFlow object.
         """
         return self._chameleond_proxy.bluetooth_a2dp_sink
+
+    def get_ble_mouse(self):
+        """Gets the BLE mouse (nRF52) on chameleon host.
+
+        @return: A BluetoothHIDFlow object.
+        """
+        return self._chameleond_proxy.ble_mouse
 
 
 class ChameleonPort(object):
