@@ -323,6 +323,9 @@ class Cleanup(_SpecialTaskAction):
     name = 'cleanup'
 
 
+# TODO(ayatane): This class doesn't do anything.  It's safe to remove
+# after all references to it are removed (after some buffer time to be
+# safe, like a few release cycles).
 class Repair(_SpecialTaskAction):
     """
     Repair runs when one of the other special tasks fails.  It should be able
