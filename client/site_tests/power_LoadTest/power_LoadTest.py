@@ -506,8 +506,8 @@ class power_LoadTest(arc.ArcTest):
         # Avoid polluting the keyvals with non-core domains.
         core_keyvals = power_utils.get_core_keyvals(keyvals)
         if not self._gaia_login:
-          core_keyvals = {'INVALID_%s' % str(k): v for k, v in
-                          core_keyvals.iteritems()}
+            core_keyvals = {'INVALID_%s' % str(k): v for k, v in
+                            core_keyvals.iteritems()}
         else:
             for key, value in core_keyvals.iteritems():
                 if key.startswith('percent_cpuidle') and \

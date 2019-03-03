@@ -476,9 +476,19 @@ def _ensure_label_in_afe(afe_host, label_name, label_value):
                  afe_host.hostname))
 
 
-def _create_host_for_installation(hostname, arguments, host_attrs):
-  s_host, s_port, s_serial = _extract_servo_attributes(hostname, host_attrs)
-  return preparedut.create_host(hostname, arguments.board, arguments.model,
+def _create_host_for_installation(host, arguments):
+  """Creates a hosts.CrosHost object to be used for installation.
+
+  The returned host object is agnostic of the infrastructure environment. In
+  particular, it does not have any references to the AFE.
+
+  @param host: A server.hosts.CrosHost object.
+  @param arguments: Parsed commandline arguments for this script.
+  """
+  info = host.host_info_store.get()
+  s_host, s_port, s_serial = _extract_servo_attributes(host.hostname,
+                                                       info.attributes)
+  return preparedut.create_host(host.hostname, arguments.board, arguments.model,
                                 s_host, s_port, s_serial)
 
 
@@ -509,7 +519,7 @@ def _install_test_image(host, arguments):
                 preparedut.flash_firmware_using_servo(host)
             else:
                 logging.debug('Install FW by chromeos-firmwareupdate.')
-                preparedut.install_firmware(host)
+                preparedut.install_firmware(host, arguments.force_firmware)
         except error.AutoservRunError as e:
             logging.exception('Firmware update failed: %s', e)
             msg = '%s failed' % (
@@ -545,12 +555,12 @@ def _install_and_update_afe(afe, hostname, host_attrs, arguments):
                                                 arguments)
     host = None
     try:
+        host = _create_host(hostname, afe, afe_host)
         _install_test_image(
-            _create_host_for_installation(hostname, arguments, host_attrs),
+            _create_host_for_installation(host, arguments),
             arguments,
         )
 
-        host = _create_host(hostname, afe, afe_host)
         if arguments.install_test_image and not arguments.dry_run:
             host.labels.update_labels(host)
             platform_labels = afe.get_labels(

@@ -48,3 +48,6 @@ TRADEFED_MEDIA_PATH = '/tmp/android-cts-media'
 # longer than on hardware or bare metal.
 LOGIN_BOARD_TIMEOUT = {'betty': 300, 'betty-arcnext': 300}
 LOGIN_DEFAULT_TIMEOUT = 90
+
+# Approximately assume ChromeOS revision Rdd-xxxxx.y.z with y>=45 as stable.
+APPROXIMATE_STABLE_BRANCH_NUMBER = 45

@@ -734,10 +734,15 @@ class CryptohomeProxy(DBusClient):
         """Unmounts a cryptohome.
 
         Returns True if the unmount suceeds or false otherwise.
-        TODO(ellyjones): Once there's a per-user unmount method, use it. See
-        <crosbug.com/20778>.
         """
-        return self.__call(self.iface.Unmount)
+        import rpc_pb2
+
+        req = rpc_pb2.UnmountRequest()
+
+        out = self.__call(self.iface.UnmountEx, req.SerializeToString())
+        parsed_out = rpc_pb2.BaseReply()
+        parsed_out.ParseFromString(''.join(map(chr, out)))
+        return parsed_out.error == rpc_pb2.CRYPTOHOME_ERROR_NOT_SET
 
 
     def is_mounted(self, user):
