@@ -367,7 +367,7 @@ class Suite(object):
                 keyvals=keyvals,
                 expiration_secs=self.timeout_mins * 60,
                 grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
-                execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                execution_timeout_secs=self.timeout_mins * 60,
                 io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                 quota_account=self.quota_account,
         )
