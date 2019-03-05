@@ -29,8 +29,8 @@ class vpd_ReadWrite(test.test):
             logging.debug(result)
             return True
         except error.CmdError as err:
-            logging.info('Failed to write %d to %s vpd field: %s', vpd_field,
-                         value, err)
+            logging.info('Failed to write %d to %s vpd field: %s', value,
+                         vpd_field, err)
             return False
 
 
