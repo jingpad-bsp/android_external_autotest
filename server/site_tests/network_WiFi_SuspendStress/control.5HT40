@@ -5,6 +5,7 @@
 AUTHOR = 'krisr, tienchang, bmahadev'
 NAME = 'network_WiFi_SuspendStress.5HT40'
 TIME = 'MEDIUM'
+MAX_RESULT_SIZE_KB = 512000
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
 ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_noservo')
