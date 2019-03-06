@@ -93,6 +93,14 @@ class firmware_Cr50DeviceState(Cr50Test):
     DS_RESUME = 'DS'
 
 
+    def initialize(self, host, cmdline_args, full_args):
+        super(firmware_Cr50DeviceState, self).initialize(host, cmdline_args,
+                                                         full_args)
+        # Don't bother if there is no Chrome EC or if EC hibernate doesn't work.
+        if not self.check_ec_capability():
+            raise error.TestNAError("Nothing needs to be tested on this device")
+
+
     def get_taskinfo_output(self):
         """Return a dict with the irq numbers as keys and counts as values"""
         output = self.cr50.send_command_get_output('taskinfo',
@@ -291,7 +299,7 @@ class firmware_Cr50DeviceState(Cr50Test):
             self.faft_client.system.run_shell_command(full_command)
 
         time.sleep(self.SHORT_WAIT);
-        # check S3 state transition
+        # check state transition
         if not self.wait_power_state(state, self.SHORT_WAIT):
             raise error.TestFail('Platform failed to reach %s state.' % state)
         self.stage_irq_add(self.get_irq_counts(), 'in %s' % state)
