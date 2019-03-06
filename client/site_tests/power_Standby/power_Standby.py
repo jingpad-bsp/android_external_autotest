@@ -138,7 +138,7 @@ class power_Standby(test.test):
 
         self.write_perf_keyval(results)
         pdash = power_dashboard.SimplePowerLoggerDashboard(
-                test_hours * 3600., results['w_energy_rate'],
+                end_ts - start_ts, results['w_energy_rate'],
                 self.tagged_testname, start_ts, self.resultsdir,
                 note=self._pdash_note)
         pdash.upload()
