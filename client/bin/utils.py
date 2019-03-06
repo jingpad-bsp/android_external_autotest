@@ -1960,7 +1960,7 @@ def get_cpu_model():
     return cpu_model
 
 
-def get_cpu_family():
+def get_cpu_family_intel():
     """
     Returns the CPU family.
     Only works on Intel.
