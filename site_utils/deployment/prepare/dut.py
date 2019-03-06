@@ -86,7 +86,7 @@ def flash_firmware_using_servo(host):
     host.firmware_install(build=host.get_cros_repair_image_name())
 
 
-def install_firmware(host, force):
+def install_firmware(host):
     """Install dev-signed firmware after removing write-protect.
 
     At start, it's assumed that hardware write-protect is disabled,
@@ -100,7 +100,6 @@ def install_firmware(host, force):
     mode, and shut down.
 
     @param host   Host instance to use for servo and ssh operations.
-    @param force  Boolean value determining if firmware install is forced.
     """
     servo = host.servo
     # First power on.  We sleep to allow the firmware plenty of time
@@ -121,10 +120,7 @@ def install_firmware(host, force):
     for fprom in ['host', 'ec']:
         host.run('flashrom -p %s --wp-disable' % fprom,
                  ignore_status=True)
-    if force:
-        host.run('chromeos-firmwareupdate --mode=factory --force')
-    else:
-        host.run('chromeos-firmwareupdate --mode=factory')
+    host.run('chromeos-firmwareupdate --mode=factory')
     # Get us out of dev-mode and clear GBB flags.  GBB flags are
     # non-zero because boot from USB was enabled.
     host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0',
