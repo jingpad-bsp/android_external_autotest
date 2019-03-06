@@ -24,7 +24,7 @@ from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 
 
 # Number of seconds for program EC/BIOS to time out.
-FIRMWARE_PROGRAM_TIMEOUT_SEC = 600
+FIRMWARE_PROGRAM_TIMEOUT_SEC = 900
 
 class ProgrammerError(Exception):
     """Local exception class wrapper."""
