@@ -24,8 +24,6 @@ SERVICE_ACCOUNT = '/creds/skylab_swarming_bot/skylab_bot_service_account.json'
 SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
 SKYLAB_SUITE_POOL = 'ChromeOSSkylab-suite'
 
-SKYLAB_TOOL = '/opt/infra-tools/skylab'
-
 TASK_COMPLETED = 'COMPLETED'
 TASK_COMPLETED_SUCCESS = 'COMPLETED (SUCCESS)'
 TASK_COMPLETED_FAILURE = 'COMPLETED (FAILURE)'
@@ -144,16 +142,6 @@ def get_basic_swarming_cmd(command):
     return [_get_client(), command,
             '--auth-service-account-json', SERVICE_ACCOUNT,
             '--swarming', get_swarming_server()]
-
-
-def get_retry_cmd(task_id):
-    """ Get a retry command for a given task.
-
-    @param task_id: A Swarming task ID string.
-
-    @return the task retry command as a list of strings.
-    """
-    return [SKYLAB_TOOL, 'rerun-tasks', '-output-json', task_id]
 
 
 def make_logdog_annotation_url():
