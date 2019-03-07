@@ -38,6 +38,7 @@ NOTIFY_GROUP = 'chromeos-infra-discuss@google.com'
 # CIPD packages whose prod refs should be updated.
 _CIPD_PACKAGES = (
         'chromiumos/infra/lucifer',
+        'chromiumos/infra/skylab/linux-amd64',
         'chromiumos/infra/skylab-inventory',
         'chromiumos/infra/skylab_swarming_worker/linux-amd64',
 )
