@@ -24,6 +24,7 @@ class power_Standby(test.test):
         """Reset force discharge state."""
         self._force_discharge_enabled = False
         self._pdash_note = pdash_note
+        self._checkpoint_logger = power_status.CheckpointLogger()
 
     def run_once(self, test_hours=None, sample_hours=None,
                  max_milliwatts_standby=500, ac_ok=False,
@@ -111,6 +112,8 @@ class power_Standby(test.test):
         end_ts -= offset
         power_telemetry_utils.start_measurement(start_ts)
         power_telemetry_utils.end_measurement(end_ts)
+        self._checkpoint_logger.checkpoint(self.tagged_testname,
+                                           start_ts, end_ts)
         charge_end = power_stats.battery[0].charge_now
         total_charge_used = charge_start - charge_end
         if total_charge_used <= 0 and not bypass_check:
@@ -135,10 +138,11 @@ class power_Standby(test.test):
 
         self.write_perf_keyval(results)
         pdash = power_dashboard.SimplePowerLoggerDashboard(
-                test_hours * 3600., results['w_energy_rate'],
+                end_ts - start_ts, results['w_energy_rate'],
                 self.tagged_testname, start_ts, self.resultsdir,
                 note=self._pdash_note)
         pdash.upload()
+        self._checkpoint_logger.save_checkpoint_data(self.resultsdir)
 
         self.output_perf_value(description='hours_standby_time',
                                value=results['hours_standby_time'],
