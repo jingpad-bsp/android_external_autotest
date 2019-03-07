@@ -354,16 +354,11 @@ def _retry_test(suite_handler, task_id, dry_run=False):
     logging.info('Retrying test %s, remaining %d retries.',
                  last_retry_spec.test_spec.test.name,
                  last_retry_spec.remaining_retries - 1)
-
-    cmd = swarming_lib.get_retry_cmd(task_id)
-
-    cros_build_lib = autotest.chromite_load('cros_build_lib')
-    result = cros_build_lib.RunCommand(cmd,
-                                       env=os.environ.copy(),
-                                       capture_output=True)
-
-    retried_task_id = json.loads(result.output)[
-        'original_id_to_rerun_id_map'][task_id]
+    retried_task_id = _schedule_test(
+            last_retry_spec.test_spec,
+            suite_id=suite_handler.suite_id,
+            is_provision=suite_handler.is_provision(),
+            dry_run=dry_run)
     previous_retried_ids = last_retry_spec.previous_retried_ids + [task_id]
     suite_handler.add_test_by_task_id(
             retried_task_id,
