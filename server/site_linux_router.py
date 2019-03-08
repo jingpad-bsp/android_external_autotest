@@ -498,10 +498,10 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                 strip()
         want_rng = "tpm-rng"
 
-        logging.info("Available / current RNGs on router: %r / %s",
-                     available, current)
+        logging.debug("Available / current RNGs on router: %r / %s",
+                      available, current)
         if want_rng in available and want_rng != current:
-            logging.info("Switching RNGs: %s -> %s", current, want_rng)
+            logging.debug("Switching RNGs: %s -> %s", current, want_rng)
             self.host.run('echo -n "%s" > %s' % (want_rng, self._RNG_CURRENT))
 
 
