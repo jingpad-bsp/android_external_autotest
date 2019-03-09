@@ -123,3 +123,6 @@ class Values(object):
 
     # True if the lid can wake the system from a powered off state
     lid_wake_from_power_off = True
+
+    # True if AP can access the EC flash while Chrome OS is running
+    ap_access_ec_flash = True
