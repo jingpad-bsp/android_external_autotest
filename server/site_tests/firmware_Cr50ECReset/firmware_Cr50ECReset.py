@@ -23,9 +23,20 @@ class firmware_Cr50ECReset(Cr50Test):
     RELEASE_RESET_DELAY = 3
     SHORT_PULSE = 1
 
+
+    def initialize(self, host, cmdline_args, full_args):
+        super(firmware_Cr50ECReset, self).initialize(host, cmdline_args,
+                                                     full_args)
+        # Don't bother if there is no Chrome EC or if EC hibernate doesn't work.
+        if not self.check_ec_capability():
+            raise error.TestNAError("Nothing needs to be tested on this device")
+        self.check_ec_hibernate()
+
+
     def cleanup(self):
-        """Make sure the EC is on"""
-        self.guarantee_ec_is_up()
+        """Make sure the EC is on, if there is a Chrome EC."""
+        if self.check_ec_capability():
+            self.guarantee_ec_is_up()
         super(firmware_Cr50ECReset, self).cleanup()
 
 
@@ -133,9 +144,6 @@ class firmware_Cr50ECReset(Cr50Test):
     def run_once(self):
         """Make sure 'cr50 ecrst' works as intended."""
         failed_wake = []
-        # The test needs to be able to hibernate the EC. Make sure it works as
-        # intended before running the test.
-        self.check_ec_hibernate()
 
         # Open cr50 so the test has access to ecrst
         self.fast_open(True)
