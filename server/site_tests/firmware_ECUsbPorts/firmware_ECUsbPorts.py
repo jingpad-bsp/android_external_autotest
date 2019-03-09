@@ -33,6 +33,9 @@ class firmware_ECUsbPorts(FirmwareTest):
 
     def initialize(self, host, cmdline_args):
         super(firmware_ECUsbPorts, self).initialize(host, cmdline_args)
+        # Don't bother if there is no Chrome EC.
+        if not self.check_ec_capability(['usb']):
+            raise error.TestNAError("Nothing needs to be tested on this device")
         # Only run in normal mode
         self.switcher.setup_mode('normal')
         self.ec.send_command("chan 0")
@@ -140,9 +143,8 @@ class firmware_ECUsbPorts(FirmwareTest):
 
 
     def run_once(self):
-        if not self.check_ec_capability(['usb']):
-            raise error.TestNAError("Nothing needs to be tested on this device")
-
+        """Execute the main body of the test.
+        """
         self._smart_usb_charge = (
             'smart_usb_charge' in self.faft_config.ec_capability)
         self._port_count = self.get_port_count()
