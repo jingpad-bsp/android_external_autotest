@@ -20,3 +20,5 @@ class Values(object):
     # Temporary until switch to power button
     rec_button_dev_switch = True
     smm_store = False
+    # The EC image is stored in the AP SPI chip, so flashrom -p ec won't work.
+    ap_access_ec_flash = False
