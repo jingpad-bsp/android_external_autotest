@@ -713,6 +713,10 @@ class FirmwareTest(FAFTBase):
         self._old_wpsw_boot = self.checkers.crossystem_checker(
                                    {'wpsw_boot': '1'}, suppress_logging=True)
         if not (ec_wp == self._old_wpsw_cur == self._old_wpsw_boot):
+            if not self.faft_config.ap_access_ec_flash:
+                raise error.TestNAError(
+                        "Cannot change EC write-protect for this device")
+
             logging.info('The test required EC is %swrite-protected. Reboot '
                          'and flip the state.', '' if ec_wp else 'not ')
             self.switcher.mode_aware_reboot(
