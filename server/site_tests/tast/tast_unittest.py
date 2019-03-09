@@ -113,10 +113,11 @@ class TastTest(unittest.TestCase):
                 tast.tast._SSP_REMOTE_TEST_RUNNER_PATH if ssp
                 else tast.tast._REMOTE_TEST_RUNNER_PATH)
 
-    def _init_tast_commands(self, tests):
+    def _init_tast_commands(self, tests, run_private_tests=False):
         """Sets fake_tast.py's behavior for 'list' and 'run' commands.
 
         @param tests: List of TestInfo objects.
+        @param run_private_tests: Whether to run private tests.
         """
         list_args = [
             'build=False',
@@ -125,6 +126,7 @@ class TastTest(unittest.TestCase):
             'remoterunner=' + self._remote_test_runner_path,
             'sshretries=%d' % tast.tast._SSH_CONNECT_RETRIES,
             'target=%s:%d' % (self.HOST, self.PORT),
+            'downloadprivatebundles=%s' % run_private_tests,
             'verbose=True',
         ]
         run_args = list_args + ['resultsdir=' + self._test.resultsdir]
@@ -147,17 +149,20 @@ class TastTest(unittest.TestCase):
         return os.path.join(self._test.resultsdir,
                             tast.tast._STREAMED_RESULTS_FILENAME)
 
-    def _run_test(self, ignore_test_failures=False):
+    def _run_test(self, ignore_test_failures=False, run_private_tests=False):
         """Writes fake_tast.py's configuration and runs the test.
 
         @param ignore_test_failures: Passed as the identically-named arg to
+            Tast.initialize().
+        @param run_private_tests: Passed as the identically-named arg to
             Tast.initialize().
         """
         self._test.initialize(FakeHost(self.HOST, self.PORT),
                               self.TEST_PATTERNS,
                               ignore_test_failures=ignore_test_failures,
                               max_run_sec=self.MAX_RUN_SEC,
-                              install_root=self._root_dir)
+                              install_root=self._root_dir,
+                              run_private_tests=run_private_tests)
         self._test.set_fake_now_for_testing(
                 (NOW - tast._UNIX_EPOCH).total_seconds())
 
@@ -464,6 +469,12 @@ class TastTest(unittest.TestCase):
         self.assertEqual('', msg(['t1'], []))
         self.assertEqual('1 missing: t1', msg([], ['t1']))
         self.assertEqual('1 missing: t2', msg(['t1'], ['t2']))
+
+    def testRunPrivateTests(self):
+        """Tests running private tests."""
+        self._init_tast_commands([TestInfo('pkg.Test', 0, 0)],
+                                 run_private_tests=True)
+        self._run_test(ignore_test_failures=True, run_private_tests=True)
 
 
 class TestInfo:
