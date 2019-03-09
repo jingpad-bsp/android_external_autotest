@@ -95,7 +95,7 @@ class tast(test.test):
     _TEST_DID_NOT_FINISH_MSG = 'Test did not finish'
 
     def initialize(self, host, test_exprs, ignore_test_failures=False,
-                   max_run_sec=3600, install_root='/', run_private_tests=False):
+                   max_run_sec=3600, install_root='/', run_private_tests=True):
         """
         @param host: remote.RemoteHost instance representing DUT.
         @param test_exprs: Array of strings describing tests to run.
