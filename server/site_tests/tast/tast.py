@@ -33,8 +33,10 @@ class tast(test.test):
     version = 1
 
     # Maximum time to wait for various tast commands to complete, in seconds.
+    # Note that _LIST_TIMEOUT_SEC includes time to download private test bundles
+    # if run_private_tests=True.
     _VERSION_TIMEOUT_SEC = 10
-    _LIST_TIMEOUT_SEC = 30
+    _LIST_TIMEOUT_SEC = 60
 
     # Additional time to add to the run timeout (e.g. for collecting crashes and
     # logs).
@@ -93,7 +95,7 @@ class tast(test.test):
     _TEST_DID_NOT_FINISH_MSG = 'Test did not finish'
 
     def initialize(self, host, test_exprs, ignore_test_failures=False,
-                   max_run_sec=3600, install_root='/'):
+                   max_run_sec=3600, install_root='/', run_private_tests=True):
         """
         @param host: remote.RemoteHost instance representing DUT.
         @param test_exprs: Array of strings describing tests to run.
@@ -106,6 +108,7 @@ class tast(test.test):
             command in seconds.
         @param install_root: Root directory under which Tast binaries are
             installed. Alternate values may be passed by unit tests.
+        @param run_private_tests: Download and run private tests.
 
         @raises error.TestFail if the Tast installation couldn't be found.
         """
@@ -114,6 +117,7 @@ class tast(test.test):
         self._ignore_test_failures = ignore_test_failures
         self._max_run_sec = max_run_sec
         self._install_root = install_root
+        self._run_private_tests = run_private_tests
         self._fake_now = None
 
         # List of JSON objects describing tests that will be run. See Test in
@@ -147,6 +151,7 @@ class tast(test.test):
     def run_once(self):
         """Runs a single iteration of the test."""
         self._log_version()
+        self._find_devservers()
         self._get_tests_to_run()
 
         run_failed = False
@@ -189,6 +194,16 @@ class tast(test.test):
         if allow_missing:
             return ''
         raise error.TestFail('None of %s exist' % list(paths))
+
+    def _find_devservers(self):
+        """Finds available devservers.
+
+        The result is saved as self._devserver_args.
+        """
+        devservers, _ = dev_server.ImageServer.get_available_devservers(
+            self._host.hostname)
+        logging.info('Using devservers: %s', ', '.join(devservers))
+        self._devserver_args = ['-devservers=%s' % ','.join(devservers)]
 
     def _log_version(self):
         """Runs the tast command locally to log its version."""
@@ -265,7 +280,10 @@ class tast(test.test):
         @raises error.TestFail if the tast command fails or times out.
         """
         logging.info('Getting list of tests that will be run')
-        result = self._run_tast('list', ['-json=true'], self._LIST_TIMEOUT_SEC)
+        args = ['-json=true'] + self._devserver_args
+        if self._run_private_tests:
+            args.append('-downloadprivatebundles=true')
+        result = self._run_tast('list', args, self._LIST_TIMEOUT_SEC)
         try:
             self._tests_to_run = json.loads(result.stdout.strip())
         except ValueError as e:
@@ -281,18 +299,16 @@ class tast(test.test):
 
         @raises error.TestFail if the tast command fails or times out (but not
             if individual tests fail).
-            """
+        """
         timeout_sec = self._get_run_tests_timeout_sec()
         logging.info('Running tests with timeout of %d sec', timeout_sec)
-        devservers, _ = dev_server.ImageServer.get_available_devservers(
-            self._host.hostname)
-        logging.info('Using devservers: %s', ', '.join(devservers))
         args = [
             '-resultsdir=' + self.resultsdir,
             '-waituntilready=true',
             '-timeout=' + str(timeout_sec),
-            '-devservers=' + ','.join(devservers),
-        ]
+        ] + self._devserver_args
+        if self._run_private_tests:
+            args.append('-downloadprivatebundles=true')
         self._run_tast('run', args, timeout_sec + tast._RUN_EXIT_SEC,
                        log_stdout=True)
 
@@ -498,6 +514,7 @@ class _LessBrokenParserInfo(dateutil.parser.parserinfo):
     happening.
     """
     def convertyear(self, year, century_specified=False):
+        """Overrides convertyear in dateutil.parser.parserinfo."""
         return int(year)
 
 

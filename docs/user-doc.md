@@ -63,7 +63,7 @@ This leads to the ebuild workflow, which generally allows compositing any
 number of sources in any format into a single monolithic tree, whose contents
 depend on build parameters.
 
-![ebuild workflow](./atest-diagram.png)
+![ebuild workflow](./assets/atest-diagram.png)
 
 This allows using standard autotest workflow without any change, however,
 unlike what upstream does, the tests aren’t run directly from the source
