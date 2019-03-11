@@ -55,6 +55,11 @@ class network_WlanDriver(test.test):
                     '4.14': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
                     '4.19': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
             },
+            'Intel 22260': {
+                    '4.4': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
+                    '4.14': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
+                    '4.19': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
+            },
             'Atheros AR9462': {
                     '3.4': 'wireless/ath/ath9k_btcoex/ath9k_btcoex.ko',
                     '3.8': 'wireless-3.4/ath/ath9k_btcoex/ath9k_btcoex.ko',
