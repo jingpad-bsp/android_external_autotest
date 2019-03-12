@@ -50,6 +50,7 @@ VENDOR_CC_U2F_ATTEST_RESPONSE_SIZE_BYTES = 64
 
 VENDOR_CMD_RESPONSE_SUCCESS = '00000000'
 VENDOR_CMD_RESPONSE_NOT_ALLOWED = '00000507'
+VENDOR_CMD_RESPONSE_PASSWORD_REQUIRED = '0000050A'
 
 # U2F Attest constants
 
@@ -173,8 +174,12 @@ class firmware_Cr50U2fCommands(test.test):
         VENDOR_CC_U2F_SIGN, '{}{}{}{}{}'.format(app_id, user_secret, key_handle,
                                                 hash, flags), expected_response)
 
-    check_response_size(response, expected_response,
-                        VENDOR_CC_U2F_SIGN_RESPONSE_SIZE_BYTES)
+    expected_response_size = VENDOR_CC_U2F_SIGN_RESPONSE_SIZE_BYTES
+    # 'check-only' requests don't have a response body.
+    if flags == '07':
+      expected_response_size = 0
+
+    check_response_size(response, expected_response, expected_response_size)
 
   def __u2f_generate(self,
                      app_id,
@@ -325,7 +330,7 @@ class firmware_Cr50U2fCommands(test.test):
                     HASH_TO_SIGN, '00', VENDOR_CMD_RESPONSE_SUCCESS)
 
     self.__u2f_sign(APP_ID, USER_SECRET_2, registration['keyHandle'],
-                    HASH_TO_SIGN, '00', VENDOR_CMD_RESPONSE_NOT_ALLOWED)
+                    HASH_TO_SIGN, '00', VENDOR_CMD_RESPONSE_PASSWORD_REQUIRED)
 
   def __test_sign_wrong_app_id(self):
     registration = self.__u2f_generate(APP_ID, USER_SECRET_1, '00')
@@ -337,7 +342,7 @@ class firmware_Cr50U2fCommands(test.test):
                     HASH_TO_SIGN, '00', VENDOR_CMD_RESPONSE_SUCCESS)
 
     self.__u2f_sign(APP_ID_2, USER_SECRET_1, registration['keyHandle'],
-                    HASH_TO_SIGN, '00', VENDOR_CMD_RESPONSE_NOT_ALLOWED)
+                    HASH_TO_SIGN, '00', VENDOR_CMD_RESPONSE_PASSWORD_REQUIRED)
 
   def __test_sign_invalid_kh(self):
     self.__u2f_sign(
@@ -346,7 +351,51 @@ class firmware_Cr50U2fCommands(test.test):
         RANDOM_32 + RANDOM_32,  # KH is 64 bytes long
         HASH_TO_SIGN,
         '00',
-        VENDOR_CMD_RESPONSE_NOT_ALLOWED)
+        VENDOR_CMD_RESPONSE_PASSWORD_REQUIRED)
+
+  def __test_sign_check_only(self):
+    registration = self.__u2f_generate(APP_ID, USER_SECRET_1, '00')
+
+    # U2F asserts presence by checking for a power button press within the
+    # last 10 seconds, sleep so that we are sure there was not one.
+
+    time.sleep(11)
+
+    self.__u2f_sign(APP_ID, USER_SECRET_1, registration['keyHandle'],
+                    HASH_TO_SIGN, '07', VENDOR_CMD_RESPONSE_SUCCESS)
+
+  def __test_sign_check_only_with_presence(self):
+    registration = self.__u2f_generate(APP_ID, USER_SECRET_1, '00')
+
+    self.servo.power_short_press()
+
+    self.__u2f_sign(APP_ID, USER_SECRET_1, registration['keyHandle'],
+                    HASH_TO_SIGN, '07', VENDOR_CMD_RESPONSE_SUCCESS)
+
+  def __test_sign_check_only_invalid_kh(self):
+    # U2F asserts presence by checking for a power button press within the
+    # last 10 seconds, sleep so that we are sure there was not one.
+
+    time.sleep(11)
+
+    self.__u2f_sign(APP_ID,
+                    USER_SECRET_1,
+                    RANDOM_32 + RANDOM_32,  # KH is 64 bytes long
+                    HASH_TO_SIGN,
+                    '07',
+                    VENDOR_CMD_RESPONSE_PASSWORD_REQUIRED)
+
+  def __test_sign_check_only_invalid_kh_with_presence(self):
+    registration = self.__u2f_generate(APP_ID, USER_SECRET_1, '00')
+
+    self.servo.power_short_press()
+
+    self.__u2f_sign(APP_ID,
+                    USER_SECRET_1,
+                    RANDOM_32 + RANDOM_32,  # KH is 64 bytes long
+                    HASH_TO_SIGN,
+                    '07',
+                    VENDOR_CMD_RESPONSE_PASSWORD_REQUIRED)
 
   def __check_attest_reg_resp(self,
                               app_id,
@@ -428,7 +477,7 @@ class firmware_Cr50U2fCommands(test.test):
     self.servo.power_short_press()
 
     self.__u2f_sign(APP_ID, USER_SECRET_1, registration['keyHandle'],
-                    HASH_TO_SIGN, '00', VENDOR_CMD_RESPONSE_NOT_ALLOWED)
+                    HASH_TO_SIGN, '00', VENDOR_CMD_RESPONSE_PASSWORD_REQUIRED)
 
   def run_once(self, host=None):
     """Run the tests."""
@@ -454,6 +503,12 @@ class firmware_Cr50U2fCommands(test.test):
     self.__test_sign_wrong_user_secret()
     self.__test_sign_wrong_app_id()
     self.__test_sign_invalid_kh()
+
+    # Sign - check only
+    self.__test_sign_check_only()
+    self.__test_sign_check_only_with_presence()
+    self.__test_sign_check_only_invalid_kh()
+    self.__test_sign_check_only_invalid_kh_with_presence()
 
     # Attest
     self.__test_attest_simple()
