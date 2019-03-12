@@ -195,6 +195,12 @@ class kernel_ConfigVerify(test.test):
                     entry['enabled'].append('CONFIGFS_FS')
                     entry['module'].append('USB_F_FS')
 
+            # Like FW_LOADER_USER_HELPER, these may be exploited by userspace.
+            # We run udev everywhere which uses netlink sockets for event
+            # propagation rather than executing programs, so don't need this.
+            self.IS_MISSING.append('UEVENT_HELPER')
+            self.IS_MISSING.append('UEVENT_HELPER_PATH')
+
         if utils.compare_versions(kernel_ver, "4.4") < 0:
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == '.*_FS$':
