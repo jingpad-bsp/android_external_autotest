@@ -26,23 +26,23 @@ class login_UnicornLogin(test.test):
           user=chrome.NormalizeEmail(child_user)):
         raise error.TestFail('Expected to find a mounted vault for %s'
                              % child_user)
-        tab = cr.browser.tabs.New()
-        # TODO(achuith): Use a better signal of being logged in, instead of
-        # parsing accounts.google.com.
-        tab.Navigate('http://accounts.google.com')
-        tab.WaitForDocumentReadyStateToBeComplete()
-        res = tab.EvaluateJavaScript( '''
-            var res = '',
-            divs = document.getElementsByTagName('div');
-            for (var i = 0; i < divs.length; i++) {
-              res = divs[i].textContent;
-              if (res.search('%s') > 1) {
-                break;
-              }
+      tab = cr.browser.tabs.New()
+      # TODO(achuith): Use a better signal of being logged in, instead of
+      # parsing accounts.google.com.
+      tab.Navigate('http://accounts.google.com')
+      tab.WaitForDocumentReadyStateToBeComplete()
+      res = tab.EvaluateJavaScript( '''
+          var res = '',
+          divs = document.getElementsByTagName('div');
+          for (var i = 0; i < divs.length; i++) {
+            res = divs[i].textContent;
+            if (res.search('%s') > 1) {
+              break;
             }
-            res;
-        ''' % child_user)
-        if not res:
-          raise error.TestFail('No references to %s on accounts page.'
-                               % child_user)
-        tab.Close()
+          }
+          res;
+      ''' % child_user)
+      if not res:
+        raise error.TestFail('No references to %s on accounts page.'
+                             % child_user)
+      tab.Close()
