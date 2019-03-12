@@ -39,6 +39,7 @@ suite:arc-gts-tot
 suite:arc-gts-test
 suite:arc-unit-test
 suite:audio
+suite:au-perbuild
 suite:av_webcam
 suite:bluestreak-partners
 suite:bluestreak-pre-cq
