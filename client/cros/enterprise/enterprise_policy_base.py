@@ -118,7 +118,8 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
 
     def _initialize_enterprise_policy_test(
             self, case='', env='dm-fake', dms_name=None,
-            username=USERNAME, password=PASSWORD, gaia_id=GAIA_ID, **kwargs):
+            username=USERNAME, password=PASSWORD, gaia_id=GAIA_ID,
+            set_auto_logout=None, **kwargs):
         """
         Initialize test parameters and fake DM Server.
 
@@ -139,6 +140,7 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
         self.username = username
         self.password = password
         self.gaia_id = gaia_id
+        self.set_auto_logout = set_auto_logout
         self.dms_name = dms_name
         self.dms_is_fake = (env == 'dm-fake')
         self.arc_enabled = False
@@ -160,6 +162,9 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
         # Get enterprise directory of shared resources.
         client_dir = os.path.dirname(os.path.dirname(self.bindir))
         self.enterprise_dir = os.path.join(client_dir, 'cros/enterprise')
+
+        if self.set_auto_logout is not None:
+            self._auto_logout = self.set_auto_logout
 
         # Log the test context parameters.
         logging.info('Test Context Parameters:')
