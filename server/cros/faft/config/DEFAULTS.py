@@ -60,9 +60,6 @@ class Values(object):
     # Delay between keypresses in firmware screen
     confirm_screen = 3
 
-    # Only True on Alex/ZGB which needs a transition state to enter dev mode.
-    need_dev_transition = False
-
     # Delay between passing firmware screen and text mode warning screen
     legacy_text_screen = 20
 
