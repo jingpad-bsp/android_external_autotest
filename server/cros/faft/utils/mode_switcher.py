@@ -107,12 +107,6 @@ class _CtrlDBypasser(_BaseFwBypasser):
         # Let's press it without delay
         self.servo.enter_key(press_secs=0)
 
-        # For Alex/ZGB, there is a dev warning screen in text mode.
-        # Skip it by pressing Ctrl-D.
-        if self.faft_config.need_dev_transition:
-            time.sleep(self.faft_config.legacy_text_screen)
-            self.servo.ctrl_d()
-
 
     def trigger_rec_to_dev(self):
         """Trigger to the dev mode from the rec screen."""
