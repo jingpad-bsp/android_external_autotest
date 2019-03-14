@@ -1954,14 +1954,20 @@ def _should_run(options):
     start_time = str(datetime.now() -
                      timedelta(days=_SEARCH_JOB_MAX_DAYS))
     afe = _create_afe(options)
-    afe_job_id = afe.get_jobs(
+    afe_jobs = afe.get_jobs(
             name__istartswith=options.test_source_build,
             name__iendswith='control.'+options.name,
             created_on__gte=start_time,
             min_rpc_timeout=_MIN_RPC_TIMEOUT)
-    if afe_job_id:
+    if options.model:
+        model_tag = 'model:%s' % options.model
+        filtered_jobs = [j for j in afe_jobs if model_tag in j.control_file]
+    else:
+        filtered_jobs = afe_jobs
+
+    if filtered_jobs:
         logging.info('Found duplicate suite %s scheduled in past.',
-                     afe_job_id)
+                     filtered_jobs)
         return False
 
     return True
