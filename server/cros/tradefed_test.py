@@ -1120,6 +1120,13 @@ class TradefedTest(test.test):
                 if failed <= waived and all_done:
                     break
 
+                # TODO(b/127908450) Tradefed loses track of not-executed tests
+                # when the commandline pattern included '*', and retry run for
+                # them wrongly declares all tests passed. This is misleading.
+                # Rather, we give up the retry and report the result as FAIL.
+                if not all_done and '*' in ''.join(run_template):
+                    break
+
         # Tradefed finished normally. Record the failures to perf.
         if target_module:
             # Only record the failure by module, which exclude 'all', 'collects-tests-only', etc.
