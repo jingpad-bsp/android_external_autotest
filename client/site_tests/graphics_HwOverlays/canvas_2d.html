@@ -7,14 +7,15 @@
 </body>
 <script type="text/javascript">
   var canvas = document.getElementById('canvas1');
-  var ctx = canvas.getContext('2d');
   // Make the canvas very large but still falling inside the viewport; |height|
   // also has to account for the Shelf (taskbar) at the bottom.
-  const width = window.innerWidth * 0.9;
-  const height = window.innerHeight * 0.9;
+  const dpr = window.devicePixelRatio || 1;
+  const width = (window.innerWidth / dpr) * 0.9 / dpr;
+  const height = (window.innerHeight / dpr) * 0.9 / dpr;
   canvas.width = width;
   canvas.height = height;
 
+  var ctx = canvas.getContext('2d');
   var draw_passes_count = 0;
 
   function draw_pass() {

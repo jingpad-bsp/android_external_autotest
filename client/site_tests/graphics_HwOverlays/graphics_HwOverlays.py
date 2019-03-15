@@ -11,7 +11,8 @@ from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import constants
-from autotest_lib.client.cros.multimedia import local_facade_factory
+from autotest_lib.client.cros.multimedia import display_facade_native
+from autotest_lib.client.cros.multimedia import facade_resource
 
 EXTRA_BROWSER_ARGS = ['--enable-experimental-web-platform-features']
 
@@ -39,19 +40,13 @@ class graphics_HwOverlays(graphics_utils.GraphicsTest,
     def set_rotation_to_zero(self, cr):
         # Set rotation to 0 (portrait) otherwise tablet platforms might not get
         # overlays.
-        display_facade = local_facade_factory.LocalFacadeFactory(
-            cr).create_display_facade()
-        displays = []
-        try:
-            displays = display_facade.get_display_info()
-        except KeyError as e:
-            # Safe to ignore: some machines won't have all DisplayInfo keys.
-            pass
-        logging.info('Number of displays %i' % len(displays))
-        for display in displays:
-            logging.info('Setting rotation to 0 of display %s, name %s' %
-               (display.display_id, display.name));
-            display_facade.set_display_rotation(display.display_id, rotation=0)
+        facade = facade_resource.FacadeResource(cr)
+
+        display_facade = display_facade_native.DisplayFacadeNative(facade)
+        internal_display_id = display_facade.get_internal_display_id()
+
+        logging.info("Internal display ID is %s", internal_display_id)
+        display_facade.set_display_rotation(internal_display_id, rotation=0)
 
     def run_once(self, html_file, data_file_url = None):
         if not graphics_utils.is_drm_atomic_supported():
