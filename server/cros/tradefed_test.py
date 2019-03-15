@@ -83,6 +83,7 @@ class TradefedTest(test.test):
                    host=None,
                    hosts=None,
                    max_retry=None,
+                   load_waivers=True,
                    retry_manual_tests=False,
                    warn_on_test_retry=True):
         """Sets up the tools and binary bundles for the test."""
@@ -141,7 +142,10 @@ class TradefedTest(test.test):
                                         self._get_tradefed_base_dir())
 
         # Load expected test failures to exclude them from re-runs.
-        self._waivers = self._get_expected_failures('expectations', bundle)
+        self._waivers = set()
+        if load_waivers:
+            self._waivers.update(
+                    self._get_expected_failures('expectations', bundle))
         if not retry_manual_tests:
             self._waivers.update(
                     self._get_expected_failures('manual_tests', bundle))
