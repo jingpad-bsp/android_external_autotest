@@ -173,19 +173,24 @@ class kernel_ConfigVerify(test.test):
 
         # Adjust for kernel-version-specific changes
         kernel_ver = os.uname()[2]
+
+        # For linux-3.10 or newer.
         if utils.compare_versions(kernel_ver, "3.10") >= 0:
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == 'BINFMT_':
                     entry['builtin'].append('BINFMT_SCRIPT')
 
+        # For linux-3.14 or newer.
         if utils.compare_versions(kernel_ver, "3.14") >= 0:
             self.IS_MODULE.append('TEST_ASYNC_DRIVER_PROBE')
+            self.IS_MISSING.remove('INET_DIAG')
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == 'BINFMT_':
                     entry['builtin'].append('BINFMT_MISC')
                 if entry['regex'] == '.*_FS$':
                     entry['module'].append('NFS_FS')
 
+        # For linux-3.18 or newer.
         if utils.compare_versions(kernel_ver, "3.18") >= 0:
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == '.*_FS$':
@@ -201,14 +206,13 @@ class kernel_ConfigVerify(test.test):
             self.IS_MISSING.append('UEVENT_HELPER')
             self.IS_MISSING.append('UEVENT_HELPER_PATH')
 
+        # For kernels older than linux-4.4.
         if utils.compare_versions(kernel_ver, "4.4") < 0:
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == '.*_FS$':
                     entry['builtin'].append('EXT4_USE_FOR_EXT23')
 
-        if utils.compare_versions(kernel_ver, "3.14") >= 0:
-            self.IS_MISSING.remove('INET_DIAG')
-
+        # For linux-4.19 or newer.
         if utils.compare_versions(kernel_ver, "4.19") >= 0:
             self.IS_MISSING.remove('BPF_SYSCALL')
             self.IS_BUILTIN.append('HAVE_EBPF_JIT')
