@@ -332,7 +332,7 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
         @param setup_arc: whether to run setup_arc in arc.Arctest.
         @param use_clouddpc_test: bool, run_clouddpc_test() or not.
         '''
-        _APP_FILENAME = 'arc_test_release_signed.apk'
+        _APP_FILENAME = 'autotest-deps-cloudpctest-0.4.apk'
         _DEP_PACKAGE = 'CloudDPCTest-apks'
         _PKG_NAME = 'com.google.android.apps.work.clouddpc.e2etests'
 
@@ -542,20 +542,17 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
 
         """
         table_index = policy_tab.EvaluateJavaScript("""
-            var table_index = -1
-            var tables = document.getElementsByClassName(
-                'policy-table-section');
-            for (var i = 1; i < tables.length; i++) {
-                var description = tables[i].querySelector('.table-description')
-                if (description !== null) {
-                    var table_id = description.innerText.split(': ').pop();
-                    if (table_id === '%s') {
-                        table_index = i;
-                        break;
-                    }
+        var table_id = -1;
+        var section = document.getElementsByClassName('policy-table');
+        for (var i = 0; i < section.length; i++) {
+            var temp_name = section[i]
+                .getElementsByClassName('id')[0].innerText;
+            if (temp_name === "%s")
+                { var table_id = i;
+                  break ;
                 }
-            }
-            table_index;
+           };
+        table_id;
             """ % ext_id)
         if table_index == -1:
             raise error.TestError(
@@ -588,7 +585,6 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
 
         """
         policy_tab = self.navigate_to_url(self.CHROME_POLICY_PAGE)
-
         for id in extension_policies.keys():
             table = self._get_extension_policy_table(policy_tab, id)
             download_url = extension_policies[id]['download_url']
@@ -631,10 +627,9 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
                   and 'source'.
         """
         stats = {'name': policy_name}
-
         row_values = policy_tab.EvaluateJavaScript('''
         var rowValues = {};
-        var section = document.getElementsByClassName('policy-table')[0];
+        var section = document.getElementsByClassName('policy-table')[%s];
         table = section.getElementsByClassName('main')[0];
         var pol_rows = table.getElementsByClassName('policy-data');
         for (i = 0; i < pol_rows.length; i++) {
@@ -646,7 +641,11 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
             if (pol_name === '%s'){
                 var pol_data = pol_rows[i]
                     .getElementsByClassName('policy row')[0];
-                var column_titles = ["name", "value", "source",
+                var value_data = pol_rows[i]
+                    .getElementsByClassName('value row')[0];
+                rowValues["value"] = value_data
+                    .getElementsByClassName('value')[0].innerText;
+                var column_titles = ["name", "source",
                                      "scope", "level", "messages"];
                 column_titles.forEach(function(entry) {
                     var entry_div = pol_data.getElementsByClassName(entry)[0];
@@ -654,7 +653,7 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
            };
         };
         rowValues;
-        ''' % (policy_name))
+        ''' % (table_index, policy_name))
 
         entries = ["name", "value", "source", "scope", "level", "messages"]
 

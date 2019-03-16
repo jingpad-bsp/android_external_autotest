@@ -83,6 +83,7 @@ class TradefedTest(test.test):
                    host=None,
                    hosts=None,
                    max_retry=None,
+                   load_waivers=True,
                    retry_manual_tests=False,
                    warn_on_test_retry=True):
         """Sets up the tools and binary bundles for the test."""
@@ -141,7 +142,10 @@ class TradefedTest(test.test):
                                         self._get_tradefed_base_dir())
 
         # Load expected test failures to exclude them from re-runs.
-        self._waivers = self._get_expected_failures('expectations', bundle)
+        self._waivers = set()
+        if load_waivers:
+            self._waivers.update(
+                    self._get_expected_failures('expectations', bundle))
         if not retry_manual_tests:
             self._waivers.update(
                     self._get_expected_failures('manual_tests', bundle))
@@ -1118,6 +1122,13 @@ class TradefedTest(test.test):
 
                 # Check if all the tests passed.
                 if failed <= waived and all_done:
+                    break
+
+                # TODO(b/127908450) Tradefed loses track of not-executed tests
+                # when the commandline pattern included '*', and retry run for
+                # them wrongly declares all tests passed. This is misleading.
+                # Rather, we give up the retry and report the result as FAIL.
+                if not all_done and '*' in ''.join(run_template):
                     break
 
         # Tradefed finished normally. Record the failures to perf.

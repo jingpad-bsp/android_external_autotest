@@ -519,7 +519,7 @@ def _install_test_image(host, arguments):
                 preparedut.flash_firmware_using_servo(host)
             else:
                 logging.debug('Install FW by chromeos-firmwareupdate.')
-                preparedut.install_firmware(host)
+                preparedut.install_firmware(host, arguments.force_firmware)
         except error.AutoservRunError as e:
             logging.exception('Firmware update failed: %s', e)
             msg = '%s failed' % (

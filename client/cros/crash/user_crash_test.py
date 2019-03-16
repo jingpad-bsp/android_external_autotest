@@ -318,14 +318,13 @@ class UserCrashTest(crash_test.CrashTest):
         group = grp.getgrgid(stat_info.st_gid).gr_name
         mode = stat.S_IMODE(stat_info.st_mode)
 
+        expected_mode = 0o700
         if crash_dir == '/var/spool/crash':
             expected_user = 'root'
             expected_group = 'root'
-            expected_mode = 01755
         else:
             expected_user = 'chronos'
             expected_group = 'chronos'
-            expected_mode = 0755
 
         if user != expected_user or group != expected_group:
             raise error.TestFail(

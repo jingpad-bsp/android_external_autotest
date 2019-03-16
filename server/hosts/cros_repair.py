@@ -362,10 +362,8 @@ class JetstreamAttestationVerifier(hosts.Verifier):
                 raise hosts.AutoservVerifyError(
                         'Attestation has not been prepared')
 
-            # This output is in text protobuf format.
-            result = host.run('ap-attestation-client '
-                              '--endpoint=get-endorsement-information')
-            if 'ek_certificate' not in result.stdout:
+            result = host.run('cryptohome --action=tpm_attestation_get_ek')
+            if 'EK Certificate' not in result.stdout:
                 raise hosts.AutoservVerifyError(
                         'Endorsement certificate not found')
         except error.AutoservRunError:

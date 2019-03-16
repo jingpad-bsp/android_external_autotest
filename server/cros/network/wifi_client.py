@@ -1181,8 +1181,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
     def get_disconnect_reasons(self):
         """Get disconnect reason codes."""
-        disconnect_reason_msg = "updated DisconnectReason to ";
-        disconnect_reason_cleared = "clearing DisconnectReason for ";
+        disconnect_reason_msg = "updated DisconnectReason "
+        disconnect_reason_cleared = "clearing DisconnectReason for "
         result = self.host.run('grep -E "(%s|%s)" /var/log/net.log' %
                                (disconnect_reason_msg,
                                disconnect_reason_cleared),

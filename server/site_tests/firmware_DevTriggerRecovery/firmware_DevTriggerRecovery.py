@@ -20,46 +20,14 @@ class firmware_DevTriggerRecovery(FirmwareTest):
     """
     version = 1
 
-    # The devsw off->on transition states are different based on platforms.
-    # For Alex/ZGB, it is dev switch on but normal firmware boot.
-    # For other platforms, it is dev switch on and developer firmware boot.
-    def check_devsw_on_transition(self):
-        if self.faft_client.need_dev_transition:
-            return self.checkers.crossystem_checker({
-                    'devsw_boot': '1',
-                    'mainfw_act': 'A',
-                    'mainfw_type': 'normal',
-                    })
-        else:
-            return self.checkers.crossystem_checker({
-                    'devsw_boot': '1',
-                    'mainfw_act': 'A',
-                    'mainfw_type': 'developer',
-                    })
-
-    # The devsw on->off transition states are different based on platforms.
-    # For Alex/ZGB, it is firmware B normal boot. Firmware A is still developer.
-    # For other platforms, it is directly firmware A normal boot.
-    def check_devsw_off_transition(self):
-        if self.faft_client.need_dev_transition:
-            return self.checkers.crossystem_checker({
-                    'devsw_boot': '0',
-                    'mainfw_act': 'B',
-                    'mainfw_type': 'normal',
-                    })
-        else:
-            return self.checkers.crossystem_checker({
-                    'devsw_boot': '0',
-                    'mainfw_act': 'A',
-                    'mainfw_type': 'normal',
-                    })
-
     def initialize(self, host, cmdline_args):
+        """Initialize the test"""
         super(firmware_DevTriggerRecovery, self).initialize(host, cmdline_args)
         self.switcher.setup_mode('normal')
         self.setup_usbkey(usbkey=True, host=False)
 
     def run_once(self):
+        """Main test logic"""
         if self.faft_config.mode_switcher_type != 'physical_button_switcher':
             raise error.TestNAError('This test is only valid in physical button'
                                     'controlled dev mode firmware.')
@@ -78,7 +46,11 @@ class firmware_DevTriggerRecovery(FirmwareTest):
         logging.info("Expected values based on platforms (see above), "
                      "run 'chromeos-firmwareupdate --mode todev && reboot', "
                      "and trigger recovery boot at dev screen. ")
-        self.check_state(self.check_devsw_on_transition)
+        self.check_state((self.checkers.crossystem_checker, {
+                    'devsw_boot': '1',
+                    'mainfw_act': 'A',
+                    'mainfw_type': 'developer',
+                    }))
         self.faft_client.system.run_shell_command(
                  'chromeos-firmwareupdate --mode todev && reboot')
         # Ignore the default reboot_action here because the
@@ -98,7 +70,11 @@ class firmware_DevTriggerRecovery(FirmwareTest):
         logging.info("Expected values based on platforms (see above), "
                      "and run 'chromeos-firmwareupdate --mode tonormal && "
                      "reboot'")
-        self.check_state(self.check_devsw_off_transition)
+        self.check_state((self.checkers.crossystem_checker, {
+                    'devsw_boot': '0',
+                    'mainfw_act': 'A',
+                    'mainfw_type': 'normal',
+                    }))
         self.faft_client.system.run_shell_command(
                             'chromeos-firmwareupdate --mode tonormal && reboot')
         self.switcher.wait_for_client()
