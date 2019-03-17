@@ -68,9 +68,25 @@ def get_job_id_or_task_id(result_dir):
     m_ssp_job_pattern = re.match(ssp_job_pattern, result_dir)
     if m_ssp_job_pattern and utils.is_in_container():
         return m_ssp_job_pattern.group(1)
-    m_swarming_task = re.match('.*/swarming-([0-9a-fA-F]+)$', result_dir)
-    if m_swarming_task:
-        return m_swarming_task.group(1)
+    return _get_swarming_run_id(result_dir)
+
+
+def _get_swarming_run_id(path):
+    """Extract the Swarming run_id for a Skylab task from the result path."""
+    # Legacy swarming results are in directories like
+    #   .../results/swarming-3e4391423c3a4311
+    # In particular, the ending digit is never 0
+    m_legacy_path = re.match('.*/swarming-([0-9a-fA-F]*[1-9a-fA-F])$', path)
+    if m_legacy_path:
+        return m_legacy_path.group(1)
+    # New style swarming results are in directories like
+    #   .../results/swarming-3e4391423c3a4310/1
+    # - Results are one directory deeper.
+    # - Ending digit of first directory is always 0.
+    m_path = re.match('.*/swarming-([0-9a-fA-F]*)0/([1-9a-fA-F])$', path)
+    if m_path:
+      return m_path.group(1) + m_path.group(2)
+    return None
 
 
 class _JobDirectory(object):
@@ -219,8 +235,27 @@ _marker_parse_error_metric = metrics.Counter(
 class SwarmingJobDirectory(_JobDirectory):
   """Subclass of _JobDirectory for Skylab swarming jobs."""
 
-  # .../results/swarming-3e4391423c3a4311
-  GLOB_PATTERN = 'swarming-[a-f0-9]*'
+  @classmethod
+  def get_job_directories(cls):
+    """Return a list of directories of jobs that need offloading."""
+    # Legacy swarming results are in directories like
+    #   .../results/swarming-3e4391423c3a4311
+    # In particular, the ending digit is never 0
+    jobdirs = [d for d in glob.glob('swarming-[0-9a-f]*[1-9a-f]')
+                 if os.path.isdir(d)]
+    # New style swarming results are in directories like
+    #   .../results/swarming-3e4391423c3a4310/1
+    # - Results are one directory deeper.
+    # - Ending digit of first directory is always 0.
+    new_style_topdir = [d for d in glob.glob('swarming-[0-9a-f]*0')
+                        if os.path.isdir(d)]
+    for topdir in new_style_topdir:
+      subdirs = [d for d in glob.glob('%s/[1-9a-f]*' % topdir)
+                 if os.path.isdir(d)]
+      jobdirs += subdirs
+    return jobdirs
+
+
 
   def get_timestamp_if_finished(self):
     """Get the timestamp to use for finished jobs.
