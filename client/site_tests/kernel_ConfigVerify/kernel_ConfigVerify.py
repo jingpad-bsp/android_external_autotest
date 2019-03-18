@@ -212,6 +212,10 @@ class kernel_ConfigVerify(test.test):
                 if entry['regex'] == '.*_FS$':
                     entry['builtin'].append('EXT4_USE_FOR_EXT23')
 
+        # For linux-4.4 or newer.
+        if utils.compare_versions(kernel_ver, '4.4') >= 0:
+            self.IS_BUILTIN.append('STATIC_USERMODEHELPER')
+
         # For linux-4.19 or newer.
         if utils.compare_versions(kernel_ver, "4.19") >= 0:
             self.IS_MISSING.remove('BPF_SYSCALL')
@@ -236,6 +240,11 @@ class kernel_ConfigVerify(test.test):
         # be 32k.
         wanted = '32768'
         config.has_value('DEFAULT_MMAP_MIN_ADDR', [wanted])
+
+        # Security; make sure usermode helper is our tool for linux-4.4+.
+        if utils.compare_versions(kernel_ver, '4.4') >= 0:
+            wanted = '"/sbin/usermode-helper"'
+            config.has_value('STATIC_USERMODEHELPER_PATH', [wanted])
 
         # Security; make sure NX page table bits are usable.
         if self.is_x86_family(arch):
