@@ -21,8 +21,8 @@ from autotest_lib.client.cros.video import constants
 from autotest_lib.client.cros.video import helper_logger
 
 
-DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS = [
-        '--disable-accelerated-video-decode']
+DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS = '--disable-accelerated-video-decode'
+ENABLE_AUTOPLAY = '--autoplay-policy=no-user-gesture-required'
 DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/'
 
 PLAYBACK_WITH_HW_ACCELERATION = 'playback_with_hw_acceleration'
@@ -284,7 +284,8 @@ class video_PlaybackPerf(test.test):
         keyvals = {}
 
         with chrome.Chrome(
-                extra_browser_args=helper_logger.chrome_vmodule_flag(),
+                extra_browser_args=[helper_logger.chrome_vmodule_flag(),
+                                    ENABLE_AUTOPLAY],
                 init_network_controller=True) as cr:
 
             # crbug/753292 - enforce the idle checks after login
@@ -332,8 +333,9 @@ class video_PlaybackPerf(test.test):
                 return keyvals
 
         # Start chrome with disabled video hardware decode flag.
-        with chrome.Chrome(extra_browser_args=
+        with chrome.Chrome(extra_browser_args=[
                 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS,
+                ENABLE_AUTOPLAY],
                 init_network_controller=True) as cr:
             hd = histogram_verifier.HistogramDiffer(
                     cr, constants.MEDIA_GVD_INIT_STATUS)
