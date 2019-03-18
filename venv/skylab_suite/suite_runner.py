@@ -56,7 +56,7 @@ def _resume_suite(test_specs, suite_handler, dry_run=False):
             test_specs, suite_handler, all_tasks)
 
     logging.info('Not yet scheduled test_specs: %r', not_yet_scheduled)
-    _schedule_test_specs(not_yet_scheduled, suite_handler, suite_id, dry_run)
+    _create_test_tasks(not_yet_scheduled, suite_handler, suite_id, dry_run)
 
     if suite_id is not None and suite_handler.should_wait():
         _wait_for_results(suite_handler, dry_run=dry_run)
@@ -115,15 +115,15 @@ def _get_current_task(tasks):
 def _run_suite(test_specs, suite_handler, dry_run=False):
     """Make a new suite."""
     suite_id = os.environ.get('SWARMING_TASK_ID')
-    _schedule_test_specs(test_specs, suite_handler, suite_id, dry_run)
+    _create_test_tasks(test_specs, suite_handler, suite_id, dry_run)
     suite_handler.set_suite_id(suite_id)
 
     if suite_id is not None and suite_handler.should_wait():
         _wait_for_results(suite_handler, dry_run=dry_run)
 
 
-def _schedule_test_specs(test_specs, suite_handler, suite_id, dry_run=False):
-    """Schedule a list of tests (TestSpecs).
+def _create_test_tasks(test_specs, suite_handler, suite_id, dry_run=False):
+    """Create test tasks for a list of tests (TestSpecs).
 
     Given a list of TestSpec object, this function will schedule them on
     swarming one by one, and add them to the swarming_task_id-to-test map
@@ -137,7 +137,7 @@ def _schedule_test_specs(test_specs, suite_handler, suite_id, dry_run=False):
     @param dry_run: Whether to kick off dry runs of the tests.
     """
     for test_spec in test_specs:
-        test_task_id = _schedule_test(
+        test_task_id = _create_test_task(
                 test_spec,
                 suite_id=suite_id,
                 is_provision=suite_handler.is_provision(),
@@ -254,9 +254,9 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id,
     return json.loads(result.output)['task_id']
 
 
-def _schedule_test(test_spec, suite_id=None,
-                   is_provision=False, dry_run=False):
-    """Schedule a CrOS test.
+def _create_test_task(test_spec, suite_id=None,
+                      is_provision=False, dry_run=False):
+    """Create a test task for a given test spec.
 
     @param test_spec: A cros_suite.TestSpec object.
     @param suite_id: the suite task id of the test.
@@ -264,7 +264,7 @@ def _schedule_test(test_spec, suite_id=None,
 
     @return the swarming task id of this task.
     """
-    logging.info('Scheduling test %s', test_spec.test.name)
+    logging.info('Creating task for test %s', test_spec.test.name)
     cmd, cmd_with_fallback = _get_suite_cmd(test_spec, suite_id)
     if dry_run:
         cmd = ['/bin/echo'] + cmd
@@ -354,7 +354,7 @@ def _retry_test(suite_handler, task_id, dry_run=False):
     logging.info('Retrying test %s, remaining %d retries.',
                  last_retry_spec.test_spec.test.name,
                  last_retry_spec.remaining_retries - 1)
-    retried_task_id = _schedule_test(
+    retried_task_id = _create_test_task(
             last_retry_spec.test_spec,
             suite_id=suite_handler.suite_id,
             is_provision=suite_handler.is_provision(),
