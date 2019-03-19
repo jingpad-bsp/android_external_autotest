@@ -10,10 +10,9 @@
   var ctx = canvas.getContext('webgl');
   // Make the canvas very large but still falling inside the viewport; |height|
   // also has to account for the Shelf (taskbar) at the bottom.
-  const width = window.innerWidth * 0.9;
-  const height = window.innerHeight * 0.9;
-  canvas.width = width;
-  canvas.height = height;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = (window.innerWidth / dpr) * 0.9 / dpr;
+  canvas.height = (window.innerHeight / dpr) * 0.9 / dpr;
 
   var draw_passes_count = 0;
 
