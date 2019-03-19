@@ -423,33 +423,6 @@ class ServoLabel(base_label.BaseLabel):
                 and servo_host.servo_host_is_up(servo_host_hostname))
 
 
-class VideoLabel(base_label.StringLabel):
-    """Labels detailing video capabilities."""
-
-    # List gathered from
-    # https://chromium.googlesource.com/chromiumos/
-    # platform2/+/master/avtest_label_detect/main.c#19
-    # TODO(hiroh): '4k_video' won't be used. It will be removed in the future.
-    _NAME = [
-        'hw_jpeg_acc_dec',
-        'hw_video_acc_h264',
-        'hw_video_acc_vp8',
-        'hw_video_acc_vp9',
-        'hw_video_acc_enc_h264',
-        'hw_video_acc_enc_vp8',
-        'webcam',
-        '4k_video',
-        '4k_video_h264',
-        '4k_video_vp8',
-        '4k_video_vp9',
-    ]
-
-    def generate_labels(self, host):
-        result = host.run('/usr/local/bin/avtest_label_detect',
-                          ignore_status=True).stdout
-        return re.findall('^Detected label: (\w+)$', result, re.M)
-
-
 class ArcLabel(base_label.BaseLabel):
     """Label indicates if host has ARC support."""
 
@@ -637,5 +610,4 @@ CROS_LABELS = [
     ServoLabel(),
     StorageLabel(),
     VideoGlitchLabel(),
-    VideoLabel(),
 ]

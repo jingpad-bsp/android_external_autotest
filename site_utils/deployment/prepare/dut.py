@@ -15,10 +15,15 @@ from __future__ import print_function
 import time
 
 import common
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server import hosts
 from autotest_lib.server import site_utils as server_utils
 from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import servo_host
+
+
+_FIRMWARE_UPDATE_TIMEOUT = 600
 
 
 def create_host(hostname, board, model, servo_hostname, servo_port,
@@ -86,6 +91,66 @@ def flash_firmware_using_servo(host):
     host.firmware_install(build=host.get_cros_repair_image_name())
 
 
+def _start_firmware_update(host, force, result_file):
+    """Run `chromeos-firmwareupdate` in background.
+
+    In scenario servo v4 type C, some boards of DUT may lose ethernet
+    connectivity on firmware update. There's no way to bring it back except
+    rebooting the system.
+
+    @param host         Host instance to use for servo and ssh operations.
+    @param force        Boolean value determining if firmware install is forced.
+    @param result_file  Path on DUT to save operation logs.
+
+    @returns The process id."""
+    fw_update_cmd = 'chromeos-firmwareupdate --mode=factory'
+    if force:
+        fw_update_cmd += '--force'
+
+    cmd = [
+        "date > %s" % result_file,
+        "nohup %s &>> %s" % (fw_update_cmd, result_file),
+        "/usr/local/bin/hooks/check_ethernet.hook"
+    ]
+    return host.run_background(';'.join(cmd))
+
+
+def _wait_firmware_update_process(host, pid, timeout=_FIRMWARE_UPDATE_TIMEOUT):
+    """Wait `chromeos-firmwareupdate` to finish.
+
+    @param host     Host instance to use for servo and ssh operations.
+    @param pid      The process ID of `chromeos-firmwareupdate`.
+    @param timeout  Maximum time to wait for firmware updating.
+    """
+    try:
+        utils.poll_for_condition(
+            lambda: host.run('ps -f -p %s' % pid, timeout=20).exit_status,
+            exception=Exception(
+                    "chromeos-firmwareupdate (pid: %s) didn't complete in %s "
+                    'seconds.' % (pid, timeout)),
+            timeout=_FIRMWARE_UPDATE_TIMEOUT,
+            sleep_interval=10,
+        )
+    except error.AutoservRunError:
+        # We lose the connectivity, so the DUT should be booting up.
+        if not host.wait_up(timeout=host.USB_BOOT_TIMEOUT):
+            raise Exception(
+                    'DUT failed to boot up after firmware updating.')
+
+
+def _check_firmware_update_result(host, result_file):
+    """Check if firmware updating is good or not.
+
+    @param host         Host instance to use for servo and ssh operations.
+    @param result_file  Path of the file saving output of
+                        `chromeos-firmwareupdate`.
+    """
+    fw_update_was_good = ">> DONE: Firmware updater exits successfully."
+    result = host.run('cat %s' % result_file)
+    if result.stdout.rstrip().rsplit('\n', 1)[1] != fw_update_was_good:
+        raise Exception("chromeos-firmwareupdate failed!")
+
+
 def install_firmware(host, force):
     """Install dev-signed firmware after removing write-protect.
 
@@ -94,7 +159,7 @@ def install_firmware(host, force):
     test image installed.
 
     The firmware is installed by powering on and typing ctrl+U on
-    the keyboard in order to boot the the test image from USB.  Once
+    the keyboard in order to boot the test image from USB.  Once
     the DUT is booted, we run a series of commands to install the
     read-only firmware from the test image.  Then we clear debug
     mode, and shut down.
@@ -121,10 +186,12 @@ def install_firmware(host, force):
     for fprom in ['host', 'ec']:
         host.run('flashrom -p %s --wp-disable' % fprom,
                  ignore_status=True)
-    if force:
-        host.run('chromeos-firmwareupdate --mode=factory --force')
-    else:
-        host.run('chromeos-firmwareupdate --mode=factory')
+
+    fw_update_log = '/mnt/stateful_partition/home/root/cros-fw-update.log'
+    pid = _start_firmware_update(host, force, fw_update_log)
+    _wait_firmware_update_process(host, pid)
+    _check_firmware_update_result(host, fw_update_log)
+
     # Get us out of dev-mode and clear GBB flags.  GBB flags are
     # non-zero because boot from USB was enabled.
     host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0',
