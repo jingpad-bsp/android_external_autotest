@@ -112,7 +112,7 @@ NewTaskRequest = collections.namedtuple(
         ])
 
 
-def _get_client():
+def _get_client_path():
     return os.path.join(
             os.path.expanduser('~'),
             'chromiumos/chromite/third_party/swarming.client/swarming.py')
@@ -144,7 +144,7 @@ def task_dependencies_from_labels(labels):
 
 
 def get_basic_swarming_cmd(command):
-    return [_get_client(), command,
+    return [_get_client_path(), command,
             '--auth-service-account-json', SERVICE_ACCOUNT,
             '--swarming', get_swarming_server()]
 
