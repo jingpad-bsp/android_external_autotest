@@ -1,10 +1,10 @@
-# Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "Krishna Gavini <krishnargv@chromium.org>"
-NAME = "longevity_two"
-PURPOSE = "Suite for automated longevity tests."
+AUTHOR = "Ruben Zakarian <rzakarian@chromium.org>"
+NAME = "kiosk_longevity"
+PURPOSE = "Suite for automated kiosk longevity tests."
 
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
@@ -12,7 +12,8 @@ TEST_CLASS = "suite"
 TEST_TYPE = "server"
 
 DOC = """
-This suite runs the set of kiosk longevity tests on various devices in the lab.
+This suite runs the set of kiosk longevity tests on a device in the lab.
+
 """
 
 import common
@@ -22,12 +23,12 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 # filing bugs on tests that are a part of this suite. If left unspecified
 # the bug filer will fallback to it's defaults.
 _BUG_TEMPLATE = {
-    'labels': ['longevity', 'longevity-auto-bug'],
+    'labels': ['kiosk_longevity'],
     'owner': '',
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['kiosk-autotest-alerts@google.com']
+    'cc': ['chromeos-ent-test@google.com']
 }
 
 args_dict['name'] = NAME
