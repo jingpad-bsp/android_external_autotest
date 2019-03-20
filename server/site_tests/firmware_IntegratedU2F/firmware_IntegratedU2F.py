@@ -73,7 +73,7 @@ class firmware_IntegratedU2F(FirmwareTest):
 
         # Wait for the owner key to exist before trying to start u2fd.
         if not utils.wait_for_value(self.owner_key_exists, True,
-                                    timeout_sec=60):
+                                    timeout_sec=120):
             raise error.TestError('Device did not create owner key')
 
         self.create_g2f_force = not self.host.path_exists(self.G2FFORCE_PATH)
