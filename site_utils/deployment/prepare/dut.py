@@ -105,7 +105,7 @@ def _start_firmware_update(host, force, result_file):
     @returns The process id."""
     fw_update_cmd = 'chromeos-firmwareupdate --mode=factory'
     if force:
-        fw_update_cmd += '--force'
+        fw_update_cmd += ' --force'
 
     cmd = [
         "date > %s" % result_file,
