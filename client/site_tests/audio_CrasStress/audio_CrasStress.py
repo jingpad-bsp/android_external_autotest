@@ -72,6 +72,11 @@ class audio_CrasStress(test.test):
                 raise error.TestFail('Output buffer level %d drift too high' %
                                      buffer_level)
 
+    def cleanup(self):
+        """Clean up all streams."""
+        while len(self._streams) > 0:
+            self._streams[0].kill()
+            self._streams.remove(self._streams[0])
 
     def run_once(self, input_stream=True, output_stream=True):
         """
@@ -93,7 +98,7 @@ class audio_CrasStress(test.test):
 
             # 1 for adding stream, 0 for removing stream.
             add = random.randint(0, 1)
-            if len(self._streams) == 0:
+            if not self._streams:
                 add = 1
             elif len(self._streams) == self._MAX_STREAMS:
                 add = 0
@@ -124,12 +129,6 @@ class audio_CrasStress(test.test):
 
             loop_count += 1
 
-        # Clean up all streams.
-        while len(self._streams) > 0:
-            self._streams[0].kill()
-            self._streams.remove(self._streams[0])
-
-
     def _get_buffer_level(self, stream_type):
         """Gets a rough number about current buffer level.
 
@@ -152,4 +151,3 @@ class audio_CrasStress(test.test):
                 if tmp > buffer_level:
                     buffer_level = tmp
         return buffer_level
-
