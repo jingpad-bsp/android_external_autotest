@@ -31,7 +31,7 @@ def run(machine):
                  host=hosts.create_host(machine),
                  test_exprs=['(!disabled && !"group:*" && informational && '
                              '("dep:chrome" || "dep:chrome_login") && '
-                             '!"dep:android")'],
+                             '!"dep:android" && !"dep:android_all")'],
                  ignore_test_failures=True)
 
 parallel_simple(run, machines)
