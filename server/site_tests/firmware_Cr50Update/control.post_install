@@ -5,7 +5,7 @@
 AUTHOR = "mruthven"
 NAME = "firmware_Cr50Update.post_install"
 PURPOSE = "Verify Cr50 update"
-ATTRIBUTES = "suite:cr50_stress_flaky"
+ATTRIBUTES = "suite:cr50_stress_experimental"
 TIME = "SHORT"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
