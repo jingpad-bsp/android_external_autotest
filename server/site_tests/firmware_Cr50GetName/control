@@ -7,7 +7,7 @@ from autotest_lib.server import utils
 AUTHOR = "mruthven"
 NAME = "firmware_Cr50GetName"
 PURPOSE = "Verify cr50-get-name"
-ATTRIBUTES = "suite:cr50_stress_flaky"
+ATTRIBUTES = "suite:cr50_stress_experimental"
 TIME = "MEDIUM"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
