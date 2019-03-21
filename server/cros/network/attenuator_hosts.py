@@ -8,6 +8,16 @@
 # The map maps from:
 #     attenuator hostname -> attenuator number -> frequency -> loss in dB.
 HOST_FIXED_ATTENUATIONS = {
+        'chromeos1-dev-host4-attenuator': {
+                0: {2437: 53, 5220: 59, 5765: 59},
+                1: {2437: 56, 5220: 56, 5765: 56},
+                2: {2437: 53, 5220: 59, 5765: 59},
+                3: {2437: 57, 5220: 56, 5765: 56}},
+        'chromeos1-test-host2-attenuator': {
+                0: {2437: 53, 5220: 59, 5765: 58},
+                1: {2437: 57, 5220: 57, 5765: 59},
+                2: {2437: 53, 5220: 59, 5765: 58},
+                3: {2437: 57, 5220: 57, 5765: 59}},
         'chromeos15-row3-rack9-host1-attenuator': {
                 0: {2437: 59, 5220: 59, 5765: 59},
                 1: {2437: 52, 5220: 54, 5765: 54},
