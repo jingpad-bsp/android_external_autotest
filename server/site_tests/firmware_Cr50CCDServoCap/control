@@ -7,7 +7,7 @@ from autotest_lib.server import utils
 AUTHOR = "mruthven"
 NAME = "firmware_Cr50CCDServoCap"
 PURPOSE = "Verify uart control"
-ATTRIBUTES = "suite:cr50_stress_experimental, suite:faft_cr50_pvt, suite:faft_cr50_prepvt"
+ATTRIBUTES = "suite:faft_cr50_pvt, suite:faft_cr50_prepvt"
 TIME = "SHORT"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
