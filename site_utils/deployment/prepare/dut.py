@@ -12,6 +12,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import time
 
 import common
@@ -26,9 +27,10 @@ from autotest_lib.server.hosts import servo_host
 _FIRMWARE_UPDATE_TIMEOUT = 600
 
 
+@contextlib.contextmanager
 def create_host(hostname, board, model, servo_hostname, servo_port,
                 servo_serial=None):
-    """Create a server.hosts.CrosHost object to use for DUT preparation.
+    """Yield a server.hosts.CrosHost object to use for DUT preparation.
 
     This object contains just enough inventory data to be able to prepare the
     DUT for lab deployment. It does not contain any reference to AFE / Skylab so
@@ -42,7 +44,7 @@ def create_host(hostname, board, model, servo_hostname, servo_port,
     @param servo_port:      Servo host port used for the controlling servo.
     @param servo_serial:    (Optional) Serial number of the controlling servo.
 
-    @return a server.hosts.Host object.
+    @yield a server.hosts.Host object.
     """
     labels = [
             'board:%s' % board,
@@ -69,7 +71,10 @@ def create_host(hostname, board, model, servo_hostname, servo_port,
             **servo_host.get_servo_args_for_host(host))
     _prepare_servo(servo)
     host.set_servo_host(servo)
-    return host
+    try:
+        yield host
+    finally:
+        host.close()
 
 
 def download_image_to_servo_usb(host, build):
