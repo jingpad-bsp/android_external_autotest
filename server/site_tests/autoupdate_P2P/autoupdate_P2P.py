@@ -205,11 +205,10 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
         line1 = "Checking if payload is available via p2p, file_id=" \
                 "cros_update_size_(.*)_hash_(.*)"
         line2 = "Lookup complete, p2p-client returned URL " \
-                "'http://%s:(.*)/cros_update_size_(.*)_hash_(.*).cros_au'" % \
-                self._hosts[0].ip
+                "'http://(.*)/cros_update_size_(.*)_hash_(.*).cros_au'"
         line3 = "Replacing URL (.*) with local URL " \
-                "http://%s:(.*)/cros_update_size_(.*)_hash_(.*).cros_au " \
-                "since p2p is enabled." % self._hosts[0].ip
+                "http://(.*)/cros_update_size_(.*)_hash_(.*).cros_au " \
+                "since p2p is enabled."
         errline = "Forcibly disabling use of p2p for downloading because no " \
                   "suitable peer could be found."
         too_many_attempts_err_str = "Forcibly disabling use of p2p for " \
