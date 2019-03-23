@@ -137,6 +137,7 @@ class _Uart(object):
     def __init__(self, servo):
         self._servo = servo
         self._streams = []
+        self._logs_dir = None
 
     def start_capture(self):
         """Start capturing Uart streams."""
@@ -151,13 +152,13 @@ class _Uart(object):
                 logging.debug('The servod is too old that ec_uart_capture not '
                               'supported.')
 
-    def dump(self, output_dir):
-        """Dump UART streams to log files accordingly.
+    def dump(self):
+        """Dump UART streams to log files accordingly."""
+        if not self._logs_dir:
+            return
 
-        @param output_dir: A string of output directory name.
-        """
         for stream, logfile in self._streams:
-            logfile_fullname = os.path.join(output_dir, logfile)
+            logfile_fullname = os.path.join(self._logs_dir, logfile)
             try:
                 content = self._servo.get(stream)
             except Exception as err:
@@ -183,6 +184,18 @@ class _Uart(object):
             except Exception as err:
                 logging.warn('Failed to stop UART logging for %s: %s', uart,
                              err)
+
+    @property
+    def logs_dir(self):
+        """Return the directory to save UART logs."""
+        return self._logs_dir
+
+    @logs_dir.setter
+    def logs_dir(self, a_dir):
+        """Set directory to save UART logs.
+
+        @param a_dir  String of logs directory name."""
+        self._logs_dir = a_dir
 
 
 class Servo(object):
@@ -1001,17 +1014,24 @@ class Servo(object):
             logging.debug('Not a servo v4, unable to set role to %s.', role)
 
 
-    def dump_uart_streams(self, output_dir):
-        """Get buffered UART streams and append to log files.
+    @property
+    def uart_logs_dir(self):
+        """Return the directory to save UART logs."""
+        return self._uart.logs_dir if self._uart else ""
 
-        @param output_dir: A string of directory name to save log files.
-        """
+
+    @uart_logs_dir.setter
+    def uart_logs_dir(self, logs_dir):
+        """Set directory to save UART logs.
+
+        @param logs_dir  String of directory name."""
         if self._uart:
-            self._uart.dump(output_dir)
+            self._uart.logs_dir = logs_dir
 
 
     def close(self):
         """Close the servo object."""
         if self._uart:
             self._uart.stop_capture()
+            self._uart.dump()
             self._uart = None
