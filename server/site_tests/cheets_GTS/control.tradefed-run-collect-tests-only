@@ -24,7 +24,7 @@ def run_GTS(machine):
         max_retry=0,
         tag='tradefed-run-collect-tests-only',
         test_name='cheets_GTS.tradefed-run-collect-tests-only',
-        run_template=['run', 'commandAndExit', 'collect-tests-only'],
+        run_template=['run', 'commandAndExit', 'collect-tests-only', '--disable-reboot', '--module-arg', 'GtsYouTubeTestCases:skip-media-download:true'],
         retry_template=None,
         target_module=None,
         target_plan=None,
