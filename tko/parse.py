@@ -397,7 +397,7 @@ def parse_one(db, pid_file_manager, jobname, path, parse_options):
         tko_utils.dprint("* testname, subdir, status, reason: %s %s %s %s"
                          % (test.testname, test.subdir, test.status,
                             test.reason))
-        if test.status != 'GOOD':
+        if test.status not in ('GOOD', 'WARN'):
             job_successful = False
             pid_file_manager.num_tests_failed += 1
             message_lines.append(format_failure_message(
