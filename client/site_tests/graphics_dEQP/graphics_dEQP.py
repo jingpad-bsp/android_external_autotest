@@ -112,7 +112,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
             test_results = {}
 
         if not os.path.isfile(result_filename):
-            failing_test.append(test_case)
+            logging.error('Did not find file %s', result_filename)
             return test_results
 
         with open(result_filename) as result_file:
