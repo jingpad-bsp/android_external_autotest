@@ -384,21 +384,18 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def reboot(self):
         """Reboot Cr50 and wait for cr50 to reset"""
-        response = [] if self.using_ccd() else self.START_STR
-        self.send_command_get_output('reboot', response)
-
-        # ccd will stop working after the reboot. Wait until that happens and
-        # reenable it.
-        if self.using_ccd():
-            self.wait_for_reboot()
+        self.wait_for_reboot(cmd='reboot')
 
 
-    def _uart_wait_for_reboot(self, timeout=60):
-        """Wait for the cr50 to reboot and enable the console.
+    def _uart_wait_for_reboot(self, cmd='\n', timeout=60):
+        """Use uart to wait for cr50 to reboot.
 
-        This will wait up to timeout seconds for cr50 to print the start string.
+        If a command is given run it and wait for cr50 to reboot. Monitor
+        the cr50 uart to detect the reset. Wait up to timeout seconds
+        for the reset.
 
         Args:
+            cmd: the command to run to reset cr50.
             timeout: seconds to wait to detect the reboot.
         """
         original_timeout = float(self._servo.get('cr50_uart_timeout'))
@@ -406,7 +403,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         # for cr50 to print the start string.
         self._servo.set_nocheck('cr50_uart_timeout', timeout)
         try:
-            self.send_command_get_output('\n', self.START_STR)
+            self.send_command_get_output(cmd, self.START_STR)
             logging.debug('Detected cr50 reboot')
         except error.TestFail, e:
             logging.debug('Failed to detect cr50 reboot')
@@ -414,15 +411,24 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         self._servo.set_nocheck('cr50_uart_timeout', original_timeout)
 
 
-    def wait_for_reboot(self, timeout=60):
-        """Wait for cr50 to reboot"""
+    def wait_for_reboot(self, cmd='\n', timeout=60):
+        """Wait for cr50 to reboot
+
+        Run the cr50 reset command. Wait for cr50 to reset and reenable ccd if
+        necessary.
+
+        Args:
+            cmd: the command to run to reset cr50.
+            timeout: seconds to wait to detect the reboot.
+        """
         if self.using_ccd():
+            self.send_command(cmd)
             # Cr50 USB is reset when it reboots. Wait for the CCD connection to
             # go down to detect the reboot.
             self.wait_for_ccd_disable(timeout, raise_error=False)
             self.ccd_enable()
         else:
-            self._uart_wait_for_reboot(timeout)
+            self._uart_wait_for_reboot(cmd, timeout)
 
 
     def rollback(self, eraseflashinfo=True, chip_bid=None, chip_flags=None):
@@ -454,12 +460,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         if set_bid:
             self.send_command('bid 0x%x 0x%x' % (chip_bid, chip_flags))
 
-        if self.using_ccd():
-            self.send_command('rollback')
-            self.wait_for_reboot()
-        else:
-            logging.debug(self.send_command_get_output('rollback',
-                    ['.*Console is enabled'])[0])
+        self.wait_for_reboot(cmd='rollback')
 
         running_partition = self.get_active_version_info()[0]
         if inactive_partition != running_partition:
