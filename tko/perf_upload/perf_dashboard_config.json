@@ -674,6 +674,11 @@
     "dashboard_test_name": "speedometer2"
   },
   {
+    "autotest_name": "telemetry_Benchmarks.system_health.memory_desktop",
+    "master_name": "ChromeOSPerf",
+    "dashboard_test_name": "system_health.memory_desktop"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.tab_switching.typical_25",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "tab_switching.typical_25"
