@@ -8,6 +8,7 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'enterprise'
 TEST_TYPE = 'client'
+DEPENDENCIES = 'internal_display'
 
 DOC = '''
 Verify effects of ScreenBrightnessPercent policy.
