@@ -616,10 +616,10 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         """Reenable CCD and reset servo interfaces"""
         logging.info("reenable ccd")
         self._servo.set_nocheck('servo_v4_dts_mode', 'on')
-        # If the test is actually running with ccd, reset usb and wait for
-        # communication to come up.
+        # If the test is actually running with ccd, wait for USB communication
+        # to come up after reset.
         if self.using_ccd():
-            self._servo.set_nocheck('power_state', 'ccd_reset')
+            time.sleep(self._servo.USB_DETECTION_DELAY)
         self.wait_for_ccd_enable(raise_error=raise_error)
 
 
