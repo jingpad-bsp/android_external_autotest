@@ -226,7 +226,7 @@ class FirmwareTest(FAFTBase):
         if hasattr(self, 'cr50'):
             system_info['cr50_version'] = self.servo.get('cr50_version')
 
-        logging.info('System info:\n' + pprint.pformat(system_info))
+        logging.info('System info:\n', pprint.pformat(system_info))
         self.write_attr_keyval(system_info)
 
     def invalidate_firmware_setup(self):
@@ -646,14 +646,7 @@ class FirmwareTest(FAFTBase):
 
         @param enable: True if asserting write protect pin. Otherwise, False.
         """
-        try:
-            self.servo.set('fw_wp_state', 'force_on' if enable else 'force_off')
-        except:
-            # TODO(waihong): Remove this fallback when all servos have the
-            # above new fw_wp_state control.
-            self.servo.set('fw_wp_vref', self.faft_config.wp_voltage)
-            self.servo.set('fw_wp_en', 'on')
-            self.servo.set('fw_wp', 'on' if enable else 'off')
+        self.servo.set('fw_wp_state', 'force_on' if enable else 'force_off')
 
     def set_ec_write_protect_and_reboot(self, enable):
         """Set EC write protect status and reboot to take effect.

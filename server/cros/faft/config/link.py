@@ -15,6 +15,5 @@ class Values(object):
     ec_capability = ['adc_ectemp', 'battery', 'charging',
                      'keyboard', 'lid', 'x86', 'thermal',
                      'usb', 'peci', 'kblight', 'smart_usb_charge']
-    wp_voltage = 'pp3300'
     spi_voltage = 'pp3300'
     smm_store = False
