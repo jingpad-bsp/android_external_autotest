@@ -11,6 +11,7 @@ TEST_CLASS = "platform"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:au-perbuild"
 SYNC_COUNT = 2
+JOB_RETRIES = 2
 DOC = """
 This tests autoupdate between two devices via peer to peer.
 
