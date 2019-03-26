@@ -13,6 +13,5 @@ class Values(object):
                      'usb', 'smart_usb_charge']
     firmware_screen = 28
     usb_plug = 28
-    long_rec_combo = True
     spi_voltage = 'pp1800'
     smm_store = False
