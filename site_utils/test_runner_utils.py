@@ -690,7 +690,7 @@ def sigint_handler(signum, stack_frame):
         sys.exit(1)
 
 
-def create_results_directory(results_directory=None):
+def create_results_directory(results_directory=None, board_name=None):
     """Create a results directory.
 
     If no directory is specified this method will create and return a
@@ -704,7 +704,10 @@ def create_results_directory(results_directory=None):
     """
     if results_directory is None:
         # Create a results_directory as subdir of /tmp
-        results_directory = tempfile.mkdtemp(prefix='test_that_results_')
+        dirname_prefix='test_that_results_'
+        if board_name is not None:
+            dirname_prefix += (board_name + '_')
+        results_directory = tempfile.mkdtemp(prefix=dirname_prefix)
     else:
         # Delete results_directory if it already exists.
         try:
