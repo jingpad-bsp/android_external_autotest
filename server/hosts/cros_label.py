@@ -586,6 +586,23 @@ class FingerprintLabel(base_label.BaseLabel):
                         ignore_status=True).exit_status == 0
 
 
+class ReferenceDesignLabel(base_label.StringPrefixLabel):
+    """Determine the correct reference design label for the device. """
+
+    _NAME = 'reference_design'
+
+    def __init__(self):
+        self.response = None
+
+    def exists(self, host):
+        self.response = host.run('mosys platform family', ignore_status=True)
+        return self.response.exit_status == 0
+
+    def generate_labels(self, host):
+        if self.exists(host):
+            return [self.response.stdout.strip()]
+
+
 CROS_LABELS = [
     AccelsLabel(),
     ArcLabel(),
@@ -607,6 +624,7 @@ CROS_LABELS = [
     LightSensorLabel(),
     LucidSleepLabel(),
     PowerSupplyLabel(),
+    ReferenceDesignLabel(),
     ServoLabel(),
     StorageLabel(),
     VideoGlitchLabel(),
