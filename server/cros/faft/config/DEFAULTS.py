@@ -28,7 +28,6 @@ class Values(object):
     use_u_boot = False
     ec_capability = list()
     gbb_version = 1.1
-    wp_voltage = 'pp1800'
     spi_voltage = 'pp1800'
     key_checker = [[0x29, 'press'],
                    [0x32, 'press'],
