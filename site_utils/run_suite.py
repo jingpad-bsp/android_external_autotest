@@ -2037,6 +2037,27 @@ class _ExceptionHandler(object):
         sys.exit(run_suite_common.RETURN_CODES.INFRA_FAILURE)
 
 
+def _run_with_autotest(options):
+    """Run suite inside autotest."""
+    if options.pre_check and not _should_run(options):
+        logging.info('Suite %s-%s is terminated: Lab is closed, OR build is '
+                     'blocked, OR this suite has already been kicked off '
+                     'once in past %d days.',
+                     options.test_source_build, options.name,
+                     _SEARCH_JOB_MAX_DAYS)
+        result = run_suite_common.SuiteResult(
+            run_suite_common.RETURN_CODES.ERROR,
+            {'return_message': ("Lab is closed OR other reason"
+                                " (see code, it's complicated)")})
+    else:
+        result = _run_task(options)
+
+    if options.json_dump:
+        run_suite_common.dump_json(result.output_dict)
+
+    return result
+
+
 def main():
     """Entry point."""
     utils.verify_not_root_user()
@@ -2057,21 +2078,8 @@ def main():
         parser.print_help()
         result = run_suite_common.SuiteResult(
                 run_suite_common.RETURN_CODES.INVALID_OPTIONS)
-    elif options.pre_check and not _should_run(options):
-        logging.info('Suite %s-%s is terminated: Lab is closed, OR build is '
-                     'blocked, OR this suite has already been kicked off '
-                     'once in past %d days.',
-                     options.test_source_build, options.name,
-                     _SEARCH_JOB_MAX_DAYS)
-        result = run_suite_common.SuiteResult(
-            run_suite_common.RETURN_CODES.ERROR,
-            {'return_message': ("Lab is closed OR other reason"
-                                " (see code, it's complicated)")})
     else:
-        result = _run_task(options)
-
-    if options.json_dump:
-        run_suite_common.dump_json(result.output_dict)
+        result = _run_with_autotest(options)
 
     logging.info('Will return from run_suite with status: %s',
                   run_suite_common.RETURN_CODES.get_string(result.return_code))
