@@ -43,6 +43,9 @@ TELEMETRY_AFDO_BENCHMARKS = (
     # page_cycler tests are deprecated. Replace them with loading.desktop.
     ('loading.desktop', ('--pageset-repeat=1','--story-tag-filter=typical')),
     ('loading.desktop', ('--pageset-repeat=1','--story-tag-filter=intl_ja_zh')),
+    ('rendering.desktop',
+      ('--story-tag-filter=tough_canvas',
+       '--story-filter="bouncing\\*\\|canvas\\*\\|microsoft\\*"')),
     ('octane',),
     ('kraken',),
     ('speedometer',),
