@@ -12,6 +12,7 @@ import shutil
 import socket
 import sys
 import tempfile
+import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -34,7 +35,6 @@ _ANDROID_ADB_KEYS_PATH = '/data/misc/adb/adb_keys'
 _PROCESS_CHECK_INTERVAL_SECONDS = 1
 _WAIT_FOR_ADB_READY = 60
 _WAIT_FOR_ANDROID_PROCESS_SECONDS = 60
-_WAIT_FOR_DATA_MOUNTED_SECONDS = 60
 _PLAY_STORE_PKG = 'com.android.vending'
 _SETTINGS_PKG = 'com.android.settings'
 
@@ -111,7 +111,7 @@ def _is_tcp_port_reachable(address):
         return False
 
 
-def _wait_for_data_mounted(timeout=_WAIT_FOR_DATA_MOUNTED_SECONDS):
+def _wait_for_data_mounted(timeout):
     utils.poll_for_condition(
             condition=_is_android_data_mounted,
             desc='Wait for /data mounted',
@@ -127,7 +127,12 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
     # Although adbd is started at login screen, we still need /data to be
     # mounted to set up key-based authentication. /data should be mounted
     # once the user has logged in.
-    _wait_for_data_mounted()
+    start_time = time.time()
+    _wait_for_data_mounted(timeout)
+    timeout -= (time.time() - start_time)
+    start_time = time.time()
+    arc_common.wait_for_android_boot(timeout)
+    timeout -= (time.time() - start_time)
 
     setup_adb_host()
     if is_adb_connected():
@@ -360,20 +365,6 @@ def get_mount_passthrough_pid_list():
 def get_obb_mounter_pid():
     """Returns the PID of the OBB mounter."""
     return utils.system_output('pgrep -f -u root ^/usr/bin/arc-obb-mounter')
-
-
-def _is_android_booted():
-    """Return whether Android has completed booting."""
-    return adb_shell('getprop sys.boot_completed', ignore_status=True) == '1'
-
-
-def wait_for_boot_completed(timeout=60, sleep=1):
-    """Waits until sys.boot_completed becomes 1."""
-    utils.poll_for_condition(
-            condition=_is_android_booted,
-            desc='Wait for Android boot',
-            timeout=timeout,  # sec
-            sleep_interval=sleep)  # sec
 
 
 def is_android_process_running(process_name):
