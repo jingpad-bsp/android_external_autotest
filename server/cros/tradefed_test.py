@@ -85,7 +85,8 @@ class TradefedTest(test.test):
                    max_retry=None,
                    load_waivers=True,
                    retry_manual_tests=False,
-                   warn_on_test_retry=True):
+                   warn_on_test_retry=True,
+                   hard_reboot_on_failure=False):
         """Sets up the tools and binary bundles for the test."""
         self._install_paths = []
         # TODO(pwang): Remove host if we enable multiple hosts everywhere.
@@ -153,6 +154,7 @@ class TradefedTest(test.test):
         # Load modules with no tests.
         self._notest_modules = self._get_expected_failures('notest_modules',
                 bundle)
+        self._hard_reboot_on_failure = hard_reboot_on_failure
 
     def cleanup(self):
         """Cleans up any dirtied state."""
@@ -1048,6 +1050,12 @@ class TradefedTest(test.test):
             with self._login_chrome(
                     board=board,
                     reboot=self._should_reboot(steps),
+                    # TODO(rohitbm): Evaluate if power cycle really helps with
+                    # Bluetooth test failures, and then make the implementation
+                    # more strict by first running complete restart and reboot
+                    # retries and then perform power cycle.
+                    hard_reboot_on_failure=(self._hard_reboot_on_failure
+                                     and steps == self._max_retry),
                     dont_override_profile=keep_media) as current_logins:
                 self._ready_arc()
                 self._calculate_timeout_factor(bundle)
