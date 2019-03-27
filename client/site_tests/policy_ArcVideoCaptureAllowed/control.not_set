@@ -3,20 +3,19 @@
 # found in the LICENSE file.
 
 AUTHOR = 'dbeckett'
-NAME = 'policy_ScreenBrightnessPercent.50'
+NAME = 'policy_ArcVideoCaptureAllowed.not_set'
 ATTRIBUTES = 'suite:ent-nightly, suite:policy'
-DEPENDENCIES = 'internal_display'
 TIME = 'SHORT'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'enterprise'
 TEST_TYPE = 'client'
+DEPENDENCIES = "arc"
 
 DOC = '''
-Verify the screen brightness is properly set to 50%.
+Verify when the 'ArcVideoCaptureAllowed' policy is set not set (None) the ARC
+Camera within the ARC container can be launched.
 
 '''
 
-
-job.run_test('policy_ScreenBrightnessPercent',
-             case=50)
-
+job.run_test('policy_ArcVideoCaptureAllowed',
+             case=None)

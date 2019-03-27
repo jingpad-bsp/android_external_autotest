@@ -8,7 +8,6 @@ class Values(object):
     """FAFT config values for Kunimitsu."""
     chrome_ec = True
     dark_resume_capable = True
-    wp_voltage = 'pp3300'
     spi_voltage = 'pp3300'
     ec_boot_to_console = 0.2
     ec_capability = ['battery', 'charging', 'doubleboot', 'keyboard',

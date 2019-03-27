@@ -3,20 +3,18 @@
 # found in the LICENSE file.
 
 AUTHOR = 'dbeckett'
-NAME = 'policy_ScreenBrightnessPercent.50'
-ATTRIBUTES = 'suite:ent-nightly, suite:policy'
-DEPENDENCIES = 'internal_display'
+NAME = 'policy_ArcVideoCaptureAllowed'
 TIME = 'SHORT'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'enterprise'
 TEST_TYPE = 'client'
+DEPENDENCIES = "arc"
 
 DOC = '''
-Verify the screen brightness is properly set to 50%.
-
+Verify that the ArcVideoCaptureAllowed ChromeOS Policy propagates to the ARC
+clouddpc setting."
 '''
 
+args_dict = utils.args_to_dict(args)
 
-job.run_test('policy_ScreenBrightnessPercent',
-             case=50)
-
+job.run_test('policy_ArcVideoCaptureAllowed', **args_dict)

@@ -706,23 +706,6 @@ class _BaseModeSwitcher(object):
             raise ConnectionError('DUT is still up unexpectedly')
 
 
-class _PhysicalButtonSwitcher(_BaseModeSwitcher):
-    """Class that switches firmware mode via physical button."""
-
-    def _enable_dev_mode_and_reboot(self):
-        """Switch to developer mode and reboot."""
-        self.servo.enable_development_mode()
-        self.faft_client.system.run_shell_command(
-                'chromeos-firmwareupdate --mode todev && reboot')
-
-
-    def _enable_normal_mode_and_reboot(self):
-        """Switch to normal mode and reboot."""
-        self.servo.disable_development_mode()
-        self.faft_client.system.run_shell_command(
-                'chromeos-firmwareupdate --mode tonormal && reboot')
-
-
 class _KeyboardDevSwitcher(_BaseModeSwitcher):
     """Class that switches firmware mode via keyboard combo."""
 
@@ -943,10 +926,7 @@ def create_mode_switcher(faft_framework):
     @param faft_framework: The main FAFT framework object.
     """
     switcher_type = faft_framework.faft_config.mode_switcher_type
-    if switcher_type == 'physical_button_switcher':
-        logging.info('Create a PhysicalButtonSwitcher')
-        return _PhysicalButtonSwitcher(faft_framework)
-    elif switcher_type == 'keyboard_dev_switcher':
+    if switcher_type == 'keyboard_dev_switcher':
         logging.info('Create a KeyboardDevSwitcher')
         return _KeyboardDevSwitcher(faft_framework)
     elif switcher_type == 'jetstream_switcher':

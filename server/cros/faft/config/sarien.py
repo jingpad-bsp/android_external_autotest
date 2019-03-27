@@ -12,7 +12,6 @@ class Values(object):
     has_lid = True
     lid_wake_from_power_off = False
     spi_voltage = 'pp3300'
-    wp_voltage = 'pp3300'
     # Not a Chrome EC, do not expect keyboard via EC
     chrome_ec = False
     ec_capability = []

@@ -12,8 +12,6 @@ class Values(object):
                      'usb', 'smart_usb_charge']
     firmware_screen = 25 # Time from deasserting cold_reset to firmware_screen being shown
     usb_plug = 45
-    long_rec_combo = True
-    wp_voltage = 'pp1800'
     spi_voltage = 'pp1800'
     custom_usb_enable_names = ['EN_USB_A0_5V', 'EN_USB_A1_5V']
     smm_store = False
