@@ -42,7 +42,7 @@ def run(machine):
             security_config=eap_config)
 
     network = NetworkConfig(security='WPA-EAP',
-                            eap='PEAP-GTC',
+                            eap='PEAP',
                             identity=identity,
                             password=password,
                             ca_cert=site_eap_certs.ca_cert_1)
