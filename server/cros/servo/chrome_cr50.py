@@ -844,3 +844,27 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             logging.info('Cr50 has been up for %ds waiting %ds before update',
                          cr50_time, sleep_time)
             time.sleep(sleep_time)
+
+    def tpm_is_enabled(self):
+        """Query the current TPM mode.
+
+        Returns  True if TPM is enabled,
+                 False otherwise.
+        """
+        result = self.send_command_get_output('sysinfo',
+                ['(?i)TPM\s+MODE:\s+(enabled|disabled)'])[0][1]
+        logging.debug(result)
+
+        return result.lower() == 'enabled'
+
+    def keyladder_is_enabled(self):
+        """Get the status of H1 Key Ladder.
+
+        Returns True if H1 Key Ladder is enabled.
+                False otherwise.
+        """
+        result = self.send_command_get_output('sysinfo',
+                ['(?i)Key\s+Ladder:\s+(enabled|disabled)'])[0][1]
+        logging.debug(result)
+
+        return result.lower() == 'enabled'
