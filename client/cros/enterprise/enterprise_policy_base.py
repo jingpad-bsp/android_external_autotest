@@ -251,6 +251,7 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
                    arc_mode=False,
                    setup_arc=True,
                    use_clouddpc_test=None,
+                   disable_default_apps=True,
                    extension_paths=[],
                    extra_chrome_flags=[]):
         """Set up DMS, log in, and verify policy values.
@@ -304,6 +305,7 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
                             init_network_controller=init_network_controller,
                             extension_paths=extension_paths,
                             arc_mode=arc_mode,
+                            disable_default_apps=disable_default_apps,
                             extra_chrome_flags=extra_chrome_flags)
 
         # Skip policy check upon request or if we enroll but don't log in.
@@ -895,6 +897,7 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
                        auto_login=True,
                        arc_mode=False,
                        init_network_controller=False,
+                       disable_default_apps=True,
                        extension_paths=[],
                        extra_chrome_flags=[]):
         """
@@ -967,7 +970,8 @@ class EnterprisePolicyTest(arc.ArcTest, test.test):
                         autotest_ext=True,
                         init_network_controller=init_network_controller,
                         expect_policy_fetch=True,
-                        extension_paths=extension_paths)
+                        extension_paths=extension_paths,
+                        disable_default_apps=disable_default_apps)
         else:
             self.cr = chrome.Chrome(
                     auto_login=False,
