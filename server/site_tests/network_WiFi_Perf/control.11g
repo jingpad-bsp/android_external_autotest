@@ -6,6 +6,7 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_Perf.11g'
 ATTRIBUTES = 'suite:wifi_perf'
 TIME = 'SHORT'
+MAX_RESULT_SIZE_KB = 512000
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
 
