@@ -5,8 +5,7 @@
 AUTHOR = 'kirtika'
 NAME = 'network_ShillStability'
 ATTRIBUTES = ('suite:network_nightly, suite:wifi_matfunc,'
-              'suite:wifi_matfunc_noservo, suite:bvt-perbuild,'
-              'suite:wificell-pre-cq')
+              'suite:bvt-perbuild, suite:wificell-pre-cq')
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 
