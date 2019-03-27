@@ -213,6 +213,7 @@ class SwarmingBot(object):
         os.makedirs(self.bot_dir)
         dest = os.path.join(self.bot_dir, self.BOT_FILENAME)
         new_env = dict(os.environ)
+        new_env['SWARMING_EXTERNAL_BOT_SETUP'] = '1'
         logging.debug('[Bot %s] Getting bot code from: %s/bot_code',
                       self.bot_id, self.swarming_proxy)
         if self.specify_bot_id:
