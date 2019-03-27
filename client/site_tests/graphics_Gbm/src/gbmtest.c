@@ -103,6 +103,7 @@ static const uint32_t format_list[] = {
 struct plane_info {
 	uint32_t bits_per_pixel;
 	uint32_t subsample_rate;
+	uint32_t data_mask;
 };
 
 #define MAX_PLANES 3
@@ -114,52 +115,52 @@ struct format_info {
 
 /* Bits per pixel for each. */
 static const struct format_info format_info_list[] = {
-	{GBM_FORMAT_C8, 1, {{8, 1}}},
-	{GBM_FORMAT_RGB332, 1, {{8, 1}}},
-	{GBM_FORMAT_BGR233, 1, {{8, 1}}},
-	{GBM_FORMAT_XRGB4444, 1, {{16, 1}}},
-	{GBM_FORMAT_XBGR4444, 1, {{16, 1}}},
-	{GBM_FORMAT_RGBX4444, 1, {{16, 1}}},
-	{GBM_FORMAT_BGRX4444, 1, {{16, 1}}},
-	{GBM_FORMAT_ARGB4444, 1, {{16, 1}}},
-	{GBM_FORMAT_ABGR4444, 1, {{16, 1}}},
-	{GBM_FORMAT_RGBA4444, 1, {{16, 1}}},
-	{GBM_FORMAT_BGRA4444, 1, {{16, 1}}},
-	{GBM_FORMAT_XRGB1555, 1, {{16, 1}}},
-	{GBM_FORMAT_XBGR1555, 1, {{16, 1}}},
-	{GBM_FORMAT_RGBX5551, 1, {{16, 1}}},
-	{GBM_FORMAT_BGRX5551, 1, {{16, 1}}},
-	{GBM_FORMAT_ARGB1555, 1, {{16, 1}}},
-	{GBM_FORMAT_ABGR1555, 1, {{16, 1}}},
-	{GBM_FORMAT_RGBA5551, 1, {{16, 1}}},
-	{GBM_FORMAT_BGRA5551, 1, {{16, 1}}},
-	{GBM_FORMAT_RGB565, 1, {{16, 1}}},
-	{GBM_FORMAT_BGR565, 1, {{16, 1}}},
-	{GBM_FORMAT_RGB888, 1, {{24, 1}}},
-	{GBM_FORMAT_BGR888, 1, {{24, 1}}},
-	{GBM_FORMAT_XRGB8888, 1, {{32, 1}}},
-	{GBM_FORMAT_XBGR8888, 1, {{32, 1}}},
-	{GBM_FORMAT_RGBX8888, 1, {{32, 1}}},
-	{GBM_FORMAT_BGRX8888, 1, {{32, 1}}},
-	{GBM_FORMAT_ARGB8888, 1, {{32, 1}}},
-	{GBM_FORMAT_ABGR8888, 1, {{32, 1}}},
-	{GBM_FORMAT_RGBA8888, 1, {{32, 1}}},
-	{GBM_FORMAT_BGRA8888, 1, {{32, 1}}},
-	{GBM_FORMAT_XRGB2101010, 1, {{32, 1}}},
-	{GBM_FORMAT_XBGR2101010, 1, {{32, 1}}},
-	{GBM_FORMAT_RGBX1010102, 1, {{32, 1}}},
-	{GBM_FORMAT_BGRX1010102, 1, {{32, 1}}},
-	{GBM_FORMAT_ARGB2101010, 1, {{32, 1}}},
-	{GBM_FORMAT_ABGR2101010, 1, {{32, 1}}},
-	{GBM_FORMAT_RGBA1010102, 1, {{32, 1}}},
-	{GBM_FORMAT_BGRA1010102, 1, {{32, 1}}},
-	{GBM_FORMAT_YUYV, 1, {{16, 1}}},
-	{GBM_FORMAT_YVYU, 1, {{16, 1}}},
-	{GBM_FORMAT_UYVY, 1, {{16, 1}}},
-	{GBM_FORMAT_VYUY, 1, {{16, 1}}},
-	{GBM_FORMAT_AYUV, 1, {{32, 1}}},
-	{GBM_FORMAT_NV12, 2, {{8, 1}, {16, 2}}},
-	{GBM_FORMAT_YVU420, 3, {{8, 1}, {8, 2}, {8,2}}},
+	{GBM_FORMAT_C8, 1, {{8, 1, 0xFF}}},
+	{GBM_FORMAT_RGB332, 1, {{8, 1, 0xFF}}},
+	{GBM_FORMAT_BGR233, 1, {{8, 1, 0xFF}}},
+	{GBM_FORMAT_XRGB4444, 1, {{16, 1, 0x0FFF}}},
+	{GBM_FORMAT_XBGR4444, 1, {{16, 1, 0x0FFF}}},
+	{GBM_FORMAT_RGBX4444, 1, {{16, 1, 0xFFF0}}},
+	{GBM_FORMAT_BGRX4444, 1, {{16, 1, 0xFFF0}}},
+	{GBM_FORMAT_ARGB4444, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_ABGR4444, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_RGBA4444, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_BGRA4444, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_XRGB1555, 1, {{16, 1, 0x7FFF}}},
+	{GBM_FORMAT_XBGR1555, 1, {{16, 1, 0x7FFF}}},
+	{GBM_FORMAT_RGBX5551, 1, {{16, 1, 0xFFFE}}},
+	{GBM_FORMAT_BGRX5551, 1, {{16, 1, 0xFFFE}}},
+	{GBM_FORMAT_ARGB1555, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_ABGR1555, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_RGBA5551, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_BGRA5551, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_RGB565, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_BGR565, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_RGB888, 1, {{24, 1, 0xFFFFFF}}},
+	{GBM_FORMAT_BGR888, 1, {{24, 1, 0xFFFFFF}}},
+	{GBM_FORMAT_XRGB8888, 1, {{32, 1, 0x00FFFFFF}}},
+	{GBM_FORMAT_XBGR8888, 1, {{32, 1, 0x00FFFFFF}}},
+	{GBM_FORMAT_RGBX8888, 1, {{32, 1, 0xFFFFFF00}}},
+	{GBM_FORMAT_BGRX8888, 1, {{32, 1, 0xFFFFFF00}}},
+	{GBM_FORMAT_ARGB8888, 1, {{32, 1, 0xFFFFFFFF}}},
+	{GBM_FORMAT_ABGR8888, 1, {{32, 1, 0xFFFFFFFF}}},
+	{GBM_FORMAT_RGBA8888, 1, {{32, 1, 0xFFFFFFFF}}},
+	{GBM_FORMAT_BGRA8888, 1, {{32, 1, 0xFFFFFFFF}}},
+	{GBM_FORMAT_XRGB2101010, 1, {{32, 1, 0x3FFFFFFF}}},
+	{GBM_FORMAT_XBGR2101010, 1, {{32, 1, 0x3FFFFFFF}}},
+	{GBM_FORMAT_RGBX1010102, 1, {{32, 1, 0xFFFFFFFC}}},
+	{GBM_FORMAT_BGRX1010102, 1, {{32, 1, 0xFFFFFFFC}}},
+	{GBM_FORMAT_ARGB2101010, 1, {{32, 1, 0xFFFFFFFF}}},
+	{GBM_FORMAT_ABGR2101010, 1, {{32, 1, 0xFFFFFFFF}}},
+	{GBM_FORMAT_RGBA1010102, 1, {{32, 1, 0xFFFFFFFF}}},
+	{GBM_FORMAT_BGRA1010102, 1, {{32, 1, 0xFFFFFFFF}}},
+	{GBM_FORMAT_YUYV, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_YVYU, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_UYVY, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_VYUY, 1, {{16, 1, 0xFFFF}}},
+	{GBM_FORMAT_AYUV, 1, {{32, 1, 0xFFFFFFFF}}},
+	{GBM_FORMAT_NV12, 2, {{8, 1, 0xFF}, {16, 2, 0xFFFF}}},
+	{GBM_FORMAT_YVU420, 3, {{8, 1, 0xFF}, {8, 2, 0xFF}, {8,2, 0xFF}}},
 };
 
 static const uint32_t usage_list[] = {
@@ -920,7 +921,8 @@ static int test_gem_map_format(int format_index,
 	uint8_t *pixel;
 	struct gbm_bo *bo;
 	void *map_data, *addr;
-	uint32_t x, y, p, w, h, b, planes, bytes_per_pixel, idx;
+	uint32_t x, y, p, w, h, b, planes, bytes_per_pixel, pixel_data_mask, idx;
+	uint8_t byte_mask;
 	uint32_t stride = 0;
 	const int width = 333;
 	const int height = 444;
@@ -972,11 +974,14 @@ static int test_gem_map_format(int format_index,
 
 		pixel = (uint8_t *)addr;
 		bytes_per_pixel = format_info_list[format_index].planes[p].bits_per_pixel / 8;
+		pixel_data_mask = format_info_list[format_index].planes[p].data_mask;
 		for (y = 0; y < h; ++y) {
 			for (x = 0; x < w; ++x) {
 				idx = y * stride + x * bytes_per_pixel;
-				for (b = 0; b < bytes_per_pixel; ++b)
-					CHECK(pixel[idx + b] == (uint8_t)(y ^ x ^ b));
+				for (b = 0; b < bytes_per_pixel; ++b) {
+					byte_mask = pixel_data_mask >> (8 * b);
+					CHECK((pixel[idx + b] & byte_mask) == ((uint8_t)(y ^ x ^ b) & byte_mask));
+				}
 			}
 		}
 		gbm_bo_unmap(bo, map_data);
