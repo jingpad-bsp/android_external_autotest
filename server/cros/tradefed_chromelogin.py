@@ -42,6 +42,10 @@ class ChromeLogin(object):
         board = kwargs.get('board')
         if board in constants.LOGIN_BOARD_TIMEOUT:
             self._timeout = constants.LOGIN_BOARD_TIMEOUT[board]
+        # DUT power off -> on cycle will still adhere DUT's reboot preference.
+        self._hard_reboot_on_failure = False
+        if kwargs.get('hard_reboot_on_failure') and self._need_reboot:
+            self._hard_reboot_on_failure = True
 
     def _cmd_builder(self, verbose=False):
         """Gets remote command to start browser with ARC enabled."""
@@ -180,8 +184,15 @@ class ChromeLogin(object):
         """
         logging.info('Rebooting...')
         try:
-            self._host.reboot()
-            self._need_reboot = False
+            if self._hard_reboot_on_failure and self._host.servo:
+                logging.info('Powering OFF the DUT: %s', self._host)
+                self._host.servo.get_power_state_controller().power_off()
+                logging.info('Powering ON the DUT: %s', self._host)
+                self._host.servo.get_power_state_controller().power_on()
+                self._hard_reboot_on_failure = False
+            else:
+                self._host.reboot()
+                self._need_reboot = False
         except Exception:
             if exc_type is None:
                 raise
