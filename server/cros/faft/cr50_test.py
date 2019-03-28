@@ -416,6 +416,13 @@ class Cr50Test(FirmwareTest):
 
     def _restore_cr50_state(self):
         """Restore cr50 state, so the device can be used for further testing"""
+        state_mismatch = self._check_original_state()
+        if state_mismatch and not self._provision_update:
+            self._restore_original_state()
+            if self._raise_error_on_mismatch:
+                raise error.TestError('Unexpected state mismatch during '
+                                      'cleanup %s' % state_mismatch)
+
         # Try to open cr50 and enable testlab mode if it isn't enabled.
         try:
             self.fast_open(True)
@@ -442,13 +449,6 @@ class Cr50Test(FirmwareTest):
 
         tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
         self.clear_fwmp()
-
-        state_mismatch = self._check_original_state()
-        if state_mismatch and not self._provision_update:
-            self._restore_original_state()
-            if self._raise_error_on_mismatch:
-                raise error.TestError('Unexpected state mismatch during '
-                                      'cleanup %s' % state_mismatch)
 
         # Restore the ccd privilege level
         if hasattr(self, 'original_ccd_level'):
