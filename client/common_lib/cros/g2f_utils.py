@@ -2,10 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
 import time
-
-from autotest_lib.client.common_lib import error, utils, logging_manager
 
 def StartU2fd(client):
     """Starts u2fd on the client.
@@ -29,17 +26,18 @@ def StartU2fd(client):
 
     return cr50_dev.pop()
 
-def G2fRegister(client, dev, challenge, application):
+def G2fRegister(client, dev, challenge, application, p1=0):
     """Returns a dictionary with TPM status.
 
     @param client: client object to run commands on.
     """
     return client.run('g2ftool --reg --dev=' + dev +
                       ' --challenge=' + challenge +
-                      ' --application=' + application,
+                      ' --application=' + application +
+                      ' --p1=' + str(p1),
                       ignore_status=True)
 
-def G2fAuth(client, dev, challenge, application, key_handle):
+def G2fAuth(client, dev, challenge, application, key_handle, p1=0):
     """Returns a dictionary with TPM status.
 
     @param client: client object to run commands on.
@@ -47,5 +45,6 @@ def G2fAuth(client, dev, challenge, application, key_handle):
     return client.run('g2ftool --auth --dev=' + dev +
                       ' --challenge=' + challenge +
                       ' --application=' + application +
-                      ' --key_handle=' + key_handle,
+                      ' --key_handle=' + key_handle +
+                      ' --p1=' + str(p1),
                       ignore_status=True)
