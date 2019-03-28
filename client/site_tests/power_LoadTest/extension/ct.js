@@ -23,7 +23,7 @@ function sendSuccessToBGScript() {
     if (response && response.should_scroll) {
       window.focus();
       lastOffset = window.pageYOffset;
-      var start_interval = Math.max(10000, response.scroll_interval);
+      var start_interval = Math.max(1000, response.scroll_interval);
       function smoothScrollDown() {
         report_scrolling_to_test();
         window.scrollBy(0, response.scroll_by);
