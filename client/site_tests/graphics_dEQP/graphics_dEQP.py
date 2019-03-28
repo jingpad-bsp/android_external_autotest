@@ -83,6 +83,15 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
             self._services.restore_services()
         super(graphics_dEQP, self).cleanup()
 
+    def _archive_test_results(self, result_filename):
+        """Reduce space usage.
+
+        The default /tmp result file location is memory backed and capped at 1/2
+        of main memory. We have experienced out of storage situations. Avoid
+        this for instance by using compression.
+        """
+        os.system('gzip %s' % result_filename)
+
     def _parse_test_results(self, result_filename,
                             test_results=None, failing_test=None):
         """Handles result files with one or more test results.
@@ -361,6 +370,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
                     result_counts = self._parse_test_results(
                         log_file,
                         failing_test=failing_test)
+                    self._archive_test_results(log_file)
                     if result_counts:
                         result = result_counts.keys()[0]
                     else:
@@ -491,6 +501,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
                 # We are trying to handle all errors by parsing the log file.
                 results = self._parse_test_results(log_file, results,
                                                    failing_test)
+                self._archive_test_results(log_file)
                 logging.info(results)
         return results
 
