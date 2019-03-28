@@ -492,7 +492,8 @@ def _create_host_for_installation(host, arguments):
     s_host, s_port, s_serial = _extract_servo_attributes(host.hostname,
                                                          info.attributes)
     return preparedut.create_host(host.hostname, arguments.board,
-                                  arguments.model, s_host, s_port, s_serial)
+                                  arguments.model, s_host, s_port, s_serial,
+                                  arguments.logdir)
 
 
 def _install_test_image(host, arguments):
