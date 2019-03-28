@@ -226,7 +226,7 @@ class FirmwareTest(FAFTBase):
         if hasattr(self, 'cr50'):
             system_info['cr50_version'] = self.servo.get('cr50_version')
 
-        logging.info('System info:\n', pprint.pformat(system_info))
+        logging.info('System info:\n%s', pprint.pformat(system_info))
         self.write_attr_keyval(system_info)
 
     def invalidate_firmware_setup(self):
