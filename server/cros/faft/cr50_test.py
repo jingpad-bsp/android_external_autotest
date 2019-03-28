@@ -886,3 +886,9 @@ class Cr50Test(FirmwareTest):
             self.host.run('cryptohome --action=tpm_wait_ownership')
         self.host.run('cryptohome '
                       '--action=remove_firmware_management_parameters')
+
+    def tpm_is_responsive(self):
+        """Check TPM responsiveness by running tpm_version."""
+        result = self.host.run('tpm_version', ignore_status=True)
+        logging.debug(result.stdout.strip())
+        return not result.exit_status

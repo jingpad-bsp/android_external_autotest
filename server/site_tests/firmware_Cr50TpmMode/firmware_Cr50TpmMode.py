@@ -37,10 +37,6 @@ class firmware_Cr50TpmMode(Cr50Test):
         return cr50_utils.GSCTool(self.host,
                  ['-a', opt_text, mode_param]).stdout.strip()
 
-    def tpm_ping(self):
-        """Check TPM responsiveness by running tpm_version."""
-        return self.host.run('tpm_version').stdout.strip()
-
     def run_test_tpm_mode(self, disable_tpm, long_opt):
         """Run a test for the case of either disabling TPM or enabling.
 
@@ -51,19 +47,32 @@ class firmware_Cr50TpmMode(Cr50Test):
         """
         # Reset the device.
         logging.info('Reset')
+
         self.servo.get_power_state_controller().reset()
         self.switcher.wait_for_client()
 
-        # Query TPM mode, which should be 'enabled (0)'.
+        self.fast_open(True)
+
+        # Check if TPM is enabled through console command.
         logging.info('Get TPM Mode')
+        if not self.cr50.tpm_is_enabled():
+            raise error.TestFail('TPM is not enabled after reset,')
+
+        # Check if Key Ladder is enabled.
+        if not self.cr50.keyladder_is_enabled():
+            raise error.TestFail('Failed to restore H1 Key Ladder')
+
+        # Check if TPM is enabled through gsctool.
         output_log = self.get_tpm_mode(long_opt)
         logging.info(output_log)
-        if output_log != 'TPM Mode: enabled (0)':
-            raise error.TestFail('Failure in reading TPM mode after reset')
+        if not 'enabled (0)' in output_log.lower():
+            raise error.TestFail('Failed to read TPM mode after reset')
 
-        # Check that TPM is enabled.
-        self.tpm_ping()
-        logging.info('Checked TPM is enabled')
+        # Check if CR50 responds to a TPM request.
+        if self.tpm_is_responsive():
+            logging.info('Checked TPM response')
+        else:
+            raise error.TestFail('Failed to check TPM response')
 
         # Change TPM Mode
         logging.info('Set TPM Mode')
@@ -72,30 +81,32 @@ class firmware_Cr50TpmMode(Cr50Test):
 
         # Check the result of TPM Mode.
         if disable_tpm:
-            if output_log != 'TPM Mode: disabled (2)':
-                raise error.TestFail('Failure in disabling TPM: %s' %
-                        output_log)
+            if not 'disabled (2)' in output_log.lower():
+                raise error.TestFail('Failed to disable TPM: %s' % output_log)
 
-            # Check that TPM is disabled. The run should fail.
-            try:
-                result = self.tpm_ping()
-            except error.AutoservRunError:
-                logging.info('Checked TPM is disabled')
+            # Check if TPM is disabled. The run should fail.
+            if self.tpm_is_responsive():
+                raise error.TestFail('TPM responded')
             else:
-                raise error.TestFail('Unexpected TPM response: %s' % result)
-        else:
-            if output_log != 'TPM Mode: enabled (1)':
-                raise error.TestFail('Failure in enabling TPM: %s' % output_log)
+                logging.info('TPM did not respond')
 
-            # Check the TPM is enabled still.
-            self.tpm_ping()
-            logging.info('Checked TPM is enabled')
+            if self.cr50.keyladder_is_enabled():
+                raise error.TestFail('Failed to revoke H1 Key Ladder')
+        else:
+            if not 'enabled (1)' in output_log.lower():
+                raise error.TestFail('Failed to enable TPM: %s' % output_log)
+
+            # Check if TPM is enabled still.
+            if self.tpm_is_responsive():
+                logging.info('Checked TPM response')
+            else:
+                raise error.TestFail('Failed to check TPM response')
 
             # Subsequent set-TPM-mode vendor command should fail.
             try:
                 output_log = self.set_tpm_mode(not disable_tpm, long_opt)
             except error.AutoservRunError:
-                logging.info('Expected failure in disabling TPM mode');
+                logging.info('Expectedly failed to disable TPM mode');
             else:
                 raise error.TestFail('Unexpected result in disabling TPM mode:'
                         ' %s' % output_log)
