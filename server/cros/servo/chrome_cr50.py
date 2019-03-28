@@ -469,8 +469,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def rolledback(self):
         """Returns true if cr50 just rolled back"""
-        return 'Rollback detected' in self.send_command_get_output('sysinfo',
-                ['sysinfo.*>'])[0]
+        return 'Rollback detected' in self.send_safe_command_get_output(
+                'sysinfo', ['sysinfo.*>'])[0]
 
 
     def get_version_info(self, regexp):
@@ -490,7 +490,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def using_prod_rw_keys(self):
         """Returns True if the RW keyid is prod"""
-        rv = self.send_command_retry_get_output('sysinfo',
+        rv = self.send_safe_command_retry_get_output('sysinfo',
                 ['RW keyid:.*\(([a-z]+)\)'])
         logging.info(rv)
         return rv[0][1] == 'prod'
