@@ -338,10 +338,9 @@ def get_sdcard_pid():
 def _get_mount_passthrough_pid_internal(job_name):
     """Returns the PID of the mount-passthrough daemon job."""
     job_pid = get_job_pid(job_name)
-    # |job_pid| is the minijail process, obtain the PID of the process running
-    # inside the mount namespace.
-    # FUSE process is the only process running as chronos in the session.
-    return utils.system_output('pgrep -u chronos -s %s' % job_pid)
+    # |job_pid| is the minijail process, the fuse process should be
+    # the only direct child of the minijail process
+    return utils.system_output('pgrep -P %s' % job_pid)
 
 
 def get_mount_passthrough_pid_list():
