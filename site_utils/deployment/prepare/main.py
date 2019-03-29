@@ -32,6 +32,10 @@ def main():
       opts.hostname, opts.board, opts.model, opts.servo_hostname,
       opts.servo_port, opts.servo_serial, opts.uart_logs_dir) as host:
 
+    if opts.dry_run:
+      logging.info('DRY RUN: Would have run actions %s', opts.actions)
+      return
+
     if 'stage-usb' in opts.actions:
       preparedut.download_image_to_servo_usb(host, opts.build)
     if 'install-firmware' in opts.actions:
@@ -51,11 +55,17 @@ def _parse_args():
       help='DUT preparation actions to execute.',
   )
   parser.add_argument(
+      '--dry-run',
+      action='store_true',
+      default=False,
+      help='Run in dry-run mode. No changes will be made to the DUT.',
+  )
+
+  parser.add_argument(
       '--hostname',
       required=True,
       help='Hostname of the DUT to prepare.',
   )
-
   parser.add_argument(
       '--board',
       required=True,
