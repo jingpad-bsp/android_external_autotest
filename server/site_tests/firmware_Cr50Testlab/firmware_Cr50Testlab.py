@@ -88,17 +88,6 @@ class firmware_Cr50Testlab(Cr50Test):
 
     def run_once(self):
         """Try to set testlab mode from different privilege levels."""
-        # ccd testlab can only be enabled after ccd is opened. This test wont
-        # do much if we can't open the device. firmware_Cr50Open should be
-        # enough to test ccd open capabilities. Do a basic test to make sure
-        # testlab mode can't be enabled while the device is locked, then raise
-        # test NA error.
-        if self.ccd_lockout:
-            self.cr50.set_ccd_level('lock')
-            self.try_testlab('on', err=self.ACCESS_DENIED)
-            raise error.TestNAError('Skipping firmware_Cr50Testlab when ccd is '
-                    'locked out.')
-
         # Dummy isn't a valid mode. Make sure it fails
         self.reset_ccd()
         self.try_testlab('dummy', err=self.INVALID_PARAM)

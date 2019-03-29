@@ -54,11 +54,9 @@ class Cr50Test(FirmwareTest):
                                     'access to the Cr50 console')
 
         logging.info('Test Args: %r', full_args)
-        self.ccd_lockout = full_args.get('ccd_lockout', '').lower() == 'true'
-        logging.info('ccd is%s locked out', '' if self.ccd_lockout else ' not')
 
         self.can_set_ccd_level = (not self.cr50.using_ccd() or
-            self.cr50.testlab_is_on()) and not self.ccd_lockout
+            self.cr50.testlab_is_on())
         self.original_ccd_level = self.cr50.get_ccd_level()
         self.original_ccd_settings = self.cr50.get_cap_dict(
                 info=self.cr50.CAP_SETTING)
