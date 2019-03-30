@@ -12,10 +12,43 @@ class Metric(object):
         @param higher_is_better: Whether a higher value is considered better or
                 not.
         """
-        self.values = []
-        self.description = description
-        self.units = units
-        self.higher_is_better = higher_is_better
+        self._description = description
+        self._units = units
+        self._higher_is_better = higher_is_better
+        self._samples = []
+
+    @property
+    def description(self):
+        """Description of the metric."""
+        return self._description
+
+    @property
+    def units(self):
+        """Units of the metric."""
+        return self._units
+
+    @property
+    def higher_is_better(self):
+        """Whether a higher value is considered better or not."""
+        return self._higher_is_better
+
+    @property
+    def values(self):
+        """Measured values of the metric."""
+        if len(self._samples) == 0:
+            return self._samples
+        return self._aggregate(self._samples)
+
+    @values.setter
+    def values(self, samples):
+        self._samples = samples
+
+    def _aggregate(self, samples):
+        """
+        Subclasses can override this to aggregate the metric into a single
+        sample.
+        """
+        return samples
 
     def pre_collect(self):
         """
@@ -23,32 +56,53 @@ class Metric(object):
         """
         pass
 
+    def _store_sample(self, sample):
+        self._samples.append(sample)
+
     def collect_metric(self):
         """
-        Collects one metric.
+        Collects one sample.
 
-        Implementations should add a metric value to the self.values list.
+        Implementations should call self._store_sample() once if it's not an
+        aggregate, i.e., it overrides self._aggregate().
         """
-        raise NotImplementedError('Subclasses should override')
+        pass
+
+    @classmethod
+    def from_metric(cls, other):
+        """
+        Instantiate from an existing metric instance.
+        """
+        metric = cls(
+                description=other.description,
+                units=other.units,
+                higher_is_better=other.higher_is_better)
+        metric.values = other.values
+        return metric
 
 class PeakMetric(Metric):
     """
     Metric that collects the peak of another metric.
     """
-    def __init__(self, metric):
-        """
-        Initializes with a Metric.
 
-        @param metric The Metric to get the peak from.
-        """
-        super(PeakMetric, self).__init__(
-                'peak_' + metric.description,
-                units = metric.units,
-                higher_is_better = metric.higher_is_better)
-        self.metric = metric
+    @property
+    def description(self):
+        return 'peak_' + super(PeakMetric, self).description
 
-    def collect_metric(self):
-        self.values = [max(self.metric.values)] if self.metric.values else []
+    def _aggregate(self, samples):
+        return max(samples)
+
+class SumMetric(Metric):
+    """
+    Metric that sums another metric.
+    """
+
+    @property
+    def description(self):
+        return 'sum_' + super(SumMetric, self).description
+
+    def _aggregate(self, samples):
+        return sum(samples)
 
 class MemUsageMetric(Metric):
     """
@@ -66,7 +120,7 @@ class MemUsageMetric(Metric):
         free_memory = self.system_facade.get_mem_free_plus_buffers_and_cached()
         used_memory = total_memory - free_memory
         usage_percent = (used_memory * 100) / total_memory
-        self.values.append(usage_percent)
+        self._store_sample(usage_percent)
 
 class CpuUsageMetric(Metric):
     """
@@ -89,7 +143,7 @@ class CpuUsageMetric(Metric):
         # current_usage.
         usage_percent = 100 * self.system_facade.compute_active_cpu_time(
                 self.last_usage, current_usage)
-        self.values.append(usage_percent)
+        self._store_sample(usage_percent)
         self.last_usage = current_usage
 
 class AllocatedFileHandlesMetric(Metric):
@@ -102,7 +156,7 @@ class AllocatedFileHandlesMetric(Metric):
         self.system_facade = system_facade
 
     def collect_metric(self):
-        self.values.append(self.system_facade.get_num_allocated_file_handles())
+        self._store_sample(self.system_facade.get_num_allocated_file_handles())
 
 class StorageWrittenMetric(Metric):
     """
@@ -125,7 +179,7 @@ class StorageWrittenMetric(Metric):
         statistics = self.system_facade.get_storage_statistics()
         written_kb = statistics['written_kb']
         written_period = written_kb - self.last_written_kb
-        self.values.append(written_period)
+        self._store_sample(written_period)
         self.last_written_kb = written_kb
 
 class TemperatureMetric(Metric):
@@ -137,7 +191,7 @@ class TemperatureMetric(Metric):
         self.system_facade = system_facade
 
     def collect_metric(self):
-        self.values.append(self.system_facade.get_current_temperature_max())
+        self._store_sample(self.system_facade.get_current_temperature_max())
 
 def create_default_metric_set(system_facade):
     """
@@ -151,9 +205,10 @@ def create_default_metric_set(system_facade):
     file_handles = AllocatedFileHandlesMetric(system_facade)
     storage_written = StorageWrittenMetric(system_facade)
     temperature = TemperatureMetric(system_facade)
-    peak_cpu = PeakMetric(cpu)
-    peak_mem = PeakMetric(mem)
-    peak_temperature = PeakMetric(temperature)
+    peak_cpu = PeakMetric.from_metric(cpu)
+    peak_mem = PeakMetric.from_metric(mem)
+    peak_temperature = PeakMetric.from_metric(temperature)
+    sum_storage_written = SumMetric.from_metric(storage_written)
     return [cpu,
             mem,
             file_handles,
@@ -161,7 +216,8 @@ def create_default_metric_set(system_facade):
             temperature,
             peak_cpu,
             peak_mem,
-            peak_temperature]
+            peak_temperature,
+            sum_storage_written]
 
 class SystemMetricsCollector(object):
     """
