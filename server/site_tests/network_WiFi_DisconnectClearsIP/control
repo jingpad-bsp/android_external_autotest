@@ -6,7 +6,7 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_DisconnectClearsIP'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_noservo')
+ATTRIBUTES = ('suite:wifi_matfunc')
 DEPENDENCIES = 'wificell'
 
 DOC = """
