@@ -62,28 +62,99 @@ class TestSystemMetricsCollector(unittest.TestCase):
         collector.collect_snapshot()
         collector.write_metrics(lambda **kwargs: None)
 
-    def test_peak_metric_description(self):
-        test_metric = TestMetric()
-        peak_metric = system_metrics_collector.PeakMetric(test_metric)
-        self.assertEqual(peak_metric.description, 'peak_test_description')
+    def test_aggregate_metric_zero_samples(self):
+        metric = TestAggregateMetric()
+        self.assertEqual(metric.values, [])
 
-    def test_peak_metric_one_element(self):
-        test_metric = TestMetric()
-        peak_metric = system_metrics_collector.PeakMetric(test_metric)
-        test_metric.collect_metric()
-        peak_metric.collect_metric()
-        self.assertEqual(peak_metric.values, [1])
+    def test_aggregate_metric_one_sample(self):
+        metric = TestAggregateMetric()
+        metric.collect_metric()
+        self.assertEqual(metric.values, 1)
 
-    def test_peak_metric_many_elements(self):
+    def test_aggregate_metric_many_samples(self):
+        metric = TestAggregateMetric()
+        metric.collect_metric()
+        metric.value = 2
+        metric.collect_metric()
+        metric.value = 3
+        metric.collect_metric()
+        self.assertEqual(metric.values, 3)
+
+    def test_aggregate_metric_from_metric_one_sample(self):
         test_metric = TestMetric()
-        peak_metric = system_metrics_collector.PeakMetric(test_metric)
+        aggregate_metric = LastElementMetric.from_metric(test_metric)
         test_metric.collect_metric()
+        aggregate_metric.collect_metric()
+        self.assertEqual(test_metric.values, [1])
+        self.assertEqual(aggregate_metric.values, 1)
+
+    def test_aggregate_metric_from_metric_many_samples(self):
+        test_metric = TestMetric()
+        aggregate_metric = LastElementMetric.from_metric(test_metric)
+        test_metric.collect_metric()
+        aggregate_metric.collect_metric()
         test_metric.value = 2
         test_metric.collect_metric()
+        aggregate_metric.collect_metric()
+        test_metric.value = 3
+        test_metric.collect_metric()
+        aggregate_metric.collect_metric()
+        self.assertEqual(test_metric.values, [1, 2, 3])
+        self.assertEqual(aggregate_metric.values, 3)
+
+    def test_peak_metric_description(self):
+        metric = system_metrics_collector.PeakMetric('foo')
+        self.assertEqual(metric.description, 'peak_foo')
+
+    def test_peak_metric_many_samples(self):
+        metric = TestPeakMetric()
+        metric.collect_metric()
+        metric.value = 2
+        metric.collect_metric()
+        metric.value = 0
+        metric.collect_metric()
+        self.assertEqual(metric.values, 2)
+
+    def test_peak_metric_from_metric_many_samples(self):
+        test_metric = TestMetric()
+        peak_metric = system_metrics_collector.PeakMetric.from_metric(
+                test_metric)
+        test_metric.collect_metric()
+        peak_metric.collect_metric()
+        test_metric.value = 2
+        test_metric.collect_metric()
+        peak_metric.collect_metric()
         test_metric.value = 0
         test_metric.collect_metric()
         peak_metric.collect_metric()
-        self.assertEqual(peak_metric.values, [2])
+        self.assertEqual(peak_metric.values, 2)
+
+    def test_sum_metric_description(self):
+        metric = system_metrics_collector.SumMetric('foo')
+        self.assertEqual(metric.description, 'sum_foo')
+
+    def test_sum_metric_many_samples(self):
+        metric = TestSumMetric()
+        metric.collect_metric()
+        metric.value = 2
+        metric.collect_metric()
+        metric.value = 3
+        metric.collect_metric()
+        self.assertEqual(metric.values, 6)
+
+    def test_sum_metric_from_metric_many_samples(self):
+        test_metric = TestMetric()
+        sum_metric = system_metrics_collector.SumMetric.from_metric(
+                test_metric)
+        test_metric.collect_metric()
+        sum_metric.collect_metric()
+        test_metric.value = 40
+        test_metric.collect_metric()
+        sum_metric.collect_metric()
+        test_metric.value = 1
+        test_metric.collect_metric()
+        sum_metric.collect_metric()
+        self.assertEqual(sum_metric.values, 42)
 
 class FakeSystemFacade(object):
     def __init__(self):
@@ -128,6 +199,17 @@ class TestMetric(system_metrics_collector.Metric):
         self.value = 1
 
     def collect_metric(self):
-        self.values.append(self.value)
+        self._store_sample(self.value)
 
+class LastElementMetric(system_metrics_collector.Metric):
+    def _aggregate(self, x):
+        return x[-1]
 
+class TestAggregateMetric(TestMetric, LastElementMetric):
+    pass
+
+class TestPeakMetric(TestMetric, system_metrics_collector.PeakMetric):
+    pass
+
+class TestSumMetric(TestMetric, system_metrics_collector.SumMetric):
+    pass
