@@ -213,7 +213,6 @@ suite:wifi_interop_static
 suite:wifi_interop_wpa2
 suite:wifi_lucidsleep
 suite:wifi_matfunc
-suite:wifi_matfunc_noservo
 suite:wifi_perf
 suite:wifi_release
 suite:wifi_stress

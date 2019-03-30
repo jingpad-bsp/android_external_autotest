@@ -7,8 +7,7 @@ NAME = 'network_WiFi_SimpleConnect.wifi_checkHiddenWEP'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 ATTRIBUTES = ('suite:wifi_flaky, suite:wifi_matfunc,'
-              'suite:wifi_matfunc_noservo, suite:wifi_release,'
-	      'subsystem:wifi')
+              'suite:wifi_release, subsystem:wifi')
 DEPENDENCIES = 'wificell'
 
 DOC = """
