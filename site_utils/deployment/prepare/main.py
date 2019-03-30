@@ -15,7 +15,7 @@ from __future__ import print_function
 import argparse
 import logging
 
-import  common
+import common
 from autotest_lib.site_utils.deployment.prepare import dut as preparedut
 
 def main():
@@ -28,16 +28,16 @@ def main():
   # Setup logging to avoid dumping everything to stdout?
   logging.basicConfig(level=logging.DEBUG)
 
-  host = preparedut.create_host(
+  with preparedut.create_host(
       opts.hostname, opts.board, opts.model, opts.servo_hostname,
-      opts.servo_port, opts.servo_serial)
+      opts.servo_port, opts.servo_serial, opts.uart_logs_dir) as host:
 
-  if 'stage-usb' in opts.actions:
-    preparedut.download_image_to_servo_usb(host, opts.build)
-  if 'install-firmware' in opts.actions:
-    preparedut.install_firmware(host, opts.force_firmware)
-  if 'install-test-image' in opts.actions:
-    preparedut.install_test_image(host)
+    if 'stage-usb' in opts.actions:
+      preparedut.download_image_to_servo_usb(host, opts.build)
+    if 'install-firmware' in opts.actions:
+      preparedut.install_firmware(host, opts.force_firmware)
+    if 'install-test-image' in opts.actions:
+      preparedut.install_test_image(host)
 
 
 def _parse_args():
@@ -90,6 +90,10 @@ def _parse_args():
       '--force-firmware',
       action='store_true',
       help='Force firmware isntallation via chromeos-installfirmware.',
+  )
+  parser.add_argument(
+      '--uart-logs-dir',
+      help='The directory to save UART logs.'
   )
 
   return parser.parse_args()

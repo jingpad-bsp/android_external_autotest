@@ -35,8 +35,8 @@ In autotest, a test AP is represented by a `LinuxRouter` object, in
 ## What suites should I run?
 
 There are a variety of WiFi-related suites, but developers are commonly
-interested in the functionality (`wifi_matfunc` or its servo-less variant,
-`wifi_matfunc_noservo`) and performance (`wifi_perf`) suites.
+interested in the functionality (`wifi_matfunc`) and performance (`wifi_perf`)
+suites.
 
 ## Configuring DNS entries for test APs
 

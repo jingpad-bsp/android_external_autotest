@@ -6,7 +6,7 @@ AUTHOR = 'matthewmwang'
 TIME = 'SHORT'
 NAME = 'network_WiFi_RoamFT.PSK'
 TEST_TYPE = 'Server'
-ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_noservo')
+ATTRIBUTES = ('suite:wifi_matfunc')
 DEPENDENCIES = 'wificell'
 
 DOC = """

@@ -477,19 +477,23 @@ def _ensure_label_in_afe(afe_host, label_name, label_value):
 
 
 def _create_host_for_installation(host, arguments):
-  """Creates a hosts.CrosHost object to be used for installation.
+    """Creates a context manager of hosts.CrosHost object for installation.
 
-  The returned host object is agnostic of the infrastructure environment. In
-  particular, it does not have any references to the AFE.
+    The host object yielded by the returned context manager is agnostic of the
+    infrastructure environment. In particular, it does not have any references
+    to the AFE.
 
-  @param host: A server.hosts.CrosHost object.
-  @param arguments: Parsed commandline arguments for this script.
-  """
-  info = host.host_info_store.get()
-  s_host, s_port, s_serial = _extract_servo_attributes(host.hostname,
-                                                       info.attributes)
-  return preparedut.create_host(host.hostname, arguments.board, arguments.model,
-                                s_host, s_port, s_serial)
+    @param host: A server.hosts.CrosHost object.
+    @param arguments: Parsed commandline arguments for this script.
+
+    @return a context manager which yields hosts.CrosHost object.
+    """
+    info = host.host_info_store.get()
+    s_host, s_port, s_serial = _extract_servo_attributes(host.hostname,
+                                                         info.attributes)
+    return preparedut.create_host(host.hostname, arguments.board,
+                                  arguments.model, s_host, s_port, s_serial,
+                                  arguments.logdir)
 
 
 def _install_test_image(host, arguments):
@@ -556,10 +560,8 @@ def _install_and_update_afe(afe, hostname, host_attrs, arguments):
     host = None
     try:
         host = _create_host(hostname, afe, afe_host)
-        _install_test_image(
-            _create_host_for_installation(host, arguments),
-            arguments,
-        )
+        with _create_host_for_installation(host, arguments) as host_to_install:
+            _install_test_image(host_to_install, arguments)
 
         if arguments.install_test_image and not arguments.dry_run:
             host.labels.update_labels(host)

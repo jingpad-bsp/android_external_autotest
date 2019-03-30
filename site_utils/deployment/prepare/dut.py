@@ -12,6 +12,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import time
 
 import common
@@ -26,9 +27,10 @@ from autotest_lib.server.hosts import servo_host
 _FIRMWARE_UPDATE_TIMEOUT = 600
 
 
+@contextlib.contextmanager
 def create_host(hostname, board, model, servo_hostname, servo_port,
-                servo_serial=None):
-    """Create a server.hosts.CrosHost object to use for DUT preparation.
+                servo_serial=None, uart_logs_dir=None):
+    """Yield a server.hosts.CrosHost object to use for DUT preparation.
 
     This object contains just enough inventory data to be able to prepare the
     DUT for lab deployment. It does not contain any reference to AFE / Skylab so
@@ -41,8 +43,9 @@ def create_host(hostname, board, model, servo_hostname, servo_port,
     @param servo_hostname:  FQDN of the servo host controlling the DUT.
     @param servo_port:      Servo host port used for the controlling servo.
     @param servo_serial:    (Optional) Serial number of the controlling servo.
+    @param uart_logs_dir:   (Optional) Directory to save UART logs.
 
-    @return a server.hosts.Host object.
+    @yield a server.hosts.Host object.
     """
     labels = [
             'board:%s' % board,
@@ -65,11 +68,15 @@ def create_host(hostname, board, model, servo_hostname, servo_port,
             'afe_host': server_utils.EmptyAFEHost(),
     }
     host = hosts.create_host(machine_dict)
-    servo = servo_host.ServoHost(
+    servohost = servo_host.ServoHost(
             **servo_host.get_servo_args_for_host(host))
-    _prepare_servo(servo)
-    host.set_servo_host(servo)
-    return host
+    _prepare_servo(servohost)
+    host.set_servo_host(servohost)
+    host.servo.uart_logs_dir = uart_logs_dir
+    try:
+        yield host
+    finally:
+        host.close()
 
 
 def download_image_to_servo_usb(host, build):
@@ -212,10 +219,10 @@ def install_test_image(host):
     host.servo_install()
 
 
-def _prepare_servo(servo):
+def _prepare_servo(servohost):
     """Prepare servo connected to host for installation steps.
 
-    @param servo  A server.hosts.ServoHost object.
+    @param servohost  A server.hosts.servo_host.ServoHost object.
     """
     # Stopping `servod` on the servo host will force `repair()` to
     # restart it.  We want that restart for a few reasons:
@@ -225,12 +232,12 @@ def _prepare_servo(servo):
     #   + If there's a problem with servod that verify and repair
     #     can't find, this provides a UI through which `servod` can
     #     be restarted.
-    servo.run('stop servod PORT=%d' % servo.servo_port,
-              ignore_status=True)
-    servo.repair()
+    servohost.run('stop servod PORT=%d' % servohost.servo_port,
+                  ignore_status=True)
+    servohost.repair()
 
     # Don't timeout probing for the host usb device, there could be a bunch
     # of servos probing at the same time on the same servo host.  And
     # since we can't pass None through the xml rpcs, use 0 to indicate None.
-    if not servo.get_servo().probe_host_usb_dev(timeout=0):
+    if not servohost.get_servo().probe_host_usb_dev(timeout=0):
         raise Exception('No USB stick detected on Servo host')

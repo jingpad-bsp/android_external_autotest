@@ -6,7 +6,7 @@ AUTHOR = 'kirtika'
 NAME = 'network_WiFi_BgscanBackoff.5760_noise_check'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_noservo')
+ATTRIBUTES = ('suite:wifi_matfunc')
 DEPENDENCIES = 'wificell'
 
 DOC = """
