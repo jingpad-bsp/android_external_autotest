@@ -5,6 +5,7 @@
 AUTHOR = 'briannorris'
 NAME = 'network_WiFi_Reset'
 TIME = 'SHORT'
+MAX_RESULT_SIZE_KB = 512000
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
 ATTRIBUTES = ('suite:wifi_matfunc')
