@@ -20,6 +20,8 @@ _SUSPEND_START_LOG = '\"suspender.* Starting request [0-9]+$\"'
 _SUSPEND_TIME = 15
 _TIME_TO_RESUME_BAR = 3
 _TIME_TO_SUSPEND_BAR = 3
+_SLEEP_AFTER_RESUME = 60
+_SLEEP_AFTER_REBOOT = 30
 
 
 class platform_SuspendResumeTiming(test.test):
@@ -114,6 +116,7 @@ class platform_SuspendResumeTiming(test.test):
 
         # Reboot to create new powerd.Latest log file.
         self.host.reboot()
+        time.sleep(_SLEEP_AFTER_REBOOT)
 
         # Test user login.
         autotest_client = autotest.Autotest(self.host)
@@ -135,6 +138,7 @@ class platform_SuspendResumeTiming(test.test):
             self.host.suspend(suspend_time=_SUSPEND_TIME)
         except error.AutoservSuspendError:
             pass
+        time.sleep(_SLEEP_AFTER_RESUME)
         self.host.run('sync')
 
 
