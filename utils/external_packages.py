@@ -1224,6 +1224,33 @@ class ChromiteRepo(_ExternalGitRepo):
         return False
 
 
+class SuiteSchedulerRepo(_ExternalGitRepo):
+    """Clones or updates the suite_scheduler repo."""
+
+    _GIT_URL = ('https://chromium.googlesource.com/chromiumos/'
+                'infra/suite_scheduler')
+
+    def build_and_install(self, install_dir):
+        """
+        Clone if the repo isn't initialized, pull clean bits if it is.
+
+        @param install_dir: destination directory for suite_scheduler
+                            installation.
+        @param master_branch: if True, install master branch. Otherwise,
+                              install prod branch.
+        """
+        local_dir = os.path.join(install_dir, 'suite_scheduler')
+        git_repo = revision_control.GitRepo(
+                local_dir,
+                self._GIT_URL,
+                abs_work_tree=local_dir)
+        git_repo.reinit_repo_at(self.MASTER_BRANCH)
+
+        if git_repo.get_latest_commit_hash():
+            return True
+        return False
+
+
 class BtsocketRepo(_ExternalGitRepo):
     """Clones or updates the btsocket repo."""
 
