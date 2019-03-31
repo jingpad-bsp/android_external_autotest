@@ -86,11 +86,6 @@ class firmware_Cr50RMAOpen(Cr50Test):
         self.is_prod_mp = self.get_prod_mp_status()
 
 
-    def tpm_is_enabled(self):
-        """TPM is disabled if the tpm version cant be retrieved"""
-        return not self.host.run('tpm_version', ignore_status=True).exit_status
-
-
     def get_prod_mp_status(self):
         """Returns True if Cr50 is running a prod signed mp flagged image"""
         # Determine if the running image is using premp flags
@@ -265,7 +260,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
 
         self.host.reboot()
 
-        if not self.tpm_is_enabled():
+        if not self.tpm_is_responsive():
             raise error.TestFail('TPM was not reenabled after reboot')
 
         # Run RMA disable to reset the capabilities.
@@ -279,7 +274,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
         # The open process takes some time to complete. Wait for it.
         time.sleep(self.CHALLENGE_INTERVAL)
 
-        if self.tpm_is_enabled():
+        if self.tpm_is_responsive():
             raise error.TestFail('TPM was not disabled after RMA open')
 
         if self.cr50.get_wp_state() != self.WP_PERMANENTLY_DISABLED:
@@ -294,7 +289,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
         # The open process takes some time to complete. Wait for it.
         time.sleep(self.CHALLENGE_INTERVAL)
 
-        if not self.tpm_is_enabled():
+        if not self.tpm_is_responsive():
             raise error.TestFail('TPM is disabled')
 
         # Confirm write protect has been reset to follow battery presence. The
