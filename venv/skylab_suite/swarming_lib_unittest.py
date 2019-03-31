@@ -66,3 +66,9 @@ def test_form_requests():
             cmds, dimensions, slice_expiration_secs, task_name, priority,
             tags, user, parent_task_id=parent_task_id)
     assert json_request == source_request
+
+
+def test_get_stainless_logs_link():
+    """Test get_stainless_logs_link function."""
+    request_id = "12340"
+    assert request_id in swarming_lib.get_stainless_logs_link(request_id)
