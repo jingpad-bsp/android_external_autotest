@@ -46,7 +46,7 @@ def print_child_test_annotations(suite_handler):
                 anchor_test += '-' + hspec.test_spec.dut_name
 
             show_text = '[Test-logs]: %s' % anchor_test
-            _print_task_link_annotation(task_id, show_text)
+            _print_task_result_link_annotation(task_id, show_text)
 
 
 def log_suite_results(suite_name, suite_handler):
@@ -70,7 +70,7 @@ def log_suite_results(suite_name, suite_handler):
     logging.info('Links to tests:')
     logging.info('Suite Job %s %s', suite_name,
                  swarming_lib.get_task_link(suite_handler.suite_id))
-    _log_test_links(test_results)
+    _log_test_result_links(test_results)
 
     _log_buildbot_links(suite_handler, suite_name, test_results)
     return return_code
@@ -117,7 +117,7 @@ def _new_tko_connection():
         return None
 
 
-def _print_task_link_annotation(task_id, text):
+def _print_task_result_link_annotation(task_id, text):
     """Print the link of task logs.
 
     Given text: 'dummy_Pass-chromeos4-row7-rack6-host19'
@@ -134,7 +134,7 @@ def _print_task_link_annotation(task_id, text):
     """
     annotations = autotest.chromite_load('buildbot_annotations')
     print(annotations.StepLink('[Test-logs]: %s' % text,
-                               swarming_lib.get_task_link(task_id)))
+                               swarming_lib.get_stainless_logs_link(task_id)))
 
 
 def get_task_id_for_task_summaries(task_id):
@@ -188,8 +188,8 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
 
 def _log_buildbot_links_for_provision_tasks(test_results):
     for result in test_results:
-        _print_task_link_annotation(result['task_ids'][0],
-                                    _get_show_test_name(result))
+        _print_task_result_link_annotation(result['task_ids'][0],
+                                           _get_show_test_name(result))
 
 
 def _log_buildbot_links_for_tasks(test_results):
@@ -203,9 +203,10 @@ def _log_buildbot_links_for_tasks(test_results):
         test_name = result['test_name']
         if task_id in failed_test_views:
             for v in failed_test_views[task_id]:
-                _print_task_link_annotation(task_id, _reason_from_test_view(v))
+                _print_task_result_link_annotation(task_id,
+                                                   _reason_from_test_view(v))
         else:
-            _print_task_link_annotation(task_id, test_name)
+            _print_task_result_link_annotation(task_id, test_name)
         _log_buildbot_links_for_test_history(task_id, test_name)
 
 
@@ -265,7 +266,7 @@ def _print_single_test_result_link(result):
     for idx, task_id in enumerate(result['task_ids']):
         retry_suffix = ' (%dth retry)' % idx if idx > 0 else ''
         anchor_test += retry_suffix
-        _print_task_link_annotation(
+        _print_task_result_link_annotation(
                 task_id,
                 '[%s]: %s' % (anchor_test, result['state']))
 
@@ -367,13 +368,13 @@ def _get_suite_state(child_test_results, suite_handler):
             run_suite_common.RETURN_CODES.OK)
 
 
-def _log_test_links(child_test_results):
+def _log_test_result_links(child_test_results):
     """Output child results for a suite."""
     for result in child_test_results:
         for idx, task_id in enumerate(result['task_ids']):
             retry_suffix = ' (%dth retry)' % idx if idx > 0 else ''
             logging.info('%s  %s', result['test_name'] + retry_suffix,
-                         swarming_lib.get_task_link(task_id))
+                         swarming_lib.get_stainless_logs_link(task_id))
 
 
 def setup_logging():
