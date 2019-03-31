@@ -11,9 +11,11 @@ from __future__ import print_function
 import contextlib
 import logging
 import logging.config
+import mysql.connector
 
 from lucifer import autotest
 from skylab_suite import swarming_lib
+from skylab_suite import tko_test_views
 
 # Test status in _IGNORED_TEST_STATE won't be reported as test failure.
 # Or test may be reported as failure as
@@ -44,7 +46,7 @@ def print_child_test_annotations(suite_handler):
                 anchor_test += '-' + hspec.test_spec.dut_name
 
             show_text = '[Test-logs]: %s' % anchor_test
-            _print_task_link_annotation(task_id, show_text)
+            _print_task_result_link_annotation(task_id, show_text)
 
 
 def log_suite_results(suite_name, suite_handler):
@@ -68,17 +70,57 @@ def log_suite_results(suite_name, suite_handler):
     logging.info('Links to tests:')
     logging.info('Suite Job %s %s', suite_name,
                  swarming_lib.get_task_link(suite_handler.suite_id))
-    _log_test_links(test_results)
+    _log_test_result_links(test_results)
 
     _log_buildbot_links(suite_handler, suite_name, test_results)
-
     return return_code
 
 
-def _print_task_link_annotation(task_id, text):
+def _get_failed_test_views_from_tko(task_ids):
+    """Get test views corresponding to failed tests from TKO.
+
+    @param task_ids: list of Swarming request IDs.
+    @return {task_id: [tko_test_views.Row()]}
+    """
+    conn = _new_tko_connection()
+    if conn is None:
+        return {}
+
+    try:
+        views = tko_test_views.get(conn, task_ids)
+    except mysql.connector.Error:
+        logging.exception('Failed to obtain failure reasons from TKO')
+        return {}
+    return {k: tko_test_views.filter_failed(v) for k, v in views.iteritems()}
+
+
+def _new_tko_connection():
+    global_config = autotest.load('client.common_lib.global_config')
+    config = global_config.global_config
+    try:
+        host = config.get_config_value('AUTOTEST_WEB', 'global_db_host')
+        user = config.get_config_value('AUTOTEST_WEB', 'global_db_user')
+        password = config.get_config_value('AUTOTEST_WEB', 'global_db_password')
+        database = config.get_config_value('AUTOTEST_WEB', 'database')
+    except global_config.ConfigError:
+        logging.exception('Could not load TKO connection configuration')
+        return None
+    try:
+        if host.startswith('/'):
+            return mysql.connector.connect(unix_socket=host, user=user,
+                                           password=password, database=database)
+        else:
+            return mysql.connector.connect(host=host, user=user,
+                                           password=password, database=database)
+    except mysql.connector.Error:
+        logging.exception('Failed to connect to TKO database')
+        return None
+
+
+def _print_task_result_link_annotation(task_id, text):
     """Print the link of task logs.
 
-    Given text: '[Test-logs]: dummy_Pass-chromeos4-row7-rack6-host19'
+    Given text: 'dummy_Pass-chromeos4-row7-rack6-host19'
           task_id: '3ee300e77a576e10'
 
     The printed output will be:
@@ -91,8 +133,8 @@ def _print_task_link_annotation(task_id, text):
     @param task_id: a string task_id to form the swarming url.
     """
     annotations = autotest.chromite_load('buildbot_annotations')
-    print(annotations.StepLink(
-            text, swarming_lib.get_task_link(task_id)))
+    print(annotations.StepLink('[Test-logs]: %s' % text,
+                               swarming_lib.get_stainless_logs_link(task_id)))
 
 
 def get_task_id_for_task_summaries(task_id):
@@ -137,19 +179,50 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
         # finishes and claims that it succeeds. Skip logging them in buildbot.
         return
 
+    failed_results = [t for t in test_results if _is_failed_result(t)]
+    if suite_handler.is_provision():
+        _log_buildbot_links_for_provision_tasks(failed_results)
+    else:
+        _log_buildbot_links_for_tasks(failed_results)
+
+
+def _log_buildbot_links_for_provision_tasks(test_results):
+    for result in test_results:
+        _print_task_result_link_annotation(result['task_ids'][0],
+                                           _get_show_test_name(result))
+
+
+def _log_buildbot_links_for_tasks(test_results):
+    task_ids = []
+    for result in test_results:
+        task_ids += result.get('task_ids', [])
+    failed_test_views = _get_failed_test_views_from_tko(task_ids)
+
+    for result in test_results:
+        task_id = result['task_ids'][0]
+        test_name = result['test_name']
+        if task_id in failed_test_views:
+            for v in failed_test_views[task_id]:
+                _print_task_result_link_annotation(task_id,
+                                                   _reason_from_test_view(v))
+        else:
+            _print_task_result_link_annotation(task_id, test_name)
+        _log_buildbot_links_for_test_history(task_id, test_name)
+
+
+def _log_buildbot_links_for_test_history(task_id, test_name):
     annotations = autotest.chromite_load('buildbot_annotations')
     reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
-    for result in test_results:
-        if result['state'] not in [swarming_lib.TASK_COMPLETED_SUCCESS,
-                                   swarming_lib.TASK_RUNNING]:
-            _print_task_link_annotation(
-                    result['task_ids'][0],
-                    '[Test-logs]: %s' % _get_show_test_name(result))
+    print(annotations.StepLink(
+            '[Test-History]: %s' % test_name,
+            reporting_utils.link_test_history(test_name)))
 
-            if not suite_handler.is_provision():
-                print(annotations.StepLink(
-                        '[Test-History]: %s' % result['test_name'],
-                        reporting_utils.link_test_history(result['test_name'])))
+
+def _reason_from_test_view(test_view):
+    reason = '%s: %s' % (test_view.name, test_view.status)
+    if test_view.reason:
+        reason = '%s: %s' % (reason, test_view.reason)
+    return reason
 
 
 def _log_test_results(test_results):
@@ -193,7 +266,7 @@ def _print_single_test_result_link(result):
     for idx, task_id in enumerate(result['task_ids']):
         retry_suffix = ' (%dth retry)' % idx if idx > 0 else ''
         anchor_test += retry_suffix
-        _print_task_link_annotation(
+        _print_task_result_link_annotation(
                 task_id,
                 '[%s]: %s' % (anchor_test, result['state']))
 
@@ -295,13 +368,13 @@ def _get_suite_state(child_test_results, suite_handler):
             run_suite_common.RETURN_CODES.OK)
 
 
-def _log_test_links(child_test_results):
+def _log_test_result_links(child_test_results):
     """Output child results for a suite."""
     for result in child_test_results:
         for idx, task_id in enumerate(result['task_ids']):
             retry_suffix = ' (%dth retry)' % idx if idx > 0 else ''
             logging.info('%s  %s', result['test_name'] + retry_suffix,
-                         swarming_lib.get_task_link(task_id))
+                         swarming_lib.get_stainless_logs_link(task_id))
 
 
 def setup_logging():
@@ -323,3 +396,11 @@ def setup_logging():
         },
         'disable_existing_loggers': False,
     })
+
+
+def _is_failed_result(result):
+    return result['state'] not in [
+            swarming_lib.TASK_COMPLETED_SUCCESS,
+            swarming_lib.TASK_RUNNING,
+    ]
+
