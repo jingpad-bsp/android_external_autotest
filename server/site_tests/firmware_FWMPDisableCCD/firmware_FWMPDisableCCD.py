@@ -27,7 +27,7 @@ class firmware_FWMPDisableCCD(Cr50Test):
         # Test CCD if servo has access to Cr50, is running with CCD v1, and has
         # testlab mode enabled.
         self.test_ccd_unlock = (hasattr(self, 'cr50') and
-            self.cr50.has_command('ccdstate') and not self.ccd_lockout)
+            self.cr50.has_command('ccdstate'))
 
         logging.info('%sTesting CCD', '' if self.test_ccd_unlock else 'Not')
         if self.test_ccd_unlock:
