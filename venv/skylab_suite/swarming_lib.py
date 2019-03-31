@@ -71,6 +71,11 @@ SORTED_SKYLAB_HWTEST_PRIORITY = sorted(
 
 SWARMING_DUT_READY_STATUS = 'ready'
 
+_STAINLESS_LOGS_BROWSER_URL_TEMPLATE = (
+        "https://stainless.corp.google.com"
+        "/browse/chromeos-autotest-results/swarming-%(request_id)s/"
+)
+
 # The structure of fallback swarming task request is:
 # NewTaskRequest:
 #     ...
@@ -286,6 +291,12 @@ def _to_raw_request(request):
 def get_task_link(task_id):
     return '%s/user/task/%s' % (os.environ.get('SWARMING_SERVER'), task_id)
 
+
+def get_stainless_logs_link(request_id):
+    """Gets a link to the stainless logs for a given task ID."""
+    return _STAINLESS_LOGS_BROWSER_URL_TEMPLATE % {
+            'request_id': request_id,
+    }
 
 def get_task_final_state(task):
     """Get the final state of a swarming task.
