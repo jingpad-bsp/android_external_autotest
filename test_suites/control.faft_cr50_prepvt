@@ -35,7 +35,6 @@ args_dict['name'] = 'faft_cr50_prepvt'
 args_dict['add_experimental'] = True
 args_dict['job'] = job
 args_dict['test_args'] = {
-	'ccd_lockout' : 'False',
 	'ccd_open_restricted' : 'False',
 }
 
