@@ -179,33 +179,49 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
         # finishes and claims that it succeeds. Skip logging them in buildbot.
         return
 
+    failed_results = [t for t in test_results if _is_failed_result(t)]
+    if suite_handler.is_provision():
+        _log_buildbot_links_for_provision_tasks(failed_results)
+    else:
+        _log_buildbot_links_for_tasks(failed_results)
+
+
+def _log_buildbot_links_for_provision_tasks(test_results):
+    for result in test_results:
+        _print_task_link_annotation(result['task_ids'][0],
+                                    _get_show_test_name(result))
+
+
+def _log_buildbot_links_for_tasks(test_results):
     task_ids = []
     for result in test_results:
         task_ids += result.get('task_ids', [])
     failed_test_views = _get_failed_test_views_from_tko(task_ids)
 
+    for result in test_results:
+        task_id = result['task_ids'][0]
+        test_name = result['test_name']
+        if task_id in failed_test_views:
+            for v in failed_test_views[task_id]:
+                _print_task_link_annotation(task_id, _reason_from_test_view(v))
+        else:
+            _print_task_link_annotation(task_id, test_name)
+        _log_buildbot_links_for_test_history(task_id, test_name)
+
+
+def _log_buildbot_links_for_test_history(task_id, test_name):
     annotations = autotest.chromite_load('buildbot_annotations')
     reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
-    for result in test_results:
-        if result['state'] not in [swarming_lib.TASK_COMPLETED_SUCCESS,
-                                   swarming_lib.TASK_RUNNING]:
-            if suite_handler.is_provision():
-                _print_task_link_annotation(result['task_ids'][0],
-                                            _get_show_test_name(result))
-            else:
-                task_id = result['task_ids'][0]
-                if task_id in failed_test_views:
-                    for v in failed_test_views[task_id]:
-                        reason = '%s: %s' % (v.name, v.status)
-                        if v.reason:
-                            reason = '%s: %s' % (reason, v.reason)
-                        _print_task_link_annotation(task_id, reason)
+    print(annotations.StepLink(
+            '[Test-History]: %s' % test_name,
+            reporting_utils.link_test_history(test_name)))
 
-                else:
-                    _print_task_link_annotation(task_id, result['test_name'])
-                print(annotations.StepLink(
-                        '[Test-History]: %s' % result['test_name'],
-                        reporting_utils.link_test_history(result['test_name'])))
+
+def _reason_from_test_view(test_view):
+    reason = '%s: %s' % (test_view.name, test_view.status)
+    if test_view.reason:
+        reason = '%s: %s' % (reason, test_view.reason)
+    return reason
 
 
 def _log_test_results(test_results):
@@ -379,3 +395,11 @@ def setup_logging():
         },
         'disable_existing_loggers': False,
     })
+
+
+def _is_failed_result(result):
+    return result['state'] not in [
+            swarming_lib.TASK_COMPLETED_SUCCESS,
+            swarming_lib.TASK_RUNNING,
+    ]
+
