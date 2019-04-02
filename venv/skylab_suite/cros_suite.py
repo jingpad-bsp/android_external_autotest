@@ -77,6 +77,9 @@ TestSpec = collections.namedtuple(
                 'pool',
                 'build',
                 'keyvals',
+                # TODO(akeshet): Determine why this is necessary
+                # (can't this just be specified as its own dimension?) and
+                # delete it if it isn't necessary.
                 'bot_id',
                 'dut_name',
                 'expiration_secs',
