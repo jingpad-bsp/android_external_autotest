@@ -8,7 +8,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import json
 import logging
 import operator
@@ -75,42 +74,6 @@ _STAINLESS_LOGS_BROWSER_URL_TEMPLATE = (
         "https://stainless.corp.google.com"
         "/browse/chromeos-autotest-results/swarming-%(request_id)s/"
 )
-
-# The structure of fallback swarming task request is:
-# NewTaskRequest:
-#     ...
-#     task_slices  ->  NewTaskSlice:
-#                          ...
-#                          properties  ->  TaskProperties
-#                                              ...
-TaskProperties = collections.namedtuple(
-        'TaskProperties',
-        [
-                'command',
-                'dimensions',
-                'execution_timeout_secs',
-                'grace_period_secs',
-                'io_timeout_secs',
-        ])
-
-NewTaskSlice = collections.namedtuple(
-        'NewTaskSlice',
-        [
-                'expiration_secs',
-                'properties',
-        ])
-
-NewTaskRequest = collections.namedtuple(
-        'NewTaskRequest',
-        [
-                'name',
-                'parent_task_id',
-                'priority',
-                'tags',
-                'user',
-                'task_slices',
-        ])
-
 
 def _get_client_path():
     return os.path.join(
@@ -191,58 +154,6 @@ def get_new_task_swarming_cmd():
     return get_basic_swarming_cmd('post') + ['tasks/new']
 
 
-def make_fallback_request_dict(cmds, slices_dimensions, slices_expiration_secs,
-                               task_name, priority, tags, user,
-                               parent_task_id='',
-                               expiration_secs=DEFAULT_EXPIRATION_SECS,
-                               grace_period_secs=DEFAULT_TIMEOUT_SECS,
-                               execution_timeout_secs=DEFAULT_TIMEOUT_SECS,
-                               io_timeout_secs=DEFAULT_TIMEOUT_SECS):
-    """Form a json-compatible dict for fallback swarming call.
-
-    @param cmds: A list of cmd to run on swarming bots.
-    @param slices_dimensions: A list of dict to indicates different tries'
-        dimensions.
-    @param slices_expiration_secs: A list of Integer to indicates each slice's
-        expiration_secs.
-    @param task_name: The request's name.
-    @param priority: The request's priority. An integer.
-    @param grace_period_secs: The seconds to send a task after a SIGTERM before
-        sending it a SIGKILL.
-    @param execution_timeout_secs: The seconds to run before a task gets
-        terminated.
-    @param io_timeout_secs: The seconds to wait before a task is considered
-        hung.
-
-    @return a json-compatible dict, as a request for swarming call.
-    """
-    assert len(cmds) == len(slices_dimensions)
-    assert len(cmds) == len(slices_expiration_secs)
-    task_slices = []
-    for cmd, dimensions, expiration_secs in zip(cmds, slices_dimensions,
-                                                slices_expiration_secs):
-        properties = TaskProperties(
-                command=cmd,
-                dimensions=dimensions,
-                execution_timeout_secs=execution_timeout_secs,
-                grace_period_secs=grace_period_secs,
-                io_timeout_secs=io_timeout_secs)
-        task_slices.append(
-                NewTaskSlice(
-                        expiration_secs=expiration_secs,
-                        properties=properties))
-
-    task_request = NewTaskRequest(
-        name=task_name,
-        parent_task_id=parent_task_id,
-        priority=priority,
-        tags=tags,
-        user=user,
-        task_slices=task_slices)
-
-    return _to_raw_request(task_request)
-
-
 def _namedtuple_to_dict(value):
     """Recursively converts a namedtuple to a dict.
 
@@ -265,26 +176,6 @@ def _namedtuple_to_dict(value):
             l.append(elem)
         out[k] = l
 
-    return out
-
-
-def _to_raw_request(request):
-    """Returns the json-compatible dict expected by the server.
-
-    Args:
-      request: a NewTaskRequest object.
-
-    Returns:
-      A json-compatible dict, which could be parsed by swarming proxy
-      service.
-    """
-    out = _namedtuple_to_dict(request)
-    for task_slice in out['task_slices']:
-        task_slice['properties']['dimensions'] = [
-                {'key': k, 'value': v}
-                for k, v in task_slice['properties']['dimensions'].iteritems()
-        ]
-        task_slice['properties']['dimensions'].sort(key=lambda x: x['key'])
     return out
 
 
