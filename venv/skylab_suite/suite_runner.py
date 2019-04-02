@@ -117,10 +117,13 @@ def _get_current_task(tasks):
 def _run_suite(test_specs, suite_handler, dry_run=False):
     """Make a new suite."""
     suite_id = os.environ.get('SWARMING_TASK_ID')
+    if not suite_id:
+        raise ValueError("Unable to determine suite's task id from env var "
+                         "SWARMING_TASK_ID.")
     _create_test_tasks(test_specs, suite_handler, suite_id, dry_run)
     suite_handler.set_suite_id(suite_id)
 
-    if suite_id is not None and suite_handler.should_wait():
+    if suite_handler.should_wait():
         _wait_for_results(suite_handler, dry_run=dry_run)
 
 
