@@ -217,6 +217,8 @@ def bot_available(bot):
 class Client(object):
     """Wrapper for interacting with swarming client."""
 
+    # TODO(akeshet): Drop auth_json_path argument and use the same
+    # SWARMING_CREDS envvar that is used to select creds for skylab tool.
     def __init__(self, auth_json_path=DEFAULT_SERVICE_ACCOUNT):
         self._auth_json_path = auth_json_path
 

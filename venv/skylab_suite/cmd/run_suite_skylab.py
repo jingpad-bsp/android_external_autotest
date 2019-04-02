@@ -115,11 +115,17 @@ def parse_args():
     return options
 
 
+def _setup_env(options):
+    """Set environment variables based on commandline options."""
+    os.environ['SWARMING_CREDS'] = options.swarming_auth_json
+
+
 def main():
     """Entry point."""
     autotest.monkeypatch()
 
     options = parse_args()
+    _setup_env(options)
     suite_tracking.setup_logging()
     result = _run_suite(options)
     logging.info('Will return from %s with status: %s',
