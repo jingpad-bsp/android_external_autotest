@@ -26,36 +26,36 @@ from skylab_suite import suite_tracking
 from skylab_suite import swarming_lib
 
 
-def _abort_suite_tasks(suite_tasks):
+def _abort_suite_tasks(client, suite_tasks):
     aborted_suite_num = 0
     for pt in suite_tasks:
         logging.info('Aborting suite task %s', pt['task_id'])
-        swarming_lib.abort_task(pt['task_id'])
+        client.abort_task(pt['task_id'])
         if 'children_task_ids' not in pt:
             logging.info('No child tasks for task %s', pt['task_id'])
             continue
 
         for ct in pt['children_task_ids']:
             logging.info('Aborting task %s', ct)
-            swarming_lib.abort_task(ct)
+            client.abort_task(ct)
 
 
-def _get_suite_tasks_by_suite_ids(suite_task_ids):
+def _get_suite_tasks_by_suite_ids(client, suite_task_ids):
     """Return a list of tasks with the given list of suite_task_ids."""
     suite_tasks = []
     for suite_task_id in suite_task_ids:
-        suite_tasks.append(swarming_lib.query_task_by_id(suite_task_id))
+        suite_tasks.append(client.query_task_by_id(suite_task_id))
 
     return suite_tasks
 
 
-def _get_suite_tasks_by_specs(suite_spec):
+def _get_suite_tasks_by_specs(client, suite_spec):
     """Return a list of tasks with given suite_spec."""
     tags = {'pool': swarming_lib.SKYLAB_SUITE_POOL,
             'board': suite_spec.board,
             'build': suite_spec.test_source_build,
             'suite': suite_spec.suite_name}
-    return swarming_lib.query_task_by_tags(tags)
+    return client.query_task_by_tags(tags)
 
 
 def _abort_suite(options):
@@ -64,14 +64,16 @@ def _abort_suite(options):
     This method aborts the suite job and its children jobs, including
     'RUNNING' jobs.
     """
+    client = swarming_lib.Client(options.swarming_auth_json)
     suite_spec = suite_parser.parse_suite_spec(options)
     if options.suite_task_ids:
-        parent_tasks = _get_suite_tasks_by_suite_ids(options.suite_task_ids)
+        parent_tasks = _get_suite_tasks_by_suite_ids(client,
+                                                     options.suite_task_ids)
     else:
-        parent_tasks = _get_suite_tasks_by_specs(suite_spec)
+        parent_tasks = _get_suite_tasks_by_specs(client, suite_spec)
 
-    _abort_suite_tasks(parent_tasks[:min(options.abort_limit,
-                                         len(parent_tasks))])
+    _abort_suite_tasks(client, parent_tasks[:min(options.abort_limit,
+                                            len(parent_tasks))])
     logging.info('Suite %s/%s has been aborted.', suite_spec.test_source_build,
                  suite_spec.suite_name)
 
