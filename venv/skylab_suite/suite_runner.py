@@ -173,6 +173,8 @@ def _create_test_task(test_spec, suite_id=None,
         '-board', test_spec.board,
         '-image', test_spec.build,
         ]
+    if _is_dev():
+        cmd += ['-dev']
     if test_spec.pool:
         # TODO(akeshet): Clean up this hack around pool name translation.
         autotest_pool_label = 'pool:%s' % test_spec.pool
@@ -213,6 +215,13 @@ def _create_test_task(test_spec, suite_id=None,
     logging.info('Created task with id %s', task_id)
     return task_id
 
+
+# TODO(akeshet): Eliminate the need for this, by either adding an explicit
+# swarming_server argument to skylab tool, or having the tool respect the
+# SWARMING_SERVER environment variable. See crbug.com/948774
+def _is_dev():
+    """Detect whether skylab tool should be invoked with -dev flag."""
+     return 'chromium-swarm-dev' in os.environ['SWARMING_SERVER']
 
 def _compute_tags(build, suite_id):
     tags = [
