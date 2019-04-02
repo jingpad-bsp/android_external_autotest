@@ -32,25 +32,28 @@ _NOT_SUPPORTED_DEPENDENCIES = ['skip_provision', 'cleanup-reboot', 'rpm',
                                'modem_repair']
 
 
-def run(test_specs, suite_handler, dry_run=False):
+def run(client, test_specs, suite_handler, dry_run=False):
     """Run a CrOS dynamic test suite.
 
+    @param client: A swarming_lib.Client instance.
     @param test_specs: A list of cros_suite.TestSpec objects.
     @param suite_handler: A cros_suite.SuiteHandler object.
     @param dry_run: Whether to kick off dry runs of the tests.
     """
+    assert isinstance(client, swarming_lib.Client)
     if suite_handler.suite_id:
         # Resume an existing suite.
-        _resume_suite(test_specs, suite_handler, dry_run)
+        _resume_suite(client, test_specs, suite_handler, dry_run)
     else:
         # Make a new suite.
         _run_suite(test_specs, suite_handler, dry_run)
 
 
-def _resume_suite(test_specs, suite_handler, dry_run=False):
+def _resume_suite(client, test_specs, suite_handler, dry_run=False):
     """Resume a suite and its child tasks by given suite id."""
+    assert isinstance(client, swarming_lib.Client)
     suite_id = suite_handler.suite_id
-    all_tasks = swarming_lib.get_child_tasks(suite_id)
+    all_tasks = client.get_child_tasks(suite_id)
     not_yet_scheduled = _get_unscheduled_test_specs(
             test_specs, suite_handler, all_tasks)
 
