@@ -83,6 +83,10 @@ def make_parser():
         help=("Quota account to be used for this suite's jobs, if applicable. "
               "Only relevant for jobs running in a quota scheduler pool "
               "(e.g. quota-metered)."))
+    parser.add_argument(
+        '--swarming_auth_json', default=swarming_lib.DEFAULT_SERVICE_ACCOUNT,
+        action='store', help="Path to swarming service account json creds. "
+        "Specify '' to omit. Otherwise, defaults to bot's default creds.")
 
     # TODO(ayatane): Make sure no callers pass --use_fallback before removing.
     parser.add_argument(

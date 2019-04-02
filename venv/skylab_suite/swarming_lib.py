@@ -19,7 +19,8 @@ from lucifer import autotest
 from skylab_suite import errors
 
 
-SERVICE_ACCOUNT = '/creds/skylab_swarming_bot/skylab_bot_service_account.json'
+DEFAULT_SERVICE_ACCOUNT = (
+        '/creds/skylab_swarming_bot/skylab_bot_service_account.json')
 SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
 SKYLAB_SUITE_POOL = 'ChromeOSSkylab-suite'
 
@@ -106,12 +107,6 @@ def task_dependencies_from_labels(labels):
     return dependencies
 
 
-def get_basic_swarming_cmd(command):
-    return [_get_client_path(), command,
-            '--auth-service-account-json', SERVICE_ACCOUNT,
-            '--swarming', get_swarming_server()]
-
-
 def make_logdog_annotation_url():
     """Return a unique LogDog annotation URL.
 
@@ -147,11 +142,6 @@ def get_logdog_server():
         raise errors.DroneEnvironmentError(
                 'LOGDOG_SERVER environment variable not set'
         )
-
-
-def get_new_task_swarming_cmd():
-    """Return a list of command args for creating a new task."""
-    return get_basic_swarming_cmd('post') + ['tasks/new']
 
 
 def _namedtuple_to_dict(value):
@@ -213,96 +203,6 @@ def get_task_dut_name(task_dimensions):
 
     return ''
 
-
-def query_bots_count(dimensions):
-    """Get bots count for given requirements.
-
-    @param dimensions: A dict of dimensions for swarming bots.
-
-    @return a dict, which contains counts for different status of bots.
-    """
-    basic_swarming_cmd = get_basic_swarming_cmd('query')
-    conditions = [('dimensions', '%s:%s' % (k, v))
-                  for k, v in dimensions.iteritems()]
-    swarming_cmd = basic_swarming_cmd + ['bots/count?%s' %
-                                         urllib.urlencode(conditions)]
-    cros_build_lib = autotest.chromite_load('cros_build_lib')
-    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
-    return json.loads(result.output)
-
-
-def get_idle_bots_count(outputs):
-    """Get the idle bots count.
-
-    @param outputs: The outputs of |query_bots_count|.
-    """
-    return (int(outputs['count']) - int(outputs['busy']) - int(outputs['dead'])
-            - int(outputs['quarantined']))
-
-
-def query_task_by_tags(tags):
-    """Get tasks for given tags.
-
-    @param tags: A dict of tags for swarming tasks.
-
-    @return a list, which contains all tasks queried by the given tags.
-    """
-    basic_swarming_cmd = get_basic_swarming_cmd('query')
-    conditions = [('tags', '%s:%s' % (k, v)) for k, v in tags.iteritems()]
-    swarming_cmd = basic_swarming_cmd + ['tasks/list?%s' %
-                                         urllib.urlencode(conditions)]
-    cros_build_lib = autotest.chromite_load('cros_build_lib')
-    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
-    json_output = json.loads(result.output)
-    return json_output.get('items', [])
-
-
-def query_task_by_id(task_id):
-    """Get task for given id.
-
-    @param task_id: A string to indicate a swarming task id.
-
-    @return a dict, which contains the task with the given task_id.
-    """
-    basic_swarming_cmd = get_basic_swarming_cmd('query')
-    swarming_cmd = basic_swarming_cmd + ['task/%s/result' % task_id]
-    cros_build_lib = autotest.chromite_load('cros_build_lib')
-    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
-    return json.loads(result.output)
-
-
-def abort_task(task_id):
-    """Abort a swarming task by its id.
-
-    @param task_id: A string swarming task id.
-    """
-    basic_swarming_cmd = get_basic_swarming_cmd('cancel')
-    swarming_cmd = basic_swarming_cmd + ['--kill-running', task_id]
-    cros_build_lib = autotest.chromite_load('cros_build_lib')
-    try:
-        cros_build_lib.RunCommand(swarming_cmd, log_output=True)
-    except cros_build_lib.RunCommandError:
-        logging.error('Task %s probably already gone, skip canceling it.',
-                      task_id)
-
-
-def query_bots_list(dimensions):
-    """Get bots list for given requirements.
-
-    @param dimensions: A dict of dimensions for swarming bots.
-
-    @return a list of bot dicts.
-    """
-    basic_swarming_cmd = get_basic_swarming_cmd('query')
-    conditions = [('dimensions', '%s:%s' % (k, v))
-                  for k, v in dimensions.iteritems()]
-    swarming_cmd = basic_swarming_cmd + ['bots/list?%s' %
-                                         urllib.urlencode(conditions)]
-    cros_build_lib = autotest.chromite_load('cros_build_lib')
-    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
-    return json.loads(result.output).get('items', [])
-
-
 def bot_available(bot):
     """Check whether a bot is available.
 
@@ -314,19 +214,92 @@ def bot_available(bot):
     return not (bot['is_dead'] or bot['quarantined'])
 
 
-def get_child_tasks(parent_task_id):
-    """Get the child tasks based on a parent swarming task id.
+class Client(object):
+    """Wrapper for interacting with swarming client."""
 
-    @param parent_task_id: The parent swarming task id.
+    def __init__(self, auth_json_path=DEFAULT_SERVICE_ACCOUNT):
+        self._auth_json_path = auth_json_path
 
-    @return a list of dicts, each dict refers to the whole stats of a task,
-        keys include 'name', 'bot_dimensions', 'tags', 'bot_id', 'state', etc.
-    """
-    swarming_cmd = get_basic_swarming_cmd('query')
-    swarming_cmd += ['tasks/list?tags=parent_task_id:%s' % parent_task_id]
-    timeout_util = autotest.chromite_load('timeout_util')
-    cros_build_lib = autotest.chromite_load('cros_build_lib')
-    with timeout_util.Timeout(60):
-        child_tasks = cros_build_lib.RunCommand(
-                swarming_cmd, capture_output=True)
-        return json.loads(child_tasks.output)['items']
+    def query_task_by_tags(self, tags):
+        """Get tasks for given tags.
+
+        @param tags: A dict of tags for swarming tasks.
+
+        @return a list, which contains all tasks queried by the given tags.
+        """
+        basic_swarming_cmd = self.get_basic_swarming_cmd('query')
+        conditions = [('tags', '%s:%s' % (k, v)) for k, v in tags.iteritems()]
+        swarming_cmd = basic_swarming_cmd + ['tasks/list?%s' %
+                                            urllib.urlencode(conditions)]
+        cros_build_lib = autotest.chromite_load('cros_build_lib')
+        result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+        json_output = json.loads(result.output)
+        return json_output.get('items', [])
+
+    def query_task_by_id(self, task_id):
+        """Get task for given id.
+
+        @param task_id: A string to indicate a swarming task id.
+
+        @return a dict, which contains the task with the given task_id.
+        """
+        basic_swarming_cmd = self.get_basic_swarming_cmd('query')
+        swarming_cmd = basic_swarming_cmd + ['task/%s/result' % task_id]
+        cros_build_lib = autotest.chromite_load('cros_build_lib')
+        result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+        return json.loads(result.output)
+
+    def abort_task(self, task_id):
+        """Abort a swarming task by its id.
+
+        @param task_id: A string swarming task id.
+        """
+        basic_swarming_cmd = self.get_basic_swarming_cmd('cancel')
+        swarming_cmd = basic_swarming_cmd + ['--kill-running', task_id]
+        cros_build_lib = autotest.chromite_load('cros_build_lib')
+        try:
+            cros_build_lib.RunCommand(swarming_cmd, log_output=True)
+        except cros_build_lib.RunCommandError:
+            logging.error('Task %s probably already gone, skip canceling it.',
+                          task_id)
+
+    def query_bots_list(self, dimensions):
+        """Get bots list for given requirements.
+
+        @param dimensions: A dict of dimensions for swarming bots.
+
+        @return a list of bot dicts.
+        """
+        basic_swarming_cmd = self.get_basic_swarming_cmd('query')
+        conditions = [('dimensions', '%s:%s' % (k, v))
+                      for k, v in dimensions.iteritems()]
+        swarming_cmd = basic_swarming_cmd + ['bots/list?%s' %
+                                            urllib.urlencode(conditions)]
+        cros_build_lib = autotest.chromite_load('cros_build_lib')
+        result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+        return json.loads(result.output).get('items', [])
+
+    def get_child_tasks(self, parent_task_id):
+        """Get the child tasks based on a parent swarming task id.
+
+        @param parent_task_id: The parent swarming task id.
+
+        @return a list of dicts, each dict refers to the whole stats of a task,
+            keys include 'name', 'bot_dimensions', 'tags', 'bot_id', 'state',
+            etc.
+        """
+        swarming_cmd = self.get_basic_swarming_cmd('query')
+        swarming_cmd += ['tasks/list?tags=parent_task_id:%s' % parent_task_id]
+        timeout_util = autotest.chromite_load('timeout_util')
+        cros_build_lib = autotest.chromite_load('cros_build_lib')
+        with timeout_util.Timeout(60):
+            child_tasks = cros_build_lib.RunCommand(
+                    swarming_cmd, capture_output=True)
+            return json.loads(child_tasks.output)['items']
+
+    def get_basic_swarming_cmd(self, command):
+        cmd = [_get_client_path(), command, '--swarming', get_swarming_server()]
+        if self._auth_json_path:
+            cmd += ['--auth-service-account-json', self._auth_json_path]
+        return cmd
+
