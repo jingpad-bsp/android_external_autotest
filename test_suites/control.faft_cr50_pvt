@@ -33,6 +33,6 @@ args_dict['name'] = 'faft_cr50_pvt'
 args_dict['add_experimental'] = True
 args_dict['job'] = job
 args_dict['test_args'] = {
-	'cr50_qual_version' : '0.3.11/0:0:0'
+	'cr50_qual_version' : '0.3.15/FFFF:0:10000'
 }
 dynamic_suite.reimage_and_run(**args_dict)
