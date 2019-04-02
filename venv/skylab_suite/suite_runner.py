@@ -13,6 +13,7 @@ import itertools
 import json
 import logging
 import os
+import re
 import time
 
 from lucifer import autotest
@@ -20,10 +21,14 @@ from skylab_suite import cros_suite
 from skylab_suite import swarming_lib
 
 
-SKYLAB_SUITE_USER = 'skylab_suite_runner'
-SKYLAB_LUCI_TAG = 'luci_project:chromeos'
 SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/skylab_swarming_worker'
+# TODO(akeshet): Delete this constant. Skylab tool knows about this on a per-
+# enironment basis instead.
+SKYLAB_LUCI_TAG = 'luci_project:chromeos'
+SKYLAB_SUITE_USER = 'skylab_suite_runner'
+SKYLAB_TOOL = '/opt/infra-tools/skylab'
 
+# TODO(akeshet): Delete this constant.
 QUOTA_ACCOUNT_TAG_FORMAT = 'qs_account:%s'
 
 SUITE_WAIT_SLEEP_INTERVAL_SECONDS = 30
@@ -150,6 +155,7 @@ def _create_test_tasks(test_specs, suite_handler, suite_id, dry_run=False):
                         previous_retried_ids=[]))
 
 
+# TODO(akeshet): Delete unused function.
 def _get_suite_cmd(test_spec, suite_id):
     """Return the commands for running a suite with or without provision.
 
@@ -260,36 +266,101 @@ def _create_test_task(test_spec, suite_id=None,
 
     @param test_spec: A cros_suite.TestSpec object.
     @param suite_id: the suite task id of the test.
-    @param dry_run: Whether to kick off a dry run of a swarming cmd.
+    @param dry_run: If true, don't actually create task.
 
     @return the swarming task id of this task.
     """
     logging.info('Creating task for test %s', test_spec.test.name)
-    cmd, cmd_with_fallback = _get_suite_cmd(test_spec, suite_id)
+
+    cmd = [
+        SKYLAB_TOOL, 'create-test',
+        '-board', test_spec.board,
+        '-image', test_spec.build,
+        ]
+    if test_spec.pool:
+        # TODO(akeshet): Clean up this hack around pool name translation.
+        autotest_pool_label = 'pool:%s' % test_spec.pool
+        pool_dependency_value = swarming_lib.task_dependencies_from_labels(
+            [autotest_pool_label])['label-pool']
+        cmd += ['-pool', pool_dependency_value]
+
+    if test_spec.model:
+        cmd += ['-model', test_spec.model]
+    if test_spec.quota_account:
+        cmd += ['-qs-account', test_spec.quota_account]
+    if test_spec.test.test_type.lower() == 'client':
+        cmd += ['-client-test']
+
+    tags = _compute_tags(test_spec.build, suite_id)
+    dimensions = _compute_dimensions(
+            test_spec.bot_id, test_spec.test.dependencies)
+    keyvals_flat = _compute_job_keyvals_flat(test_spec.keyvals, suite_id)
+
+    for tag in tags:
+        cmd += ['-tag', tag]
+    for keyval in keyvals_flat:
+        cmd += ['-keyval', keyval]
+    cmd += [test_spec.test.name]
+    cmd += dimensions
+
     if dry_run:
-        cmd = ['/bin/echo'] + cmd
-        test_spec.test.name = 'Echo ' + test_spec.test.name
+        logging.info('Would have created task with command %s', cmd)
+        return
 
-    dimensions = {'pool': swarming_lib.SKYLAB_DRONE_POOL,
-                  'label-board': test_spec.board,
-                  'dut_state': swarming_lib.SWARMING_DUT_READY_STATUS}
-    if test_spec.model is not None:
-        dimensions['label-model'] = test_spec.model
+    # TODO(akeshet): Avoid this late chromite import.
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    result = cros_build_lib.RunCommand(cmd, capture_output=True)
+    # TODO(akeshet): Use -json flag and json-parse output of the command instead
+    # of regex matching to determine task_id.
+    m = re.match('.*id=(.*)$', result.output)
+    task_id = m.group(1)
+    logging.info('Created task with id %s', task_id)
+    return task_id
 
+
+def _compute_tags(build, suite_id):
+    tags = [
+        'build:%s' % build,
+    ]
+    if suite_id is not None:
+        tags += ['parent_task_id:%s' % suite_id]
+    return tags
+
+
+def _compute_dimensions(bot_id, dependencies):
+    dimensions = []
+    if bot_id:
+        dimensions += ['id:%s' % bot_id]
+    deps = _filter_unsupported_dependencies(dependencies)
+    flattened_swarming_deps = sorted([
+        '%s:%s' % (k, v) for
+        k, v in swarming_lib.task_dependencies_from_labels(deps).items()
+        ])
+    dimensions += flattened_swarming_deps
+    return dimensions
+
+
+def _compute_job_keyvals_flat(keyvals, suite_id):
+    # Job keyvals calculation.
+    job_keyvals = keyvals.copy()
+    if suite_id is not None:
+        # TODO(akeshet): Avoid this late autotest constants import.
+        constants = autotest.load('server.cros.dynamic_suite.constants')
+        job_keyvals[constants.PARENT_JOB_ID] = suite_id
+    keyvals_flat = sorted(
+        ['%s:%s' % (k, v) for k, v in job_keyvals.items()])
+    return keyvals_flat
+
+
+def _filter_unsupported_dependencies(dependencies):
+    """Filter out Skylab-unsupported test dependencies, with a warning."""
     deps = []
-    for dep in test_spec.test.dependencies:
+    for dep in dependencies:
         if dep in _NOT_SUPPORTED_DEPENDENCIES:
             logging.warning('Dependency %s is not supported in skylab', dep)
-            continue
-
-        deps.append(dep)
-
-    deps.append('pool:%s' % test_spec.pool)
-    dimensions.update(swarming_lib.task_dependencies_from_labels(deps))
-
-    return _run_swarming_cmd_with_fallback(
-            [cmd, cmd_with_fallback], dimensions, test_spec,
-            suite_id, is_provision)
+        else:
+            deps.append(dep)
+    return deps
 
 
 @contextlib.contextmanager
