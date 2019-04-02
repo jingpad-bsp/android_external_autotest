@@ -163,9 +163,10 @@ def _create_test_task(test_spec, suite_id=None,
     @return the swarming task id of this task.
     """
     logging.info('Creating task for test %s', test_spec.test.name)
+    skylab_tool_path = os.environ.get('SKYLAB_TOOL', SKYLAB_TOOL)
 
     cmd = [
-        SKYLAB_TOOL, 'create-test',
+        skylab_tool_path, 'create-test',
         '-board', test_spec.board,
         '-image', test_spec.build,
         ]
