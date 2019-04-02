@@ -172,6 +172,7 @@ def _create_test_task(test_spec, suite_id=None,
         skylab_tool_path, 'create-test',
         '-board', test_spec.board,
         '-image', test_spec.build,
+        '-service-account-json', os.environ['SWARMING_CREDS'],
         ]
     if _is_dev():
         cmd += ['-dev']
