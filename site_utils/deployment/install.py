@@ -69,6 +69,7 @@ from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.server import afe_utils
 from autotest_lib.server import constants
 from autotest_lib.server import frontend
 from autotest_lib.server import hosts
@@ -505,14 +506,13 @@ def _install_test_image(host, arguments):
     @param host       Host instance for the DUT being installed.
     @param arguments  Command line arguments with options.
     """
+    repair_image = _get_cros_repair_image_name(host)
+    logging.info('Using repair image %s', repair_image)
     if arguments.dry_run:
         return
     if arguments.stageusb:
         try:
-            preparedut.download_image_to_servo_usb(
-                    host,
-                    host.get_cros_repair_image_name(),
-            )
+            preparedut.download_image_to_servo_usb(host, repair_image)
         except Exception as e:
             logging.exception('Failed to stage image on USB: %s', e)
             raise Exception('USB staging failed')
@@ -520,7 +520,7 @@ def _install_test_image(host, arguments):
         try:
             if arguments.using_servo:
                 logging.debug('Install FW using servo.')
-                preparedut.flash_firmware_using_servo(host)
+                preparedut.flash_firmware_using_servo(host, repair_image)
             else:
                 logging.debug('Install FW by chromeos-firmwareupdate.')
                 preparedut.install_firmware(host, arguments.force_firmware)
@@ -829,6 +829,18 @@ def _get_host_attributes(host_info_list, afe):
                 afe)
         host_attributes[host_info.hostname] = host_attr_dict
     return host_attributes
+
+
+def _get_cros_repair_image_name(host):
+    """Get the CrOS repair image name for given host.
+
+    @param host: hosts.CrosHost object. This object need not have an AFE
+                 reference.
+    """
+    info = host.host_info_store.get()
+    if not info.board:
+        raise InstallFailedError('Unknown board for given host')
+    return afe_utils.get_stable_cros_image_name(info.board)
 
 
 def install_duts(arguments):
