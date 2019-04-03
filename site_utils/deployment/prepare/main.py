@@ -16,6 +16,7 @@ import logging.config
 import os
 
 import common
+from autotest_lib.server import afe_utils
 from autotest_lib.server.hosts import file_store
 from autotest_lib.site_utils.deployment.prepare import dut as preparedut
 
@@ -30,13 +31,15 @@ def main():
   _configure_logging('prepare_dut', os.path.join(opts.results_dir, _LOG_FILE))
 
   info = _read_store(opts.host_info_file)
+  repair_image = _get_cros_repair_image_name(info.board)
+  logging.info('Using repair image %s, obtained from AFE', repair_image)
   with _create_host(opts.hostname, info, opts.results_dir) as host:
     if opts.dry_run:
       logging.info('DRY RUN: Would have run actions %s', opts.actions)
       return
 
     if 'stage-usb' in opts.actions:
-      preparedut.download_image_to_servo_usb(host, opts.build)
+      preparedut.download_image_to_servo_usb(host, repair_image)
     if 'install-firmware' in opts.actions:
       preparedut.install_firmware(host, opts.force_firmware)
     if 'install-test-image' in opts.actions:
@@ -79,11 +82,6 @@ def _parse_args():
       required=True,
       help=('Full path to HostInfo file.'
             ' DUT inventory information is read from the HostInfo file.'),
-  )
-  parser.add_argument(
-      '--build',
-      required=True,
-      help='Chrome OS image version to use for installation.',
   )
 
   parser.add_argument(
@@ -178,6 +176,16 @@ def _create_host(hostname, info, results_dir):
       info.attributes.get('servo_serial', ''),
       uart_logs_dir,
   )
+
+
+def _get_cros_repair_image_name(board):
+  """Get the CrOS repair image name for given host.
+
+  TODO(pprabhu): This is an evil function with dependence on the environment
+  (global_config information) and the AFE. Remove this dependence when stable
+  image mappings move off of the AFE.
+  """
+  return afe_utils.get_stable_cros_image_name(board)
 
 
 if __name__ == '__main__':
