@@ -222,7 +222,7 @@ def _create_test_task(test_spec, suite_id=None,
 # SWARMING_SERVER environment variable. See crbug.com/948774
 def _is_dev():
     """Detect whether skylab tool should be invoked with -dev flag."""
-     return 'chromium-swarm-dev' in os.environ['SWARMING_SERVER']
+    return 'chromium-swarm-dev' in os.environ['SWARMING_SERVER']
 
 def _compute_tags(build, suite_id):
     tags = [
