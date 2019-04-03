@@ -29,7 +29,7 @@ _FIRMWARE_UPDATE_TIMEOUT = 600
 
 @contextlib.contextmanager
 def create_host(hostname, board, model, servo_hostname, servo_port,
-                servo_serial=None, uart_logs_dir=None):
+                servo_serial=None, logs_dir=None):
     """Yield a server.hosts.CrosHost object to use for DUT preparation.
 
     This object contains just enough inventory data to be able to prepare the
@@ -43,7 +43,8 @@ def create_host(hostname, board, model, servo_hostname, servo_port,
     @param servo_hostname:  FQDN of the servo host controlling the DUT.
     @param servo_port:      Servo host port used for the controlling servo.
     @param servo_serial:    (Optional) Serial number of the controlling servo.
-    @param uart_logs_dir:   (Optional) Directory to save UART logs.
+    @param logs_dir:        (Optional) Directory to save logs obtained from the
+                            host.
 
     @yield a server.hosts.Host object.
     """
@@ -72,7 +73,7 @@ def create_host(hostname, board, model, servo_hostname, servo_port,
             **servo_host.get_servo_args_for_host(host))
     _prepare_servo(servohost)
     host.set_servo_host(servohost)
-    host.servo.uart_logs_dir = uart_logs_dir
+    host.servo.uart_logs_dir = logs_dir
     try:
         yield host
     finally:
