@@ -47,7 +47,7 @@ def main():
 
 
 _LOG_FILE = 'prepare_dut.log'
-_UART_LOGS_DIR = 'uart'
+_DUT_LOGS_DIR = 'dut_logs'
 
 
 def _parse_args():
@@ -160,9 +160,9 @@ def _create_host(hostname, info, results_dir):
   if 'servo_port' not in info.attributes:
     raise DutPreparationError('No servo_port in DUT attributes')
 
-  uart_logs_dir = os.path.join(results_dir, _UART_LOGS_DIR)
+  dut_logs_dir = os.path.join(results_dir, _DUT_LOGS_DIR)
   try:
-    os.makedirs(uart_logs_dir)
+    os.makedirs(dut_logs_dir)
   except OSError as e:
     if e.errno != errno.EEXIST:
       raise
@@ -174,7 +174,7 @@ def _create_host(hostname, info, results_dir):
       info.attributes['servo_host'],
       info.attributes['servo_port'],
       info.attributes.get('servo_serial', ''),
-      uart_logs_dir,
+      dut_logs_dir,
   )
 
 
