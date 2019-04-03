@@ -3,10 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Tool to (re)prepare a DUT for lab deployment.
-
-TODO(this docstring is a stub).
-"""
+"""Tool to (re)prepare a DUT for lab deployment."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -14,23 +11,23 @@ from __future__ import print_function
 
 import argparse
 import logging
+import logging.config
+import os
 
 import common
 from autotest_lib.site_utils.deployment.prepare import dut as preparedut
 
 def main():
-  """Tool to (re)prepare a DUT for lab deployment.
-
-  TODO(this docstring is a stub).
-  """
+  """Tool to (re)prepare a DUT for lab deployment."""
   opts = _parse_args()
-  # Setup tempfile to capture trash dropped by autotest?
-  # Setup logging to avoid dumping everything to stdout?
-  logging.basicConfig(level=logging.DEBUG)
+  _configure_logging('prepare_dut', os.path.join(opts.results_dir, _LOG_FILE))
+
+  uart_logs_dir = os.path.join(opts.results_dir, _UART_LOGS_DIR)
+  os.makedirs(uart_logs_dir)
 
   with preparedut.create_host(
       opts.hostname, opts.board, opts.model, opts.servo_hostname,
-      opts.servo_port, opts.servo_serial, opts.uart_logs_dir) as host:
+      opts.servo_port, opts.servo_serial, uart_logs_dir) as host:
 
     if opts.dry_run:
       logging.info('DRY RUN: Would have run actions %s', opts.actions)
@@ -42,6 +39,10 @@ def main():
       preparedut.install_firmware(host, opts.force_firmware)
     if 'install-test-image' in opts.actions:
       preparedut.install_test_image(host)
+
+
+_LOG_FILE = 'prepare_dut.log'
+_UART_LOGS_DIR = 'uart'
 
 
 def _parse_args():
@@ -59,6 +60,11 @@ def _parse_args():
       action='store_true',
       default=False,
       help='Run in dry-run mode. No changes will be made to the DUT.',
+  )
+  parser.add_argument(
+      '--results-dir',
+      required=True,
+      help='Directory to drop logs and output artifacts in.',
   )
 
   parser.add_argument(
@@ -101,12 +107,50 @@ def _parse_args():
       action='store_true',
       help='Force firmware isntallation via chromeos-installfirmware.',
   )
-  parser.add_argument(
-      '--uart-logs-dir',
-      help='The directory to save UART logs.'
-  )
 
   return parser.parse_args()
+
+
+def _configure_logging(name, tee_file):
+    """Configure logging globally.
+
+    @param name: Name to prepend to log messages.
+                 This should be the name of the program.
+    @param tee_file: File to tee logs to, in addition to stderr.
+    """
+    logging.config.dictConfig({
+        'version': 1,
+        'formatters': {
+            'stderr': {
+                'format': ('{name}: '
+                           '%(asctime)s:%(levelname)s'
+                           ':%(module)s:%(funcName)s:%(lineno)d'
+                           ': %(message)s'
+                           .format(name=name)),
+            },
+            'tee_file': {
+                'format': ('%(asctime)s:%(levelname)s'
+                           ':%(module)s:%(funcName)s:%(lineno)d'
+                           ': %(message)s'),
+            },
+        },
+        'handlers': {
+            'stderr': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'stderr',
+            },
+            'tee_file': {
+                'class': 'logging.FileHandler',
+                'formatter': 'tee_file',
+                'filename': tee_file,
+            },
+        },
+        'root': {
+            'level': 'DEBUG',
+            'handlers': ['stderr', 'tee_file'],
+        },
+        'disable_existing_loggers': False,
+    })
 
 
 if __name__ == '__main__':
