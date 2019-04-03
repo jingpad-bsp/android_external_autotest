@@ -10,25 +10,27 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import errno
 import logging
 import logging.config
 import os
 
 import common
+from autotest_lib.server.hosts import file_store
 from autotest_lib.site_utils.deployment.prepare import dut as preparedut
+
+
+class DutPreparationError(Exception):
+  """Generic error raised during DUT preparation."""
+
 
 def main():
   """Tool to (re)prepare a DUT for lab deployment."""
   opts = _parse_args()
   _configure_logging('prepare_dut', os.path.join(opts.results_dir, _LOG_FILE))
 
-  uart_logs_dir = os.path.join(opts.results_dir, _UART_LOGS_DIR)
-  os.makedirs(uart_logs_dir)
-
-  with preparedut.create_host(
-      opts.hostname, opts.board, opts.model, opts.servo_hostname,
-      opts.servo_port, opts.servo_serial, uart_logs_dir) as host:
-
+  info = _read_store(opts.host_info_file)
+  with _create_host(opts.hostname, info, opts.results_dir) as host:
     if opts.dry_run:
       logging.info('DRY RUN: Would have run actions %s', opts.actions)
       return
@@ -73,14 +75,10 @@ def _parse_args():
       help='Hostname of the DUT to prepare.',
   )
   parser.add_argument(
-      '--board',
+      '--host-info-file',
       required=True,
-      help='Board label of the DUT to prepare.',
-  )
-  parser.add_argument(
-      '--model',
-      required=True,
-      help='Model label of the DUT to prepare.',
+      help=('Full path to HostInfo file.'
+            ' DUT inventory information is read from the HostInfo file.'),
   )
   parser.add_argument(
       '--build',
@@ -88,20 +86,6 @@ def _parse_args():
       help='Chrome OS image version to use for installation.',
   )
 
-  parser.add_argument(
-      '--servo-hostname',
-      required=True,
-      help='Hostname of the servo host connected to the DUT.',
-  )
-  parser.add_argument(
-      '--servo-port',
-      required=True,
-      help='Servo host port (to be) used for the controlling servo.',
-  )
-  parser.add_argument(
-      '--servo-serial',
-      help='Serial number of the controlling servo.',
-  )
   parser.add_argument(
       '--force-firmware',
       action='store_true',
@@ -151,6 +135,49 @@ def _configure_logging(name, tee_file):
         },
         'disable_existing_loggers': False,
     })
+
+
+def _read_store(path):
+  """Read a HostInfo from a file at path."""
+  store = file_store.FileStore(path)
+  return store.get()
+
+
+def _create_host(hostname, info, results_dir):
+  """Yield a hosts.CrosHost object with the given inventory information.
+
+  @param hostname: Hostname of the DUT.
+  @param info: A HostInfo with the inventory information to use.
+  @param results_dir: Path to directory for logs / output artifacts.
+  @yield server.hosts.CrosHost object.
+  """
+  if not info.board:
+    raise DutPreparationError('No board in DUT labels')
+  if not info.model:
+    raise DutPreparationError('No model in DUT labels')
+
+  servo_args = {}
+  if 'servo_host' not in info.attributes:
+    raise DutPreparationError('No servo_host in DUT attributes')
+  if 'servo_port' not in info.attributes:
+    raise DutPreparationError('No servo_port in DUT attributes')
+
+  uart_logs_dir = os.path.join(results_dir, _UART_LOGS_DIR)
+  try:
+    os.makedirs(uart_logs_dir)
+  except OSError as e:
+    if e.errno != errno.EEXIST:
+      raise
+
+  return preparedut.create_host(
+      hostname,
+      info.board,
+      info.model,
+      info.attributes['servo_host'],
+      info.attributes['servo_port'],
+      info.attributes.get('servo_serial', ''),
+      uart_logs_dir,
+  )
 
 
 if __name__ == '__main__':
