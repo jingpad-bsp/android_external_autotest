@@ -54,8 +54,18 @@ import warnings
 
 import common
 from chromite.lib import buildbot_annotations as annotations
+from chromite.lib import gs
+from chromite.lib import osutils
 
 from django.core import exceptions as django_exceptions
+
+try:
+    from suite_scheduler import config_reader
+    from suite_scheduler import skylab
+except ImportError:
+    # For unittest
+    config_reader = None
+    skylab = None
 
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
@@ -90,6 +100,13 @@ CONFIG = global_config.global_config
 _DEFAULT_AUTOTEST_INSTANCE = CONFIG.get_config_value(
         'SERVER', 'hostname', type=str)
 _URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
+_ENABLE_RUN_SUITE_TRAMPOLINE = CONFIG.get_config_value(
+        'CROS', 'enable_run_suite_trampoline', type=bool, default=False)
+
+_MIGRATION_CONFIG_FILE = 'migration_config.ini'
+_MIGRATION_CONFIG_BUCKET = 'suite-scheduler.google.com.a.appspot.com'
+_TRAMPOLINE_CONFIG = 'gs://%s/%s' % (_MIGRATION_CONFIG_BUCKET,
+                                     _MIGRATION_CONFIG_FILE)
 
 # Minimum RPC timeout setting for calls expected to take long time, e.g.,
 # create_suite_job. If default socket time (socket.getdefaulttimeout()) is
@@ -2037,6 +2054,40 @@ class _ExceptionHandler(object):
         sys.exit(run_suite_common.RETURN_CODES.INFRA_FAILURE)
 
 
+def _check_if_use_skylab(options):
+    """Detect whether to run suite in skylab."""
+    if not _ENABLE_RUN_SUITE_TRAMPOLINE:
+        logging.info('trampoline to skylab is not enabled.')
+        return False
+
+    task_info = 'suite:%s, board:%s, model:%s, pool:%s' % (
+            options.name, options.board, options.model, options.pool)
+    ctx = gs.GSContext()
+    with osutils.TempDir(prefix='trampoline_') as tempdir:
+        temp_file = os.path.join(tempdir, _MIGRATION_CONFIG_FILE)
+        ctx.Copy(_TRAMPOLINE_CONFIG, temp_file)
+        _migration_config = config_reader.MigrationConfig(
+                config_reader.ConfigReader(temp_file))
+
+        logging.info('Checking whether to run in skylab: Task(%s)', task_info)
+        if skylab.should_run_in_skylab(_migration_config,
+                                       options.board,
+                                       options.model,
+                                       options.name,
+                                       options.pool):
+            logging.info('Task (%s) Should run in skylab', task_info)
+            return True
+
+    logging.info('Task (%s) Should run in autotest', task_info)
+    return False
+
+
+def _run_with_skylab(options):
+    """Run suite inside skylab."""
+    # TODO(xixuan): Implement running suite in skylab.
+    return _RETURN_RESULTS['ok']
+
+
 def _run_with_autotest(options):
     """Run suite inside autotest."""
     if options.pre_check and not _should_run(options):
@@ -2079,7 +2130,10 @@ def main():
         result = run_suite_common.SuiteResult(
                 run_suite_common.RETURN_CODES.INVALID_OPTIONS)
     else:
-        result = _run_with_autotest(options)
+        if _check_if_use_skylab(options):
+            result = _run_with_skylab(options)
+        else:
+            result = _run_with_autotest(options)
 
     logging.info('Will return from run_suite with status: %s',
                   run_suite_common.RETURN_CODES.get_string(result.return_code))
