@@ -56,6 +56,7 @@ def _should_run(suite_spec):
 
 
 def _run_suite(options):
+    swarming_client = swarming_lib.Client(options.swarming_auth_json)
     run_suite_common = autotest.load('site_utils.run_suite_common')
     logging.info('Kicked off suite %s', options.suite_name)
     suite_spec = suite_parser.parse_suite_spec(options)
@@ -70,9 +71,9 @@ def _run_suite(options):
                     run_suite_common.RETURN_CODES.OK)
 
     if options.suite_name == PROVISION_SUITE_NAME:
-        suite_job = cros_suite.ProvisionSuite(suite_spec)
+        suite_job = cros_suite.ProvisionSuite(suite_spec, swarming_client)
     else:
-        suite_job = cros_suite.Suite(suite_spec)
+        suite_job = cros_suite.Suite(suite_spec, swarming_client)
 
     try:
         suite_job.prepare()
@@ -82,8 +83,9 @@ def _run_suite(options):
                 run_suite_common.RETURN_CODES.INFRA_FAILURE)
 
     suite_handler_spec = _parse_suite_handler_spec(options)
-    suite_handler = cros_suite.SuiteHandler(suite_handler_spec)
-    suite_runner.run(suite_job.test_specs,
+    suite_handler = cros_suite.SuiteHandler(suite_handler_spec, swarming_client)
+    suite_runner.run(swarming_client,
+                     suite_job.test_specs,
                      suite_handler,
                      options.dry_run)
 
@@ -113,11 +115,17 @@ def parse_args():
     return options
 
 
+def _setup_env(options):
+    """Set environment variables based on commandline options."""
+    os.environ['SWARMING_CREDS'] = options.swarming_auth_json
+
+
 def main():
     """Entry point."""
     autotest.monkeypatch()
 
     options = parse_args()
+    _setup_env(options)
     suite_tracking.setup_logging()
     result = _run_suite(options)
     logging.info('Will return from %s with status: %s',

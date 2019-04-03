@@ -77,6 +77,9 @@ TestSpec = collections.namedtuple(
                 'pool',
                 'build',
                 'keyvals',
+                # TODO(akeshet): Determine why this is necessary
+                # (can't this just be specified as its own dimension?) and
+                # delete it if it isn't necessary.
                 'bot_id',
                 'dut_name',
                 'expiration_secs',
@@ -93,7 +96,7 @@ class SuiteHandler(object):
     Its responsibility includes handling retries for child tests.
     """
 
-    def __init__(self, specs):
+    def __init__(self, specs, client):
         self._suite_name = specs.suite_name
         self._wait = specs.wait
         self._timeout_mins = specs.timeout_mins
@@ -109,6 +112,7 @@ class SuiteHandler(object):
         self._task_id = os.environ.get('SWARMING_TASK_ID')
         self._task_to_test_maps = {}
         self.successfully_provisioned_duts = set()
+        self._client = client
 
         # It only maintains the swarming task of the final run of each
         # child task, i.e. it doesn't include failed swarming tasks of
@@ -195,7 +199,7 @@ class SuiteHandler(object):
         The final active child task list will include task x1_2 and x2_1, won't
         include x1_1 since it's a task which is finished but get retried later.
         """
-        all_tasks = swarming_lib.get_child_tasks(suite_id)
+        all_tasks = self._client.get_child_tasks(suite_id)
         return [t for t in all_tasks if t['task_id'] in self._task_to_test_maps]
 
     def handle_results(self, suite_id):
@@ -274,10 +278,11 @@ class Suite(object):
     """The class for a CrOS suite."""
     EXPIRATION_SECS = swarming_lib.DEFAULT_EXPIRATION_SECS
 
-    def __init__(self, spec):
+    def __init__(self, spec, client):
         """Initialize a suite.
 
         @param spec: A SuiteSpec object.
+        @param client: A swarming_lib.Client instance.
         """
         self._ds = None
 
@@ -295,6 +300,7 @@ class Suite(object):
         self.minimum_duts = spec.minimum_duts
         self.timeout_mins = spec.timeout_mins
         self.quota_account = spec.quota_account
+        self._client = client
 
     @property
     def ds(self):
@@ -414,7 +420,7 @@ class Suite(object):
         swarming_pool_deps = swarming_lib.task_dependencies_from_labels(
             ['pool:%s' % self.pool])
         dimensions.update(swarming_pool_deps)
-        bots = swarming_lib.query_bots_list(dimensions)
+        bots = self._client.query_bots_list(dimensions)
         return [bot for bot in bots if swarming_lib.bot_available(bot)]
 
 
@@ -422,8 +428,8 @@ class ProvisionSuite(Suite):
     """The class for a CrOS provision suite."""
     EXPIRATION_SECS = swarming_lib.DEFAULT_EXPIRATION_SECS
 
-    def __init__(self, spec):
-        super(ProvisionSuite, self).__init__(spec)
+    def __init__(self, spec, client):
+        super(ProvisionSuite, self).__init__(spec, client)
         self._num_required = spec.suite_args['num_required']
 
     def _find_tests(self, available_bots_num=0):
