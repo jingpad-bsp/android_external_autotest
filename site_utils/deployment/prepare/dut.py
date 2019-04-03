@@ -88,6 +88,17 @@ def download_image_to_servo_usb(host, build):
     host.servo.image_to_servo_usb(host.stage_image_for_servo(build))
 
 
+def install_test_image(host):
+    """Install the test image for the given build to DUT.
+
+    This function assumes that the required image is already downloaded onto the
+    USB key connected to the DUT via servo.
+
+    @param host   servers.host.Host object.
+    """
+    host.servo_install()
+
+
 def flash_firmware_using_servo(host):
     """Flash DUT firmware directly using servo.
 
@@ -96,6 +107,56 @@ def flash_firmware_using_servo(host):
     this way, we don't require DUT to be in dev mode and with dev_boot_usb
     enabled."""
     host.firmware_install(build=host.get_cros_repair_image_name())
+
+
+def install_firmware(host, force):
+    """Install dev-signed firmware after removing write-protect.
+
+    At start, it's assumed that hardware write-protect is disabled,
+    the DUT is in dev mode, and the servo's USB stick already has a
+    test image installed.
+
+    The firmware is installed by powering on and typing ctrl+U on
+    the keyboard in order to boot the test image from USB.  Once
+    the DUT is booted, we run a series of commands to install the
+    read-only firmware from the test image.  Then we clear debug
+    mode, and shut down.
+
+    @param host   Host instance to use for servo and ssh operations.
+    @param force  Boolean value determining if firmware install is forced.
+    """
+    servo = host.servo
+    # First power on.  We sleep to allow the firmware plenty of time
+    # to display the dev-mode screen; some boards take their time to
+    # be ready for the ctrl+U after power on.
+    servo.get_power_state_controller().power_off()
+    servo.switch_usbkey('dut')
+    servo.get_power_state_controller().power_on()
+    time.sleep(10)
+    # Dev mode screen should be up now:  type ctrl+U and wait for
+    # boot from USB to finish.
+    servo.ctrl_u()
+    if not host.wait_up(timeout=host.USB_BOOT_TIMEOUT):
+        raise Exception('DUT failed to boot in dev mode for '
+                        'firmware update')
+    # Disable software-controlled write-protect for both FPROMs, and
+    # install the RO firmware.
+    for fprom in ['host', 'ec']:
+        host.run('flashrom -p %s --wp-disable' % fprom,
+                 ignore_status=True)
+
+    fw_update_log = '/mnt/stateful_partition/home/root/cros-fw-update.log'
+    pid = _start_firmware_update(host, force, fw_update_log)
+    _wait_firmware_update_process(host, pid)
+    _check_firmware_update_result(host, fw_update_log)
+
+    # Get us out of dev-mode and clear GBB flags.  GBB flags are
+    # non-zero because boot from USB was enabled.
+    host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0',
+             ignore_status=True)
+    host.run('crossystem disable_dev_request=1',
+             ignore_status=True)
+    host.halt()
 
 
 def _start_firmware_update(host, force, result_file):
@@ -156,67 +217,6 @@ def _check_firmware_update_result(host, result_file):
     result = host.run('cat %s' % result_file)
     if result.stdout.rstrip().rsplit('\n', 1)[1] != fw_update_was_good:
         raise Exception("chromeos-firmwareupdate failed!")
-
-
-def install_firmware(host, force):
-    """Install dev-signed firmware after removing write-protect.
-
-    At start, it's assumed that hardware write-protect is disabled,
-    the DUT is in dev mode, and the servo's USB stick already has a
-    test image installed.
-
-    The firmware is installed by powering on and typing ctrl+U on
-    the keyboard in order to boot the test image from USB.  Once
-    the DUT is booted, we run a series of commands to install the
-    read-only firmware from the test image.  Then we clear debug
-    mode, and shut down.
-
-    @param host   Host instance to use for servo and ssh operations.
-    @param force  Boolean value determining if firmware install is forced.
-    """
-    servo = host.servo
-    # First power on.  We sleep to allow the firmware plenty of time
-    # to display the dev-mode screen; some boards take their time to
-    # be ready for the ctrl+U after power on.
-    servo.get_power_state_controller().power_off()
-    servo.switch_usbkey('dut')
-    servo.get_power_state_controller().power_on()
-    time.sleep(10)
-    # Dev mode screen should be up now:  type ctrl+U and wait for
-    # boot from USB to finish.
-    servo.ctrl_u()
-    if not host.wait_up(timeout=host.USB_BOOT_TIMEOUT):
-        raise Exception('DUT failed to boot in dev mode for '
-                        'firmware update')
-    # Disable software-controlled write-protect for both FPROMs, and
-    # install the RO firmware.
-    for fprom in ['host', 'ec']:
-        host.run('flashrom -p %s --wp-disable' % fprom,
-                 ignore_status=True)
-
-    fw_update_log = '/mnt/stateful_partition/home/root/cros-fw-update.log'
-    pid = _start_firmware_update(host, force, fw_update_log)
-    _wait_firmware_update_process(host, pid)
-    _check_firmware_update_result(host, fw_update_log)
-
-    # Get us out of dev-mode and clear GBB flags.  GBB flags are
-    # non-zero because boot from USB was enabled.
-    host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0',
-             ignore_status=True)
-    host.run('crossystem disable_dev_request=1',
-             ignore_status=True)
-    host.halt()
-
-
-def install_test_image(host):
-    """Install the test image for the given build to DUT.
-
-    This function assumes that the required image is already downloaded onto the
-    USB key connected to the DUT via servo.
-
-    @param host   servers.host.Host object.
-    """
-    host.servo_install()
 
 
 def _prepare_servo(servohost):
